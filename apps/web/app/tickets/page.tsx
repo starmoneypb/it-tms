@@ -43,30 +43,24 @@ export default function TicketsPage() {
       .finally(() => setLoading(false));
   }, [page, pageSize, q, status, priority]);
 
-  // Debounced search for text input
+  // Debounced search for text input - resets to page 1
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (page === 1) {
-        load();
-      } else {
-        setPage(1);
-      }
+      setPage(1);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [q, load]);
+  }, [q]);
 
-  // Immediate search for status and priority changes
+  // Immediate search for status and priority changes - resets to page 1
   useEffect(() => {
-    if (page === 1) {
-      load();
-    } else {
-      setPage(1);
-    }
-  }, [status, priority, load]);
+    setPage(1);
+  }, [status, priority]);
 
-  // Load data when page or pageSize changes
-  useEffect(() => { load(); }, [page, pageSize]);
+  // Load data when any parameter changes
+  useEffect(() => { 
+    load(); 
+  }, [load]);
 
   return (
     <div className="container">
@@ -97,9 +91,11 @@ export default function TicketsPage() {
               onChange={(e)=>setStatus(e.target.value)}
               variant="bordered"
             >
-              {["", "pending", "in_progress", "completed", "canceled"].map(s => (
-                <SelectItem key={s}>{s || "Any"}</SelectItem>
-              ))}
+              <SelectItem key="">Any</SelectItem>
+              <SelectItem key="pending">Pending</SelectItem>
+              <SelectItem key="in_progress">In Progress</SelectItem>
+              <SelectItem key="completed">Completed</SelectItem>
+              <SelectItem key="canceled">Canceled</SelectItem>
             </Select>
             <Select 
               label="Priority" 
@@ -124,45 +120,47 @@ export default function TicketsPage() {
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {data?.data?.map((t) => (
             <Card 
               key={t.id} 
-              className="glass hover:scale-[1.02] transition-all duration-200 cursor-pointer group"
+              className="glass hover:scale-[1.02] transition-all duration-200 cursor-pointer group h-full"
               isPressable
               onPress={() => window.location.href = `/tickets/${t.id}`}
             >
-              <CardBody className="p-6">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold group-hover:text-primary-500 transition-colors mb-2">
+              <CardBody className="p-6 flex flex-col h-full">
+                <div className="flex-1">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-semibold group-hover:text-primary-500 transition-colors mb-2 line-clamp-2">
                       #{t.code} — {t.title}
                     </h3>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Chip 
-                        size="sm" 
-                        color={statusColors[t.status as keyof typeof statusColors] || "default"}
-                        variant="flat"
-                      >
-                        {t.status.replace('_', ' ')}
-                      </Chip>
-                      <Chip 
-                        size="sm" 
-                        color={priorityColors[t.priority as keyof typeof priorityColors] || "default"}
-                        variant="flat"
-                      >
-                        {t.priority}
-                      </Chip>
-                      <Chip size="sm" variant="flat" className="bg-white/10">
-                        {t.initialType.replace(/_/g, ' ')}
-                      </Chip>
+                    <div className="text-sm text-white/60 ml-4 flex-shrink-0">
+                      {new Date(t.createdAt).toLocaleDateString()}
                     </div>
                   </div>
-                  <div className="text-sm text-white/60 ml-4">
-                    {new Date(t.createdAt).toLocaleDateString()}
+                  
+                  <div className="flex items-center gap-2 flex-wrap mb-4">
+                    <Chip 
+                      size="sm" 
+                      color={statusColors[t.status as keyof typeof statusColors] || "default"}
+                      variant="flat"
+                    >
+                      {t.status.replace('_', ' ')}
+                    </Chip>
+                    <Chip 
+                      size="sm" 
+                      color={priorityColors[t.priority as keyof typeof priorityColors] || "default"}
+                      variant="flat"
+                    >
+                      {t.priority}
+                    </Chip>
+                    <Chip size="sm" variant="flat" className="bg-white/10">
+                      {t.initialType.replace(/_/g, ' ')}
+                    </Chip>
                   </div>
                 </div>
-                <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors">
+                
+                <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors mt-auto">
                   Click to view details →
                 </div>
               </CardBody>
