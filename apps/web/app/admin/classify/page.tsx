@@ -11,6 +11,20 @@ export default function ClassifyPage() {
   const [sel, setSel] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
+  // Debug function to log selection changes
+  const handleSelectionChange = (ticketId: string, keys: any) => {
+    const selectedKey = Array.from(keys)[0] as string;
+    console.log('Selection changed for ticket:', ticketId, 'selected:', selectedKey);
+    console.log('Current sel state:', sel);
+    if (selectedKey) {
+      setSel(prev => {
+        const newSel = {...prev, [ticketId]: selectedKey};
+        console.log('New sel state:', newSel);
+        return newSel;
+      });
+    }
+  };
+
   function load() {
     setLoading(true);
     fetch(`${API}/api/v1/tickets?status=pending`, { credentials: "include" })
@@ -91,27 +105,23 @@ export default function ClassifyPage() {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      <Select 
-                        label="Resolved Type" 
-                        placeholder="Select classification"
-                        selectedKeys={sel[t.id] ? [sel[t.id]] : []} 
-                        onChange={(e)=>setSel({...sel, [t.id]: e.target.value})}
-                        variant="bordered"
-                        className="min-w-[200px]"
-                      >
-                        <SelectItem key="EMERGENCY_CHANGE">
-                          <div className="flex items-center gap-2">
-                            <span>🚨</span>
-                            <span>Emergency Change</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem key="DATA_CORRECTION">
-                          <div className="flex items-center gap-2">
-                            <span>✏️</span>
-                            <span>Data Correction</span>
-                          </div>
-                        </SelectItem>
-                      </Select>
+                      <div className="flex flex-col gap-2">
+                        <Select 
+                          label="Resolved Type" 
+                          placeholder="Select classification"
+                          selectedKeys={sel[t.id] ? [sel[t.id]] : []} 
+                          onSelectionChange={(keys) => handleSelectionChange(t.id, keys)}
+                          variant="bordered"
+                          className="min-w-[200px]"
+                        >
+                          <SelectItem key="EMERGENCY_CHANGE">
+                            🚨 Emergency Change
+                          </SelectItem>
+                          <SelectItem key="DATA_CORRECTION">
+                            ✏️ Data Correction
+                          </SelectItem>
+                        </Select>
+                      </div>
                       
                       <Button 
                         color="primary" 
