@@ -52,7 +52,7 @@ jobs:
         run: pnpm audit --audit-level moderate
       
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
       
@@ -95,7 +95,7 @@ jobs:
           version: 9
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
 
