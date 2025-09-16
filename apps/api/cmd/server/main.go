@@ -95,8 +95,8 @@ func main() {
 	protected.Post("/tickets/:id/comments", h.TicketsAddComment)
 	protected.Post("/tickets/:id/attachments", h.TicketsUploadAttachments)
 
-	// Admin routes (require elevated roles)
-	admin := v1.Group("/", middleware.RequireAnyRole(cfg.JWTSecret, []string{"Supervisor", "Manager"}))
+	// Admin routes (require Supervisor or Manager roles)
+	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
 	admin.Post("/tickets/:id/classify", h.TicketsClassify)
 
 	// Swagger UI

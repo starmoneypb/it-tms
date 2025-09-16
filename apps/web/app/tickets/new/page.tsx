@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox, Progress } from "@heroui/react";
 import { computePriority, PriorityInput } from "@/lib/priority";
+import { WysiwygEditor } from "@/lib/wysiwyg-editor";
+import { useAuth } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -34,6 +36,7 @@ const steps = [
 export default function NewTicket() {
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [submitting, setSubmitting] = useState(false);
+  const { user, canCreateTicketType } = useAuth();
 
   const pr = computePriority(draft.priority);
 
@@ -159,6 +162,8 @@ export default function NewTicket() {
                       variant="flat" 
                       value={draft.contactEmail||""} 
                       onValueChange={(v)=>setDraft({...draft, contactEmail: v})}
+                      isRequired={!user}
+                      description={!user ? "Required for anonymous users" : ""}
                     />
                     <Input 
                       label="Contact Phone" 
@@ -188,46 +193,56 @@ export default function NewTicket() {
                   <p className="text-white/70 mb-6">Select the most appropriate category</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Button 
-                    onPress={()=>setDraft({...draft, type: "CHANGE_REQUEST_NORMAL", step: 3})}
-                    variant="flat"
-                    className="h-16 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-lg mb-1">🔄</div>
-                    <div className="font-semibold text-sm">Normal Change</div>
-                  </Button>
-                  <Button 
-                    onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_CORRECTION", step: 3})}
-                    variant="flat"
-                    className="h-16 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-lg mb-1">✏️</div>
-                    <div className="font-semibold text-sm">Data Correction</div>
-                  </Button>
-                  <Button 
-                    onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_EXTRACTION", step: 3})}
-                    variant="flat"
-                    className="h-16 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-lg mb-1">📊</div>
-                    <div className="font-semibold text-sm">Data Extraction</div>
-                  </Button>
-                  <Button 
-                    onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_ADVISORY", step: 3})}
-                    variant="flat"
-                    className="h-16 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-lg mb-1">💡</div>
-                    <div className="font-semibold text-sm">Advisory</div>
-                  </Button>
-                  <Button 
-                    onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_GENERAL", step: 3})}
-                    variant="flat"
-                    className="h-16 flex flex-col items-center justify-center md:col-span-2"
-                  >
-                    <div className="text-lg mb-1">📝</div>
-                    <div className="font-semibold text-sm">General Request</div>
-                  </Button>
+                  {canCreateTicketType("CHANGE_REQUEST_NORMAL") && (
+                    <Button 
+                      onPress={()=>setDraft({...draft, type: "CHANGE_REQUEST_NORMAL", step: 3})}
+                      variant="flat"
+                      className="h-16 flex flex-col items-center justify-center"
+                    >
+                      <div className="text-lg mb-1">🔄</div>
+                      <div className="font-semibold text-sm">Normal Change</div>
+                    </Button>
+                  )}
+                  {canCreateTicketType("SERVICE_REQUEST_DATA_CORRECTION") && (
+                    <Button 
+                      onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_CORRECTION", step: 3})}
+                      variant="flat"
+                      className="h-16 flex flex-col items-center justify-center"
+                    >
+                      <div className="text-lg mb-1">✏️</div>
+                      <div className="font-semibold text-sm">Data Correction</div>
+                    </Button>
+                  )}
+                  {canCreateTicketType("SERVICE_REQUEST_DATA_EXTRACTION") && (
+                    <Button 
+                      onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_EXTRACTION", step: 3})}
+                      variant="flat"
+                      className="h-16 flex flex-col items-center justify-center"
+                    >
+                      <div className="text-lg mb-1">📊</div>
+                      <div className="font-semibold text-sm">Data Extraction</div>
+                    </Button>
+                  )}
+                  {canCreateTicketType("SERVICE_REQUEST_ADVISORY") && (
+                    <Button 
+                      onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_ADVISORY", step: 3})}
+                      variant="flat"
+                      className="h-16 flex flex-col items-center justify-center"
+                    >
+                      <div className="text-lg mb-1">💡</div>
+                      <div className="font-semibold text-sm">Advisory</div>
+                    </Button>
+                  )}
+                  {canCreateTicketType("SERVICE_REQUEST_GENERAL") && (
+                    <Button 
+                      onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_GENERAL", step: 3})}
+                      variant="flat"
+                      className="h-16 flex flex-col items-center justify-center md:col-span-2"
+                    >
+                      <div className="text-lg mb-1">📝</div>
+                      <div className="font-semibold text-sm">General Request</div>
+                    </Button>
+                  )}
                 </div>
                 <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg">
                   Back
@@ -250,13 +265,12 @@ export default function NewTicket() {
                     value={draft.title || ""} 
                     onValueChange={(v)=>setDraft({...draft, title: v})}
                   />
-                  <Textarea 
+                  <WysiwygEditor 
                     label="Description" 
                     placeholder="Provide detailed information about your request..."
-                    variant="flat" 
                     value={draft.description || ""} 
-                    onValueChange={(v)=>setDraft({...draft, description: v})}
-                    minRows={5}
+                    onChange={(v)=>setDraft({...draft, description: v})}
+                    minHeight="150px"
                   />
                   <div>
                     <label className="text-sm font-medium text-white/80 mb-2 block">Attachments</label>

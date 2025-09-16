@@ -259,3 +259,73 @@ button:focus {
   border-bottom-left-radius: var(--radius-md) !important;
   border-bottom-right-radius: var(--radius-md) !important;
 }
+
+/* WYSIWYG Editor Styles */
+.wysiwyg-editor .ProseMirror {
+  outline: none;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+}
+
+.wysiwyg-editor .ProseMirror p {
+  margin: 0.5em 0;
+}
+
+.wysiwyg-editor .ProseMirror p:first-child {
+  margin-top: 0;
+}
+
+.wysiwyg-editor .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.wysiwyg-editor .ProseMirror ul,
+.wysiwyg-editor .ProseMirror ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.wysiwyg-editor .ProseMirror li {
+  margin: 0.25em 0;
+}
+
+.wysiwyg-editor .ProseMirror strong {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 1);
+}
+
+.wysiwyg-editor .ProseMirror em {
+  font-style: italic;
+}
+
+.wysiwyg-editor .ProseMirror .is-editor-empty:first-child::before {
+  color: rgba(255, 255, 255, 0.4);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Prose styles for rendered content */
+.prose-invert {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.prose-invert strong {
+  color: rgba(255, 255, 255, 1);
+  font-weight: 600;
+}
+
+.prose-invert em {
+  font-style: italic;
+}
+
+.prose-invert ul,
+.prose-invert ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.prose-invert li {
+  margin: 0.25em 0;
+}

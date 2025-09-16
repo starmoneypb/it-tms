@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/it-tms/apps/api/internal/http/middleware"
 	"github.com/it-tms/apps/api/internal/models"
 	"github.com/it-tms/apps/api/internal/priority"
 	"github.com/it-tms/apps/api/internal/repositories"
@@ -177,9 +178,31 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 		}
 	}
 
-	// RBAC: Anonymous can only create Issue Report
-	if role == "Anonymous" && body.InitialType != models.InitialIssueReport {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"anonymous can only open issue reports"}})
+	// RBAC Enforcement based on requirements matrix
+	switch role {
+	case "Anonymous":
+		// Anonymous can only create Issue Reports and must provide contact info
+		if body.InitialType != models.InitialIssueReport {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"anonymous can only open issue reports"}})
+		}
+		if body.ContactEmail == nil || *body.ContactEmail == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"contact email required for anonymous users"}})
+		}
+	case "User":
+		// Users can create all types except Emergency Change and Data Correction
+		if body.InitialType == models.InitialChangeRequestNormal ||
+		   body.InitialType == models.InitialServiceDataExtraction ||
+		   body.InitialType == models.InitialServiceAdvisory ||
+		   body.InitialType == models.InitialServiceGeneral {
+			// Allowed
+		} else {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"insufficient permissions for this ticket type"}})
+		}
+	case "Supervisor", "Manager":
+		// Supervisors and Managers can create all types
+		// No restrictions
+	default:
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"invalid role"}})
 	}
 
 	impact, urgency, final, red, prio := 0,0,0,false, models.PriorityP3
@@ -268,17 +291,31 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
 	}
-	ctx := context.Background()
-	// Ownership or elevated role enforced inside repo/service (simplified here)
+	
 	userClaims, _ := c.Locals("user").(jwt.MapClaims)
-	var userID *string
-	if userClaims != nil {
-		if sid, ok := userClaims["sub"].(string); ok { userID = &sid }
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
 	}
+	
+	userID, role, _ := middleware.GetUserFromContext(c)
+	
+	ctx := context.Background()
+	
+	// Check ownership: Users can only edit their own tickets, Supervisors/Managers can edit any
+	if role == "User" {
+		ticket, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+		}
+		if ticket.CreatedBy == nil || *ticket.CreatedBy != userID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only edit your own tickets"}})
+		}
+	}
+	
 	if err := h.repo.Tickets.Update(ctx, id, body.Title, body.Description, body.Details); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
-	h.repo.Audits.Insert(ctx, id, userID, "update_ticket", nil, body)
+	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket", nil, body)
 	return c.JSON(h.envelope(fiber.Map{"id": id}))
 }
 
@@ -325,16 +362,30 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
 	}
+	
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
+	}
+	
+	userID, role, _ := middleware.GetUserFromContext(c)
 	ctx := context.Background()
+	
+	// Check ownership for cancellation: Users can only cancel their own tickets
+	if body.Status == models.StatusCanceled && role == "User" {
+		ticket, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+		}
+		if ticket.CreatedBy == nil || *ticket.CreatedBy != userID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only cancel your own tickets"}})
+		}
+	}
+	
 	if err := h.repo.Tickets.ChangeStatus(ctx, id, body.Status); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"status change failed"}})
 	}
-	userClaims, _ := c.Locals("user").(jwt.MapClaims)
-	var userID *string
-	if userClaims != nil {
-		if sid, ok := userClaims["sub"].(string); ok { userID = &sid }
-	}
-	h.repo.Audits.Insert(ctx, id, userID, "status_change", nil, body.Status)
+	h.repo.Audits.Insert(ctx, id, &userID, "status_change", nil, body.Status)
 	return c.JSON(h.envelope(fiber.Map{"id": id, "status": body.Status}))
 }
 

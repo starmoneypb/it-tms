@@ -84,3 +84,30 @@ func RequireAnyRole(secret string, roles []string) fiber.Handler {
 		return c.Next()
 	}
 }
+
+// RequireRole checks for a specific role
+func RequireRole(secret string, role string) fiber.Handler {
+	return RequireAnyRole(secret, []string{role})
+}
+
+// RequireSupervisorOrManager checks for Supervisor or Manager roles
+func RequireSupervisorOrManager(secret string) fiber.Handler {
+	return RequireAnyRole(secret, []string{"Supervisor", "Manager"})
+}
+
+// RequireAuthenticatedUser checks for any authenticated user (not Anonymous)
+func RequireAuthenticatedUser(secret string) fiber.Handler {
+	return RequireAnyRole(secret, []string{"User", "Supervisor", "Manager"})
+}
+
+// GetUserFromContext extracts user information from context
+func GetUserFromContext(c *fiber.Ctx) (userID string, role string, ok bool) {
+	val := c.Locals("user")
+	if val == nil {
+		return "", "", false
+	}
+	claims := val.(jwt.MapClaims)
+	userID, _ = claims["sub"].(string)
+	role, _ = claims["role"].(string)
+	return userID, role, true
+}

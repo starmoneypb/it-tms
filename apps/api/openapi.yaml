@@ -2,6 +2,43 @@ openapi: 3.0.3
 info:
   title: IT-TMS API
   version: "1.0.0"
+  description: |
+    IT Ticket Management System API with Role-Based Access Control (RBAC)
+    
+    ## Authentication
+    The API uses JWT tokens for authentication. Tokens are provided via:
+    - HTTP-only cookies (preferred)
+    - Authorization header: `Bearer <token>`
+    
+    ## Roles and Permissions
+    
+    ### Anonymous
+    - Can create Issue Reports (must provide contact email)
+    - Can view dashboard and tickets
+    - Cannot edit, assign, or cancel tickets
+    
+    ### User
+    - Can create: Normal Change, Data Extraction, Advisory, General Request
+    - Can edit/update only their own tickets
+    - Can assign tickets only to themselves
+    - Can cancel only their own tickets
+    - Cannot create: Emergency Change, Data Correction
+    
+    ### Supervisor
+    - Can create all ticket types
+    - Can edit/update any ticket
+    - Can assign tickets to anyone
+    - Can cancel any ticket
+    - Can access admin classification features
+    
+    ### Manager
+    - Same permissions as Supervisor
+    - Full administrative access
+    
+    ## Error Responses
+    - `401 Unauthorized`: Missing or invalid authentication
+    - `403 Forbidden`: Insufficient permissions for the requested action
+    - `400 Bad Request`: Invalid request data or missing required fields
 servers:
   - url: http://localhost:8080/api/v1
 paths:

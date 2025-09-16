@@ -89,6 +89,18 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 	return items, total, nil
 }
 
+func (r *TicketRepo) GetByID(ctx context.Context, id string) (models.Ticket, error) {
+	var t models.Ticket
+	var details []byte
+	row := r.pool.QueryRow(ctx, `SELECT id, code, created_by, contact_email, contact_phone, initial_type, resolved_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, assignee_id, created_at, updated_at, closed_at FROM tickets WHERE id=$1`, id)
+	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { return t, ErrNotFound }
+		return t, err
+	}
+	json.Unmarshal(details, &t.Details)
+	return t, nil
+}
+
 func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ticket, []models.Comment, []models.Attachment, error) {
 	var t models.Ticket
 	var details []byte

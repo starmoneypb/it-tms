@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Input, Select, SelectItem, Button, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
+import { useEffect, useState, useCallback } from "react";
+import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -31,7 +31,7 @@ export default function TicketsPage() {
   const [data, setData] = useState<{ data: Ticket[]; total: number; totalPages: number; } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function load() {
+  const load = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (q) params.set("q", q);
@@ -41,8 +41,31 @@ export default function TicketsPage() {
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false));
-  }
+  }, [page, pageSize, q, status, priority]);
 
+  // Debounced search for text input
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page === 1) {
+        load();
+      } else {
+        setPage(1);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [q, load]);
+
+  // Immediate search for status and priority changes
+  useEffect(() => {
+    if (page === 1) {
+      load();
+    } else {
+      setPage(1);
+    }
+  }, [status, priority, load]);
+
+  // Load data when page or pageSize changes
   useEffect(() => { load(); }, [page, pageSize]);
 
   return (
@@ -59,7 +82,7 @@ export default function TicketsPage() {
               🔍 Search & Filter
             </h2>
           </CardHeader>
-          <CardBody className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardBody className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input 
               label="Search tickets" 
               placeholder="Search by title..."
@@ -89,13 +112,6 @@ export default function TicketsPage() {
                 <SelectItem key={s}>{s || "Any"}</SelectItem>
               ))}
             </Select>
-            <Button 
-              color="primary" 
-              onPress={()=>{ setPage(1); load(); }}
-              className="h-14"
-            >
-              Apply Filters
-            </Button>
           </CardBody>
         </Card>
 
@@ -180,12 +196,12 @@ export default function TicketsPage() {
                   : "Get started by creating your first ticket"
                 }
               </p>
-              <Button 
-                color="primary" 
-                onPress={() => window.location.href = '/tickets/new'}
+              <a 
+                href="/tickets/new"
+                className="inline-flex items-center justify-center px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
               >
                 Create Ticket
-              </Button>
+              </a>
             </CardBody>
           </Card>
         )}

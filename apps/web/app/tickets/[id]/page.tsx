@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider } from "@heroui/react";
+import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem } from "@heroui/react";
+import { WysiwygEditor } from "@/lib/wysiwyg-editor";
+import { useAuth } from "@/lib/auth";
+import DOMPurify from "isomorphic-dompurify";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -22,10 +25,13 @@ const priorityColors = {
 export default function TicketDetails() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const { user, canEditTicket, canCancelTicket, canAssignTicket } = useAuth();
   const [data, setData] = useState<any>(null);
   const [comment, setComment] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState("");
 
   function load() {
     setLoading(true);
@@ -51,12 +57,31 @@ export default function TicketDetails() {
 
   async function changeStatus() {
     if (!status.trim()) return;
-    await fetch(`${API}/api/v1/tickets/${id}/status`, {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    load();
+    
+    setStatusLoading(true);
+    setStatusError("");
+    
+    try {
+      const response = await fetch(`${API}/api/v1/tickets/${id}/status`, {
+        method: "POST", 
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Failed to update status");
+      }
+      
+      // Success - reload data and clear status
+      setStatus("");
+      load();
+    } catch (error) {
+      setStatusError(error instanceof Error ? error.message : "Failed to update status");
+    } finally {
+      setStatusLoading(false);
+    }
   }
 
   if (loading) {
@@ -118,7 +143,12 @@ export default function TicketDetails() {
           <CardBody className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold mb-3">Description</h3>
-              <p className="text-white/80 leading-relaxed">{t.description}</p>
+              <div 
+                className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ 
+                  __html: DOMPurify.sanitize(t.description) 
+                }}
+              />
             </div>
 
             <Divider />
@@ -183,7 +213,12 @@ export default function TicketDetails() {
                           {new Date(c.createdAt).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm text-white/80">{c.body}</p>
+                      <div 
+                        className="text-sm text-white/80 prose prose-invert prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ 
+                          __html: DOMPurify.sanitize(c.body) 
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
@@ -195,55 +230,101 @@ export default function TicketDetails() {
         </Card>
 
         <div className="space-y-6">
-          <Card className="glass">
-            <CardHeader className="pb-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                💬 Add Comment
-              </h3>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <Textarea 
-                value={comment} 
-                onValueChange={setComment} 
-                placeholder="Write your comment..."
-                variant="bordered"
-                minRows={4}
-              />
-              <Button 
-                color="primary" 
-                onPress={postComment}
-                isDisabled={!comment.trim()}
-                className="w-full"
-              >
-                Post Comment
-              </Button>
-            </CardBody>
-          </Card>
+          {user && (
+            <Card className="glass">
+              <CardHeader className="pb-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  💬 Add Comment
+                </h3>
+              </CardHeader>
+              <CardBody className="space-y-4">
+                <WysiwygEditor 
+                  value={comment} 
+                  onChange={setComment} 
+                  placeholder="Write your comment..."
+                  minHeight="120px"
+                />
+                <Button 
+                  color="primary" 
+                  onPress={postComment}
+                  isDisabled={!comment.trim()}
+                  className="w-full"
+                >
+                  Post Comment
+                </Button>
+              </CardBody>
+            </Card>
+          )}
 
-          <Card className="glass">
-            <CardHeader className="pb-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                🔄 Change Status
-              </h3>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <Input 
-                label="New Status" 
-                placeholder="pending/in_progress/completed/canceled"
-                value={status} 
-                onValueChange={setStatus}
-                variant="bordered"
-              />
-              <Button 
-                color="primary" 
-                onPress={changeStatus}
-                isDisabled={!status.trim()}
-                className="w-full"
-              >
-                Update Status
-              </Button>
-            </CardBody>
-          </Card>
+          {user && (
+            <Card className="glass">
+              <CardHeader className="pb-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  🔄 Change Status
+                </h3>
+              </CardHeader>
+              <CardBody className="space-y-4">
+                <Select 
+                  label="New Status" 
+                  placeholder="Select status"
+                  selectedKeys={status ? [status] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setStatus(selected || "");
+                  }}
+                  variant="bordered"
+                >
+                  <SelectItem key="pending">Pending</SelectItem>
+                  <SelectItem key="in_progress">In Progress</SelectItem>
+                  <SelectItem key="completed">Completed</SelectItem>
+                  <SelectItem key="canceled">Canceled</SelectItem>
+                </Select>
+                
+                {statusError && (
+                  <div className="text-red-400 text-sm p-2 bg-red-500/10 rounded-lg">
+                    ⚠️ {statusError}
+                  </div>
+                )}
+                
+                <Button 
+                  color="primary" 
+                  onPress={changeStatus}
+                  isDisabled={!status.trim() || statusLoading}
+                  isLoading={statusLoading}
+                  className="w-full"
+                >
+                  {statusLoading ? "Updating..." : "Update Status"}
+                </Button>
+              </CardBody>
+            </Card>
+          )}
+
+          {canAssignTicket() && (
+            <Card className="glass">
+              <CardHeader className="pb-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  👤 Assign Ticket
+                </h3>
+              </CardHeader>
+              <CardBody className="space-y-4">
+                <Button 
+                  color="secondary" 
+                  onPress={() => {
+                    // Self-assign functionality
+                    fetch(`${API}/api/v1/tickets/${id}/assign`, {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ self: true }),
+                    }).then(() => load());
+                  }}
+                  className="w-full"
+                >
+                  Assign to Me
+                </Button>
+              </CardBody>
+            </Card>
+          )}
         </div>
       </div>
     </div>
