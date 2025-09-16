@@ -1,0 +1,15 @@
+---
+description: "Fiber middleware baseline, layering, migrations, logging, RBAC"
+globs:
+  - "apps/api/**"
+alwaysApply: false
+---
+# Backend Standards
+
+- **Middlewares**: `recover`, `requestid`, structured `logger`, `helmet`, strict `cors`, and `limiter` for auth & ticket creation. Optional `csrf` for cookie flows.
+- **Layering**:
+  - `handlers` (http) → `services` (business) → `repositories` (pgx/sqlc) → DB.
+- **Migrations** via `golang-migrate`; SQL in `db/migrations` at repo root.
+- **Logging** uses `zerolog` with request correlation via `requestid`.
+- **Error handling** returns a normalized envelope `{ error: { code, message, details? } }`.
+- **RBAC**: JWT role claims; use `RequireRole` middleware for routes; ownership checks in services.

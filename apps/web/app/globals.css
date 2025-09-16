@@ -1,0 +1,261 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary-500: oklch(0.64 0.20 255);
+  --color-primary-600: oklch(0.58 0.20 255);
+  --color-primary-700: oklch(0.52 0.20 255);
+  --color-surface: #0f1629;
+  --color-surface-elevated: #1a2332;
+  --color-background: #0b0f19;
+  --color-background-gradient: linear-gradient(135deg, #0b0f19 0%, #1a1f2e 100%);
+  --color-text: #e5e7eb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  color-scheme: dark;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-background);
+  background-image: var(--color-background-gradient);
+  color: var(--color-text);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { 
+  text-decoration: none; 
+  transition: color 0.2s ease-in-out;
+}
+
+.container { 
+  max-width: 1280px; 
+  margin: 0 auto; 
+  padding: 0 1.5rem; 
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* HeroUI customizations */
+.dark {
+  --heroui-background: var(--color-background);
+  --heroui-content1: var(--color-surface);
+  --heroui-content2: var(--color-surface-elevated);
+  --heroui-content3: #2a3142;
+  --heroui-content4: #3a4256;
+  --heroui-default: #374151;
+  --heroui-primary: var(--color-primary-500);
+  --heroui-secondary: #6b7280;
+  --heroui-success: #10b981;
+  --heroui-warning: #f59e0b;
+  --heroui-danger: #ef4444;
+}
+
+/* Fix white borders and improve input/button styling */
+[data-slot="input-wrapper"] {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+[data-slot="input-wrapper"]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-slot="input-wrapper"]:focus-within {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+}
+
+[data-slot="input-wrapper"]:focus-within::after {
+  display: none !important;
+}
+
+/* Remove white borders from labels */
+[data-slot="label"] {
+  color: rgba(255, 255, 255, 0.8) !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Fix button styling */
+[data-slot="button"] {
+  border: none !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+[data-slot="button"]:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Fix select dropdown styling */
+[data-slot="trigger"] {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+[data-slot="trigger"]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-slot="trigger"]:focus-within {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Fix textarea styling */
+[data-slot="textarea"] {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+[data-slot="textarea"]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-slot="textarea"]:focus-within {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Remove any remaining white borders */
+*:focus {
+  outline: none !important;
+}
+
+*:focus-visible {
+  outline: none !important;
+}
+
+/* Remove browser default outlines from all elements */
+* {
+  outline: none !important;
+}
+
+/* Override any browser default focus styles */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure our custom focus styles take precedence */
+[data-slot="input-wrapper"]:focus-within {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+  outline: none !important;
+}
+
+[data-slot="trigger"]:focus-within {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+  outline: none !important;
+}
+
+[data-slot="textarea"]:focus-within {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+  outline: none !important;
+}
+
+[data-slot="button"]:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Fix HeroUI Select dropdown popover background */
+[data-slot="popover"] {
+  background: var(--color-surface-elevated) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  overflow: hidden !important;
+}
+
+[data-slot="popover-content"] {
+  background: var(--color-surface-elevated) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden !important;
+}
+
+/* Ensure dropdown menu items are readable */
+[data-slot="listbox"] {
+  background: var(--color-surface-elevated) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden !important;
+}
+
+[data-slot="listbox-item"] {
+  color: var(--color-text) !important;
+}
+
+[data-slot="listbox-item"]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-slot="listbox-item"][data-selected="true"] {
+  background: rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Ensure first and last items follow container border-radius */
+[data-slot="listbox-item"]:first-child {
+  border-top-left-radius: var(--radius-md) !important;
+  border-top-right-radius: var(--radius-md) !important;
+}
+
+[data-slot="listbox-item"]:last-child {
+  border-bottom-left-radius: var(--radius-md) !important;
+  border-bottom-right-radius: var(--radius-md) !important;
+}

@@ -1,0 +1,15 @@
+---
+description: "RBAC matrix and enforcement strategy"
+globs:
+  - "apps/api/**"
+  - "apps/web/**"
+alwaysApply: false
+---
+# RBAC
+
+Roles: `Anonymous`, `User`, `Supervisor`, `Manager`
+
+- Use `RequireRole("User")`, `RequireRole("Supervisor")`, etc. Server validates ownership where required.
+- UI hides illegal actions but expects server enforcement.
+- Self-assign allowed for Users; assigning others requires Supervisor/Manager.
+- Classification endpoint restricted to Supervisor/Manager.

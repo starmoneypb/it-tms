@@ -1,0 +1,19 @@
+---
+description: "Next.js App Router + HeroUI + Tailwind v4 conventions"
+globs:
+  - "apps/web/**"
+alwaysApply: false
+---
+# Frontend Standards
+
+- **App Router** only; use Server Components where appropriate. Mutations via Route Handlers or direct API calls.
+- **HeroUI** (`@heroui/react`) for primitives; wrap app with `HeroUIProvider` in `app/layout.tsx`.
+- **Tailwind v4**:
+  - Use `@import "tailwindcss";` in `globals.css`.
+  - Define tokens with the `@theme` block; prefer semantic utilities (`bg-[--color-surface]` etc.) for the blue/black theme.
+- **Forms**: `react-hook-form` + `zod` (`@hookform/resolvers/zod`).
+- **Charts**: `recharts` — avoid custom colors unless required; default palette is fine.
+- **Accessibility**: keyboard focus rings, `aria-*` where needed, minimum contrast 4.5:1.
+- **File uploads**: use drag & drop area; validate client-side (mime/size) mirroring backend limits.
+- **RBAC**: hide/disable illegal actions client-side but rely on server enforcement.
+- **Error states**: dedicate components for loading/empty/error.

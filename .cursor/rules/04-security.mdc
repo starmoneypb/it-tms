@@ -1,0 +1,14 @@
+---
+description: "Auth model, JWT, allowed MIME, size limits, security headers"
+globs:
+  - "apps/api/**"
+alwaysApply: false
+---
+# Security
+
+- **Auth**: JWT signed with `HS256`; claims include `sub`, `email`, `role`, and `exp` (≤ 7 days).
+- Use **httpOnly** cookie `token` for browser flows and `Authorization: Bearer` for API clients.
+- **Password hashing**: `bcrypt` with cost 12.
+- **Attachments**: only `image/jpeg`, `image/png`, `application/pdf`, `text/plain`; max 10 MB; scan hook stubbed.
+- **Headers**: Helmet enables HSTS, X-Frame-Options, X-Content-Type-Options, etc.
+- **CORS**: allowlist via `CORS_ALLOWED_ORIGINS` (CSV).

@@ -1,0 +1,118 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
+
+	"github.com/it-tms/apps/api/internal/http/handlers"
+	"github.com/it-tms/apps/api/internal/http/middleware"
+	"github.com/it-tms/apps/api/pkg/config"
+	"github.com/it-tms/apps/api/pkg/logger"
+)
+
+func main() {
+	// Load env
+	viper.AutomaticEnv()
+	cfg := config.Load()
+
+	// Logger
+	logger.Init()
+	log.Info().Msg("Starting IT-TMS API")
+
+	// DB
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create db pool")
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatal().Err(err).Msg("failed to ping db")
+	}
+
+	// Fiber app
+	app := fiber.New(fiber.Config{
+		AppName:      "IT-TMS API",
+		ServerHeader: "it-tms-api",
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+			return c.Status(code).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": err.Error()}})
+		},
+	})
+
+	// Middleware
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     cfg.CORSAllowedOrigins,
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowCredentials: true,
+	}))
+
+	// Initialize handlers
+	h := handlers.New(pool, cfg)
+
+	// Health endpoint
+	app.Get("/healthz", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "ok",
+			"time":   time.Now(),
+		})
+	})
+
+	// API v1 routes
+	v1 := app.Group("/api/v1")
+
+	// Auth routes
+	auth := v1.Group("/auth")
+	auth.Post("/sign-in", h.SignIn)
+	auth.Post("/sign-up", h.SignUp)
+
+	// Optional auth routes (for anonymous access)
+	v1.Get("/me", middleware.AuthOptional(cfg.JWTSecret), h.Me)
+	v1.Post("/tickets", middleware.AuthOptional(cfg.JWTSecret), h.TicketsCreate)
+	v1.Get("/tickets", middleware.AuthOptional(cfg.JWTSecret), h.TicketsList)
+	v1.Get("/tickets/:id", middleware.AuthOptional(cfg.JWTSecret), h.TicketsDetail)
+	v1.Get("/metrics/summary", h.MetricsSummary)
+	v1.Post("/priority/compute", h.PriorityCompute)
+
+	// Protected routes (require authentication)
+	protected := v1.Group("/", middleware.AuthRequired(cfg.JWTSecret))
+	protected.Patch("/tickets/:id", h.TicketsUpdate)
+	protected.Post("/tickets/:id/assign", h.TicketsAssign)
+	protected.Post("/tickets/:id/status", h.TicketsStatus)
+	protected.Post("/tickets/:id/comments", h.TicketsAddComment)
+	protected.Post("/tickets/:id/attachments", h.TicketsUploadAttachments)
+
+	// Admin routes (require elevated roles)
+	admin := v1.Group("/", middleware.RequireAnyRole(cfg.JWTSecret, []string{"Supervisor", "Manager"}))
+	admin.Post("/tickets/:id/classify", h.TicketsClassify)
+
+	// Swagger UI
+	app.Static("/swagger", "./public")
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Redirect("/swagger/swagger.html")
+	})
+
+	port := cfg.Port
+	if port == 0 {
+		port = 8080
+	}
+	addr := fmt.Sprintf(":%d", port)
+	log.Info().Int("port", port).Msg("listening")
+	if err := app.Listen(addr); err != nil {
+		log.Error().Err(err).Msg("server exited")
+		os.Exit(1)
+	}
+}

@@ -1,0 +1,12 @@
+---
+description: "Contributing, commit, testing and CI expectations"
+globs:
+  - "**/*"
+alwaysApply: false
+---
+# Contributing
+
+- Commit style: conventional (`feat:`, `fix:`, `docs:`).
+- Run `pnpm lint && pnpm test && pnpm build` before pushing.
+- Add/update unit tests for services and pure functions.
+- CI must pass lints, tests, builds, and migrations.

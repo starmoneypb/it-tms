@@ -1,0 +1,124 @@
+import Link from "next/link";
+import { Button, Card, CardBody, CardHeader } from "@heroui/react";
+
+export default function Landing() {
+  const cards = [
+    { 
+      href: "/tickets/new", 
+      title: "Open Ticket", 
+      desc: "Start a new request or report an issue.",
+      icon: "🎫",
+      color: "from-blue-500 to-purple-600"
+    },
+    { 
+      href: "/dashboard", 
+      title: "Dashboard", 
+      desc: "Monitor progress and status.",
+      icon: "📊",
+      color: "from-green-500 to-teal-600"
+    },
+    { 
+      href: "/tickets", 
+      title: "My Tickets", 
+      desc: "Search, filter and manage your tickets.",
+      icon: "📋",
+      color: "from-orange-500 to-red-600"
+    },
+    { 
+      href: "/(auth)/sign-in", 
+      title: "Sign In", 
+      desc: "Access more features and manage tickets.",
+      icon: "🔐",
+      color: "from-purple-500 to-pink-600"
+    }
+  ];
+
+  return (
+    <div className="container">
+      {/* Hero Section */}
+      <section className="text-center py-16">
+        <h1 className="text-5xl font-bold mb-6 gradient-text">
+          IT Ticket Management System
+        </h1>
+        <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">
+          Streamline your IT support workflow with our modern ticket management platform. 
+          Track issues, manage requests, and deliver exceptional service.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button 
+            as={Link} 
+            href="/tickets/new" 
+            color="primary" 
+            size="lg"
+            className="px-8"
+          >
+            Get Started
+          </Button>
+          <Button 
+            as={Link} 
+            href="/dashboard" 
+            variant="bordered" 
+            size="lg"
+            className="px-8"
+          >
+            View Dashboard
+          </Button>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-16">
+        <h2 className="text-3xl font-bold text-center mb-12">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {cards.map((c) => (
+            <Card 
+              key={c.href} 
+              className="glass hover:scale-105 transition-all duration-300 group cursor-pointer"
+              isPressable
+              as={Link}
+              href={c.href as any}
+            >
+              <CardHeader className="flex flex-col items-center text-center pb-2">
+                <div className={`text-4xl mb-3 bg-gradient-to-r ${c.color} bg-clip-text text-transparent`}>
+                  {c.icon}
+                </div>
+                <h3 className="text-xl font-semibold group-hover:text-primary-500 transition-colors">
+                  {c.title}
+                </h3>
+              </CardHeader>
+              <CardBody className="text-center pt-0">
+                <p className="text-sm text-white/70 mb-4">{c.desc}</p>
+                <Button 
+                  color="primary" 
+                  variant="flat" 
+                  size="sm"
+                  className="w-full"
+                >
+                  Go
+                </Button>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="text-center">
+            <div className="text-4xl font-bold text-primary-500 mb-2">99.9%</div>
+            <div className="text-white/70">Uptime</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold text-primary-500 mb-2">&lt;2min</div>
+            <div className="text-white/70">Response Time</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold text-primary-500 mb-2">24/7</div>
+            <div className="text-white/70">Support</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

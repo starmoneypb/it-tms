@@ -1,0 +1,381 @@
+openapi: 3.0.3
+info:
+  title: IT-TMS API
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /auth/sign-in:
+    post:
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /auth/sign-up:
+    post:
+      summary: Sign up (demo)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        "201":
+          description: Created
+  /me:
+    get:
+      summary: Current user profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEnvelope'
+  /tickets:
+    get:
+      summary: List tickets with filters
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: priority
+          schema: { type: string }
+        - in: query
+          name: assigneeId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: createdBy
+          schema: { type: string, format: uuid }
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTickets'
+    post:
+      summary: Create ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreate'
+      responses:
+        "201":
+          description: Created
+  /tickets/{id}:
+    get:
+      summary: Get ticket details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TicketEnvelope' }
+    patch:
+      summary: Update ticket
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketUpdate' }
+      responses:
+        "200":
+          description: OK
+  /tickets/{id}/assign:
+    post:
+      summary: Assign ticket
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignRequest' }
+      responses:
+        "200": { description: OK }
+  /tickets/{id}/status:
+    post:
+      summary: Change status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StatusRequest' }
+      responses:
+        "200": { description: OK }
+  /tickets/{id}/comments:
+    post:
+      summary: Add comment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommentCreate' }
+      responses:
+        "201": { description: Created }
+  /tickets/{id}/attachments:
+    post:
+      summary: Upload attachments
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201": { description: Uploaded }
+  /tickets/{id}/classify:
+    post:
+      summary: Classify Issue Report
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolvedType:
+                  type: string
+                  enum: [EMERGENCY_CHANGE, DATA_CORRECTION]
+      responses:
+        "200": { description: OK }
+  /priority/compute:
+    post:
+      summary: Compute priority from questionnaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriorityInput' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PriorityOutput' }
+  /metrics/summary:
+    get:
+      summary: Public dashboard metrics
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MetricsSummary' }
+
+components:
+  schemas:
+    SignInRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    SignUpRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        password: { type: string }
+        role:
+          type: string
+          enum: [User, Supervisor, Manager]
+    AuthResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            token: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string }
+    UserEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/User' }
+    Ticket:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        initialType: { type: string }
+        resolvedType: { type: string, nullable: true }
+        priority: { type: string }
+        impactScore: { type: integer }
+        urgencyScore: { type: integer }
+        finalScore: { type: integer }
+        redFlag: { type: boolean }
+        assigneeId: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TicketCreate:
+      type: object
+      required: [title, description, initialType]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        initialType:
+          type: string
+          enum:
+            - ISSUE_REPORT
+            - CHANGE_REQUEST_NORMAL
+            - SERVICE_REQUEST_DATA_CORRECTION
+            - SERVICE_REQUEST_DATA_EXTRACTION
+            - SERVICE_REQUEST_ADVISORY
+            - SERVICE_REQUEST_GENERAL
+        details: { type: object, additionalProperties: true }
+        contactEmail: { type: string }
+        contactPhone: { type: string }
+        priorityInput: { $ref: '#/components/schemas/PriorityInput' }
+    TicketUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        details: { type: object, additionalProperties: true }
+    CommentCreate:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string }
+    AssignRequest:
+      type: object
+      properties:
+        assigneeId: { type: string, format: uuid, nullable: true }
+        self: { type: boolean }
+    StatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pending, in_progress, completed, canceled] }
+    PaginatedTickets:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Ticket' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    TicketEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Ticket' }
+    PriorityInput:
+      type: object
+      properties:
+        redFlags:
+          type: object
+          properties:
+            outage: { type: boolean, default: false }
+            paymentsFailing: { type: boolean, default: false }
+            securityBreach: { type: boolean, default: false }
+            nonCompliance: { type: boolean, default: false }
+        impact:
+          type: object
+          properties:
+            lawNonCompliance: { type: boolean, default: false }
+            severeSecurity: { type: boolean, default: false }
+            paymentAbnormal: { type: boolean, default: false }
+            lostRevenue: { type: boolean, default: false }
+            noWorkaround: { type: boolean, default: false }
+        urgency:
+          type: string
+          enum: ["<=48h", "3-7d", "8-30d", ">=31d", "none"]
+    PriorityOutput:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            impact: { type: integer }
+            urgency: { type: integer }
+            final: { type: integer }
+            redFlag: { type: boolean }
+            priority: { type: string, enum: [P0, P1, P2, P3] }
+    MetricsSummary:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            inProgressToday:
+              type: array
+              items: { $ref: '#/components/schemas/Ticket' }
+            statusCounts:
+              type: object
+              additionalProperties: { type: integer }
+            categoryCounts:
+              type: object
+              additionalProperties: { type: integer }
+            priorityCounts:
+              type: object
+              additionalProperties: { type: integer }

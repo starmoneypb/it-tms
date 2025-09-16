@@ -1,0 +1,14 @@
+---
+description: "API response shapes, pagination format, OpenAPI versioning"
+globs:
+  - "apps/api/**"
+alwaysApply: false
+---
+# API Contract
+
+- **OpenAPI** at `apps/api/openapi.yaml` is the source of truth; Swagger UI at `/api/docs`.
+- All responses use an envelope:
+  - Success: `{ data, meta? }`
+  - Error: `{ error: { code, message, details? } }`
+- **Pagination**: query `page`, `pageSize` (max 100), `sort`, `order` → response `{ data, page, pageSize, total, totalPages }`.
+- **Versioning**: prefix with `/api/v1/...`.

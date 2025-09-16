@@ -1,0 +1,44 @@
+{
+  "name": "@it-tms/web",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heroui/react": "2.8.4",
+    "@heroui/theme": "^2.4.22",
+    "@hookform/resolvers": "3.3.4",
+    "clsx": "2.1.1",
+    "framer-motion": "^11.0.0",
+    "isomorphic-dompurify": "2.13.0",
+    "next": "15.0.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-hook-form": "7.51.5",
+    "recharts": "2.12.7",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.0.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "20.12.12",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@vitest/coverage-v8": "2.1.2",
+    "autoprefixer": "^10.4.21",
+    "eslint": "9.9.0",
+    "jsdom": "25.0.0",
+    "postcss": "8.4.41",
+    "prettier": "3.3.3",
+    "tailwindcss": "^3.4.0",
+    "typescript": "5.5.4",
+    "vitest": "2.1.2"
+  }
+}
