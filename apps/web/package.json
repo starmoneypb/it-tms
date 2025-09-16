@@ -13,7 +13,7 @@
   "dependencies": {
     "@heroui/react": "2.8.4",
     "@heroui/theme": "^2.4.22",
-    "@hookform/resolvers": "3.3.4",
+    "@hookform/resolvers": "5.2.2",
     "@tiptap/extension-placeholder": "^3.4.3",
     "@tiptap/react": "^3.4.3",
     "@tiptap/starter-kit": "^3.4.3",
