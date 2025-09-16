@@ -69,7 +69,7 @@ export function Navigation() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem key="profile" className="text-black">
+              <DropdownItem key="profile" className="text-gray-700">
                 Profile
               </DropdownItem>
               <DropdownItem key="signout" className="text-danger" onPress={signOut}>
@@ -99,49 +99,51 @@ export function Navigation() {
       </button>
 
       {/* Mobile Navigation Menu */}
-      <div className={`md:hidden absolute top-full left-0 right-0 bg-black/90 backdrop-blur-md border-b border-white/10 transition-all duration-300 ease-in-out ${
+      <div className={`md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out ${
         isMobileMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-4'
       }`}>
-        <div className="container py-4 space-y-4">
-          {/* Always visible links */}
-          <Link 
-            href="/dashboard" 
-            className="block text-sm font-medium text-white/80 hover:text-white transition-colors py-2"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            Dashboard
-          </Link>
-          <Link 
-            href="/tickets" 
-            className="block text-sm font-medium text-white/80 hover:text-white transition-colors py-2"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            Tickets
-          </Link>
-          <Link 
-            href="/tickets/new" 
-            className="block text-sm font-medium text-white/80 hover:text-white transition-colors py-2"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            Open Ticket
-          </Link>
-
-          {/* Role-based links */}
-          {hasAnyRole(["Supervisor", "Manager"]) && (
+        <div className="px-6 py-6 space-y-1">
+          {/* Navigation Links */}
+          <div className="space-y-1">
             <Link 
-              href="/admin/classify" 
-              className="block text-sm font-medium text-white/80 hover:text-white transition-colors py-2"
+              href="/dashboard" 
+              className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Admin
+              Dashboard
             </Link>
-          )}
+            <Link 
+              href="/tickets" 
+              className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Tickets
+            </Link>
+            <Link 
+              href="/tickets/new" 
+              className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Open Ticket
+            </Link>
+
+            {/* Role-based links */}
+            {hasAnyRole(["Supervisor", "Manager"]) && (
+              <Link 
+                href="/admin/classify" 
+                className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Admin
+              </Link>
+            )}
+          </div>
 
           {/* Authentication section */}
-          <div className="pt-2 border-t border-white/10">
+          <div className="pt-4 mt-4 border-t border-gray-200">
             {user ? (
               <div className="space-y-2">
-                <div className="text-sm text-white/60 py-2">
+                <div className="px-4 py-2 text-sm text-gray-500 bg-gray-50 rounded-lg">
                   {user.name} ({user.role})
                 </div>
                 <button
@@ -149,7 +151,7 @@ export function Navigation() {
                     signOut();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="block w-full text-left text-sm font-medium text-red-400 hover:text-red-300 transition-colors py-2"
+                  className="flex items-center w-full px-4 py-3 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
                 >
                   Sign Out
                 </button>
@@ -157,7 +159,7 @@ export function Navigation() {
             ) : (
               <Link 
                 href="/sign-in" 
-                className="block w-full text-center px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors"
+                className="flex items-center justify-center w-full px-4 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-all duration-200"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Sign In

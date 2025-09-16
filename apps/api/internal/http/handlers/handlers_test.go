@@ -2,10 +2,7 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"fmt"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -15,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/it-tms/apps/api/internal/http/middleware"
-	"github.com/it-tms/apps/api/internal/models"
 	"github.com/it-tms/apps/api/pkg/config"
 )
 
@@ -36,6 +32,7 @@ func setupTestApp() (*fiber.App, *Handlers) {
 	// Test routes
 	app.Post("/api/v1/tickets", h.TicketsCreate)
 	app.Patch("/api/v1/tickets/:id", middleware.AuthRequired(cfg.JWTSecret), h.TicketsUpdate)
+	app.Patch("/api/v1/tickets/:id/fields", middleware.AuthRequired(cfg.JWTSecret), h.TicketsUpdateFields)
 	app.Post("/api/v1/tickets/:id/status", middleware.AuthRequired(cfg.JWTSecret), h.TicketsStatus)
 
 	return app, h
@@ -184,6 +181,58 @@ func TestRBAC_Middleware(t *testing.T) {
 			resp, err := app.Test(req)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+		})
+	}
+}
+
+func TestRBAC_TicketFieldsUpdate(t *testing.T) {
+	app, _ := setupTestApp()
+
+	tests := []struct {
+		name           string
+		userRole       string
+		expectedStatus int
+		expectedError  string
+	}{
+		{
+			name:           "User cannot update ticket fields",
+			userRole:       "User",
+			expectedStatus: 403,
+			expectedError:  "only supervisors and managers can update ticket fields",
+		},
+		{
+			name:           "Supervisor can update ticket fields",
+			userRole:       "Supervisor",
+			expectedStatus: 200,
+		},
+		{
+			name:           "Manager can update ticket fields",
+			userRole:       "Manager",
+			expectedStatus: 200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payload := map[string]interface{}{
+				"priority": "P1",
+				"redFlag": true,
+			}
+
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PATCH", "/api/v1/tickets/test-id/fields", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer test-token")
+
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+
+			if tt.expectedError != "" {
+				var result map[string]interface{}
+				json.NewDecoder(resp.Body).Decode(&result)
+				assert.Contains(t, result["error"], tt.expectedError)
+			}
 		})
 	}
 }

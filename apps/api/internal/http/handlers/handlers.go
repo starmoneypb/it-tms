@@ -285,6 +285,16 @@ type TicketUpdateReq struct {
 	Details     map[string]any         `json:"details"`
 }
 
+type TicketFieldsUpdateReq struct {
+	InitialType  *models.TicketInitialType  `json:"initialType"`
+	ResolvedType  *models.TicketResolvedType `json:"resolvedType"`
+	Priority      *models.TicketPriority     `json:"priority"`
+	ImpactScore   *int32                     `json:"impactScore"`
+	UrgencyScore  *int32                     `json:"urgencyScore"`
+	FinalScore    *int32                     `json:"finalScore"`
+	RedFlag       *bool                     `json:"redFlag"`
+}
+
 func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var body TicketUpdateReq
@@ -301,21 +311,112 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	
 	ctx := context.Background()
 	
+	// Get current ticket for comparison and ownership check
+	ticket, err := h.repo.Tickets.GetByID(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+	}
+	
 	// Check ownership: Users can only edit their own tickets, Supervisors/Managers can edit any
 	if role == "User" {
-		ticket, err := h.repo.Tickets.GetByID(ctx, id)
-		if err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
-		}
 		if ticket.CreatedBy == nil || *ticket.CreatedBy != userID {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only edit your own tickets"}})
 		}
 	}
 	
+	// Track changes for automatic comment generation
+	var changes []string
+	if body.Title != nil && *body.Title != ticket.Title {
+		changes = append(changes, fmt.Sprintf("Title changed from \"%s\" to \"%s\"", ticket.Title, *body.Title))
+	}
+	if body.Description != nil && *body.Description != ticket.Description {
+		changes = append(changes, "Description was updated")
+	}
+	
 	if err := h.repo.Tickets.Update(ctx, id, body.Title, body.Description, body.Details); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
+	
+	// Add automatic comment if there were changes
+	if len(changes) > 0 {
+		commentBody := fmt.Sprintf("🔧 Ticket updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
+		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+	}
+	
 	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket", nil, body)
+	return c.JSON(h.envelope(fiber.Map{"id": id}))
+}
+
+func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var body TicketFieldsUpdateReq
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
+	}
+	
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
+	}
+	
+	userID, role, _ := middleware.GetUserFromContext(c)
+	
+	// Only Supervisor and Manager can update ticket fields
+	if role != "Supervisor" && role != "Manager" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors and managers can update ticket fields"}})
+	}
+	
+	ctx := context.Background()
+	
+	// Get current ticket for comparison
+	ticket, err := h.repo.Tickets.GetByID(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+	}
+	
+	// Track changes for automatic comment generation
+	var changes []string
+	if body.InitialType != nil && *body.InitialType != ticket.InitialType {
+		changes = append(changes, fmt.Sprintf("Initial Type changed from \"%s\" to \"%s\"", ticket.InitialType, *body.InitialType))
+	}
+	if body.ResolvedType != nil && (ticket.ResolvedType == nil || *body.ResolvedType != *ticket.ResolvedType) {
+		if ticket.ResolvedType == nil {
+			changes = append(changes, fmt.Sprintf("Resolved Type set to \"%s\"", *body.ResolvedType))
+		} else {
+			changes = append(changes, fmt.Sprintf("Resolved Type changed from \"%s\" to \"%s\"", *ticket.ResolvedType, *body.ResolvedType))
+		}
+	}
+	if body.Priority != nil && *body.Priority != ticket.Priority {
+		changes = append(changes, fmt.Sprintf("Priority changed from \"%s\" to \"%s\"", ticket.Priority, *body.Priority))
+	}
+	if body.ImpactScore != nil && *body.ImpactScore != ticket.ImpactScore {
+		changes = append(changes, fmt.Sprintf("Impact Score changed from %d to %d", ticket.ImpactScore, *body.ImpactScore))
+	}
+	if body.UrgencyScore != nil && *body.UrgencyScore != ticket.UrgencyScore {
+		changes = append(changes, fmt.Sprintf("Urgency Score changed from %d to %d", ticket.UrgencyScore, *body.UrgencyScore))
+	}
+	if body.FinalScore != nil && *body.FinalScore != ticket.FinalScore {
+		changes = append(changes, fmt.Sprintf("Final Score changed from %d to %d", ticket.FinalScore, *body.FinalScore))
+	}
+	if body.RedFlag != nil && *body.RedFlag != ticket.RedFlag {
+		if *body.RedFlag {
+			changes = append(changes, "🚨 Red Flag was set")
+		} else {
+			changes = append(changes, "Red Flag was cleared")
+		}
+	}
+	
+	if err := h.repo.Tickets.UpdateTicketFields(ctx, id, body.InitialType, body.ResolvedType, body.Priority, body.ImpactScore, body.UrgencyScore, body.FinalScore, body.RedFlag); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
+	}
+	
+	// Add automatic comment if there were changes
+	if len(changes) > 0 {
+		commentBody := fmt.Sprintf("⚙️ Ticket fields updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
+		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+	}
+	
+	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket_fields", nil, body)
 	return c.JSON(h.envelope(fiber.Map{"id": id}))
 }
 

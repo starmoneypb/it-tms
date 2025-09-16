@@ -177,6 +177,56 @@ func (r *TicketRepo) ChangeStatus(ctx context.Context, id string, status models.
 	return err
 }
 
+func (r *TicketRepo) UpdateTicketFields(ctx context.Context, id string, initialType *models.TicketInitialType, resolvedType *models.TicketResolvedType, priority *models.TicketPriority, impactScore, urgencyScore, finalScore *int32, redFlag *bool) error {
+	args := []any{id}
+	set := []string{}
+	arg := 2
+	
+	if initialType != nil {
+		set = append(set, fmt.Sprintf("initial_type=$%d", arg))
+		args = append(args, *initialType)
+		arg++
+	}
+	if resolvedType != nil {
+		set = append(set, fmt.Sprintf("resolved_type=$%d", arg))
+		args = append(args, *resolvedType)
+		arg++
+	}
+	if priority != nil {
+		set = append(set, fmt.Sprintf("priority=$%d", arg))
+		args = append(args, *priority)
+		arg++
+	}
+	if impactScore != nil {
+		set = append(set, fmt.Sprintf("impact_score=$%d", arg))
+		args = append(args, *impactScore)
+		arg++
+	}
+	if urgencyScore != nil {
+		set = append(set, fmt.Sprintf("urgency_score=$%d", arg))
+		args = append(args, *urgencyScore)
+		arg++
+	}
+	if finalScore != nil {
+		set = append(set, fmt.Sprintf("final_score=$%d", arg))
+		args = append(args, *finalScore)
+		arg++
+	}
+	if redFlag != nil {
+		set = append(set, fmt.Sprintf("red_flag=$%d", arg))
+		args = append(args, *redFlag)
+		arg++
+	}
+	
+	if len(set) == 0 {
+		return nil
+	}
+	
+	sql := fmt.Sprintf("UPDATE tickets SET %s, updated_at=NOW() WHERE id=$1", strings.Join(set, ","))
+	_, err := r.pool.Exec(ctx, sql, args...)
+	return err
+}
+
 func (r *TicketRepo) AddComment(ctx context.Context, id string, authorID *string, body string) error {
 	_, err := r.pool.Exec(ctx, `INSERT INTO comments (ticket_id, author_id, body) VALUES ($1,$2,$3)`, id, authorID, body)
 	return err

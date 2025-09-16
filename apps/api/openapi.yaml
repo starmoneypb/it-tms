@@ -214,6 +214,36 @@ paths:
                     format: binary
       responses:
         "201": { description: Uploaded }
+  /tickets/{id}/fields:
+    patch:
+      summary: Update ticket fields (Supervisor/Manager only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                initialType:
+                  type: string
+                  enum: [ISSUE_REPORT, CHANGE_REQUEST_NORMAL, SERVICE_REQUEST_DATA_CORRECTION, SERVICE_REQUEST_DATA_EXTRACTION, SERVICE_REQUEST_ADVISORY, SERVICE_REQUEST_GENERAL]
+                resolvedType:
+                  type: string
+                  enum: [EMERGENCY_CHANGE, DATA_CORRECTION]
+                priority:
+                  type: string
+                  enum: [P0, P1, P2, P3]
+                impactScore: { type: integer }
+                urgencyScore: { type: integer }
+                finalScore: { type: integer }
+                redFlag: { type: boolean }
+      responses:
+        "200": { description: OK }
+        "403": { description: Forbidden - Supervisor/Manager role required }
   /tickets/{id}/classify:
     post:
       summary: Classify Issue Report

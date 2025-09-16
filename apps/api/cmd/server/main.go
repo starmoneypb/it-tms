@@ -90,6 +90,7 @@ func main() {
 	// Protected routes (require authentication)
 	protected := v1.Group("/", middleware.AuthRequired(cfg.JWTSecret))
 	protected.Patch("/tickets/:id", h.TicketsUpdate)
+	protected.Patch("/tickets/:id/fields", h.TicketsUpdateFields)
 	protected.Post("/tickets/:id/assign", h.TicketsAssign)
 	protected.Post("/tickets/:id/status", h.TicketsStatus)
 	protected.Post("/tickets/:id/comments", h.TicketsAddComment)

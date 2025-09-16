@@ -17,3 +17,15 @@ UPDATE tickets SET assignee_id=$2, updated_at=NOW() WHERE id=$1;
 
 -- name: ChangeStatus :exec
 UPDATE tickets SET status=$2, updated_at=NOW() WHERE id=$1;
+
+-- name: UpdateTicketFields :exec
+UPDATE tickets SET 
+  initial_type=COALESCE($2,initial_type),
+  resolved_type=COALESCE($3,resolved_type),
+  priority=COALESCE($4,priority),
+  impact_score=COALESCE($5,impact_score),
+  urgency_score=COALESCE($6,urgency_score),
+  final_score=COALESCE($7,final_score),
+  red_flag=COALESCE($8,red_flag),
+  updated_at=NOW() 
+WHERE id=$1;

@@ -25,6 +25,8 @@ interface AuthContextType {
   canCancelTicket: (ticketCreatedBy?: string) => boolean;
   canAssignTicket: (selfOnly?: boolean) => boolean;
   canCreateTicketType: (ticketType: string) => boolean;
+  canModifyTicketFields: () => boolean;
+  canEditTicketContent: (ticketCreatedBy?: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -148,6 +150,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const canModifyTicketFields = (): boolean => {
+    if (!user) return false;
+    return user.role === "Supervisor" || user.role === "Manager";
+  };
+
+  const canEditTicketContent = (ticketCreatedBy?: string): boolean => {
+    if (!user) return false;
+    if (user.role === "Supervisor" || user.role === "Manager") return true;
+    if (user.role === "User") return ticketCreatedBy === user.id;
+    return false;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -162,6 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         canCancelTicket,
         canAssignTicket,
         canCreateTicketType,
+        canModifyTicketFields,
+        canEditTicketContent,
       }}
     >
       {children}
