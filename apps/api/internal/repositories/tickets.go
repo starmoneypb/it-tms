@@ -112,11 +112,16 @@ func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ti
 	json.Unmarshal(details, &t.Details)
 
 	comments := []models.Comment{}
-	rows, err := r.pool.Query(ctx, `SELECT id, ticket_id, author_id, body, created_at FROM comments WHERE ticket_id=$1 ORDER BY created_at ASC`, id)
+	rows, err := r.pool.Query(ctx, `
+		SELECT c.id, c.ticket_id, c.author_id, u.name, u.role, c.body, c.created_at 
+		FROM comments c
+		LEFT JOIN users u ON c.author_id = u.id
+		WHERE c.ticket_id=$1 
+		ORDER BY c.created_at ASC`, id)
 	if err == nil {
 		for rows.Next() {
 			var c models.Comment
-			rows.Scan(&c.ID, &c.TicketID, &c.AuthorID, &c.Body, &c.CreatedAt)
+			rows.Scan(&c.ID, &c.TicketID, &c.AuthorID, &c.AuthorName, &c.AuthorRole, &c.Body, &c.CreatedAt)
 			comments = append(comments, c)
 		}
 		rows.Close()

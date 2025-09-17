@@ -67,7 +67,7 @@ export function Navigation() {
               <Button variant="ghost" className="text-white/80 hover:text-white flex items-center gap-2">
                 {user.profilePicture ? (
                   <img 
-                    src={user.profilePicture} 
+                    src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${user.profilePicture}`} 
                     alt={user.name}
                     className="w-6 h-6 rounded-full"
                   />

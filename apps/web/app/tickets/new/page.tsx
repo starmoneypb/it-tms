@@ -104,28 +104,28 @@ export default function NewTicket() {
                   <h3 className="text-xl font-semibold mb-2">What type of issue are you experiencing?</h3>
                   <p className="text-white/70 mb-6">This helps us route your ticket to the right team</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                   <Button 
                     color={draft.isAbnormal === true ? "primary" : "default"} 
-                    variant="solid"
+                    variant={draft.isAbnormal === true ? "solid" : "flat"}
                     size="lg"
-                    className="h-20 flex flex-col items-center justify-center"
+                    className="h-28 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-105"
                     onPress={() => setDraft({ ...draft, isAbnormal: true, step: 2, type: "ISSUE_REPORT" })}
                   >
-                    <div className="text-2xl mb-2">⚠️</div>
-                    <div className="font-semibold">System Issue</div>
-                    <div className="text-xs opacity-70">Something is broken</div>
+                    <div className="text-2xl mb-1 leading-none">⚠️</div>
+                    <div className="font-semibold text-sm mb-1">System Issue</div>
+                    <div className="text-xs opacity-70 text-center px-2">Something is broken</div>
                   </Button>
                   <Button 
                     color={draft.isAbnormal === false ? "primary" : "default"} 
-                    variant="solid"
+                    variant={draft.isAbnormal === false ? "solid" : "flat"}
                     size="lg"
-                    className="h-20 flex flex-col items-center justify-center"
+                    className="h-28 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-105"
                     onPress={() => setDraft({ ...draft, isAbnormal: false, step: 2 })}
                   >
-                    <div className="text-2xl mb-2">📋</div>
-                    <div className="font-semibold">Service Request</div>
-                    <div className="text-xs opacity-70">Need assistance</div>
+                    <div className="text-2xl mb-1 leading-none">📋</div>
+                    <div className="font-semibold text-sm mb-1">Service Request</div>
+                    <div className="text-xs opacity-70 text-center px-2">Need assistance</div>
                   </Button>
                 </div>
               </section>
@@ -139,21 +139,19 @@ export default function NewTicket() {
                   <p className="text-white/70 mb-6">Please provide detailed information about the problem</p>
                 </div>
                 <div className="space-y-4">
-                  <Textarea 
+                  <WysiwygEditor 
                     label="Problem Description" 
                     placeholder="Describe the issue in detail..."
-                    variant="flat" 
                     value={draft.description || ""} 
-                    onValueChange={(v)=>setDraft({...draft, description: v})}
-                    minRows={4}
+                    onChange={(v)=>setDraft({...draft, description: v})}
+                    minHeight="120px"
                   />
-                  <Textarea 
+                  <WysiwygEditor 
                     label="Steps to Reproduce" 
                     placeholder="How can we reproduce this issue?"
-                    variant="flat" 
                     value={(draft.details?.steps)|| ""} 
-                    onValueChange={(v)=>setDraft({...draft, details: {...(draft.details||{}), steps: v}})}
-                    minRows={3}
+                    onChange={(v)=>setDraft({...draft, details: {...(draft.details||{}), steps: v}})}
+                    minHeight="100px"
                   />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input 
@@ -192,55 +190,65 @@ export default function NewTicket() {
                   <h3 className="text-xl font-semibold mb-2">What type of service do you need?</h3>
                   <p className="text-white/70 mb-6">Select the most appropriate category</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
                   {canCreateTicketType("CHANGE_REQUEST_NORMAL") && (
                     <Button 
                       onPress={()=>setDraft({...draft, type: "CHANGE_REQUEST_NORMAL", step: 3})}
                       variant="flat"
-                      className="h-16 flex flex-col items-center justify-center"
+                      size="lg"
+                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-lg mb-1">🔄</div>
-                      <div className="font-semibold text-sm">Normal Change</div>
+                      <div className="text-2xl mb-1 leading-none">🔄</div>
+                      <div className="font-semibold text-sm mb-1">Normal Change</div>
+                      <div className="text-xs opacity-70 text-center px-2">System modifications</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_DATA_CORRECTION") && (
                     <Button 
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_CORRECTION", step: 3})}
                       variant="flat"
-                      className="h-16 flex flex-col items-center justify-center"
+                      size="lg"
+                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-lg mb-1">✏️</div>
-                      <div className="font-semibold text-sm">Data Correction</div>
+                      <div className="text-2xl mb-1 leading-none">✏️</div>
+                      <div className="font-semibold text-sm mb-1">Data Correction</div>
+                      <div className="text-xs opacity-70 text-center px-2">Fix incorrect data</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_DATA_EXTRACTION") && (
                     <Button 
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_EXTRACTION", step: 3})}
                       variant="flat"
-                      className="h-16 flex flex-col items-center justify-center"
+                      size="lg"
+                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-lg mb-1">📊</div>
-                      <div className="font-semibold text-sm">Data Extraction</div>
+                      <div className="text-2xl mb-1 leading-none">📊</div>
+                      <div className="font-semibold text-sm mb-1">Data Extraction</div>
+                      <div className="text-xs opacity-70 text-center px-2">Export or retrieve data</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_ADVISORY") && (
                     <Button 
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_ADVISORY", step: 3})}
                       variant="flat"
-                      className="h-16 flex flex-col items-center justify-center"
+                      size="lg"
+                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-lg mb-1">💡</div>
-                      <div className="font-semibold text-sm">Advisory</div>
+                      <div className="text-2xl mb-1 leading-none">💡</div>
+                      <div className="font-semibold text-sm mb-1">Advisory</div>
+                      <div className="text-xs opacity-70 text-center px-2">Expert consultation</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_GENERAL") && (
                     <Button 
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_GENERAL", step: 3})}
                       variant="flat"
-                      className="h-16 flex flex-col items-center justify-center md:col-span-2"
+                      size="lg"
+                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02] md:col-span-2"
                     >
-                      <div className="text-lg mb-1">📝</div>
-                      <div className="font-semibold text-sm">General Request</div>
+                      <div className="text-2xl mb-1 leading-none">📝</div>
+                      <div className="font-semibold text-sm mb-1">General Request</div>
+                      <div className="text-xs opacity-70 text-center px-2">Other support needs</div>
                     </Button>
                   )}
                 </div>
@@ -378,14 +386,19 @@ export default function NewTicket() {
 
                   <div>
                     <h4 className="text-lg font-semibold mb-3">Urgency Timeline</h4>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-3 flex-wrap">
                       {["<=48h", "3-7d", "8-30d", ">=31d", "none"].map((u) => (
                         <Button 
                           key={u} 
                           onPress={()=>setDraft({...draft, priority:{...draft.priority, urgency: u as any}})} 
-                          color={draft.priority.urgency === u ? "primary" : "default"}
-                          variant={draft.priority.urgency === u ? "solid" : "flat"}
-                          size="sm"
+                          color="default"
+                          variant="bordered"
+                          size="md"
+                          className={`transition-all duration-200 ${
+                            draft.priority.urgency === u 
+                              ? "!bg-primary-600 !text-white border-primary-500 shadow-lg scale-105 font-semibold hover:!bg-primary-700 focus:!bg-primary-600" 
+                              : "hover:scale-102 hover:bg-default-100"
+                          }`}
                         >
                           {u}
                         </Button>

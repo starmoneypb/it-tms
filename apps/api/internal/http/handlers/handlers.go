@@ -135,8 +135,21 @@ func (h *Handlers) Me(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"user not found"}})
 	}
+	
+	// Convert profile picture path to URL
+	var profilePictureURL *string
+	if user.ProfilePicture != nil && *user.ProfilePicture != "" {
+		filename := filepath.Base(*user.ProfilePicture)
+		url := fmt.Sprintf("/uploads/%s", filename)
+		profilePictureURL = &url
+	}
+	
 	return c.JSON(h.envelope(fiber.Map{
-		"id": user.ID, "name": user.Name, "email": user.Email, "role": user.Role,
+		"id": user.ID, 
+		"name": user.Name, 
+		"email": user.Email, 
+		"role": user.Role,
+		"profilePicture": profilePictureURL,
 	}))
 }
 
@@ -472,20 +485,34 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 	userID, role, _ := middleware.GetUserFromContext(c)
 	ctx := context.Background()
 	
+	// Get current ticket for comparison and ownership check
+	ticket, err := h.repo.Tickets.GetByID(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+	}
+	
 	// Check ownership for cancellation: Users can only cancel their own tickets
 	if body.Status == models.StatusCanceled && role == "User" {
-		ticket, err := h.repo.Tickets.GetByID(ctx, id)
-		if err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
-		}
 		if ticket.CreatedBy == nil || *ticket.CreatedBy != userID {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only cancel your own tickets"}})
 		}
 	}
 	
+	// Track status change for automatic comment generation
+	var statusChangeComment string
+	if body.Status != ticket.Status {
+		statusChangeComment = fmt.Sprintf("🔄 Status changed from \"%s\" to \"%s\" by %s", ticket.Status, body.Status, role)
+	}
+	
 	if err := h.repo.Tickets.ChangeStatus(ctx, id, body.Status); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"status change failed"}})
 	}
+	
+	// Add automatic comment if status changed
+	if statusChangeComment != "" {
+		h.repo.Tickets.AddComment(ctx, id, &userID, statusChangeComment)
+	}
+	
 	h.repo.Audits.Insert(ctx, id, &userID, "status_change", nil, body.Status)
 	return c.JSON(h.envelope(fiber.Map{"id": id, "status": body.Status}))
 }
@@ -644,12 +671,16 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 
 	// Update user profile picture in database
 	ctx := context.Background()
-	user, err := h.repo.Users.UpdateProfilePicture(ctx, userID, path)
+	_, err = h.repo.Users.UpdateProfilePicture(ctx, userID, path)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 
-	return c.JSON(h.envelope(fiber.Map{"profilePicture": user.ProfilePicture}))
+	// Convert file path to URL path for the web app
+	filename := filepath.Base(path)
+	profilePictureURL := fmt.Sprintf("/uploads/%s", filename)
+
+	return c.JSON(h.envelope(fiber.Map{"profilePicture": profilePictureURL}))
 }
 
 // -------------------- Classification --------------------

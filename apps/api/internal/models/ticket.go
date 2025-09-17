@@ -26,11 +26,13 @@ type Ticket struct {
 }
 
 type Comment struct {
-	ID        string    `json:"id"`
-	TicketID  string    `json:"ticketId"`
-	AuthorID  *string   `json:"authorId,omitempty"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID         string    `json:"id"`
+	TicketID   string    `json:"ticketId"`
+	AuthorID   *string   `json:"authorId,omitempty"`
+	AuthorName *string   `json:"authorName,omitempty"`
+	AuthorRole *string   `json:"authorRole,omitempty"`
+	Body       string    `json:"body"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 type Attachment struct {

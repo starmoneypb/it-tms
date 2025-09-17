@@ -363,6 +363,22 @@ export default function TicketDetails() {
               )}
             </div>
 
+            {/* Steps to Reproduce section for Issue Reports */}
+            {t.initialType === 'ISSUE_REPORT' && t.details?.steps && (
+              <>
+                <Divider />
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Steps to Reproduce</h3>
+                  <div 
+                    className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none bg-white/5 p-4 rounded-lg"
+                    dangerouslySetInnerHTML={{ 
+                      __html: DOMPurify.sanitize(t.details.steps) 
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
             <Divider />
 
             <div>
@@ -421,6 +437,22 @@ export default function TicketDetails() {
                   {data.comments.map((c: any) => (
                     <div key={c.id} className="p-3 bg-white/5 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
+                        {c.authorName && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white/90">
+                              {c.authorName}
+                            </span>
+                            {c.authorRole && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                c.authorRole === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
+                                c.authorRole === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
+                                'bg-gray-500/20 text-gray-300'
+                              }`}>
+                                {c.authorRole}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <span className="text-xs text-white/60">
                           {new Date(c.createdAt).toLocaleString()}
                         </span>

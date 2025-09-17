@@ -290,6 +290,14 @@ button:focus {
   padding-left: 1.5em;
 }
 
+.wysiwyg-editor .ProseMirror ul {
+  list-style-type: disc;
+}
+
+.wysiwyg-editor .ProseMirror ol {
+  list-style-type: decimal;
+}
+
 .wysiwyg-editor .ProseMirror li {
   margin: 0.25em 0;
 }
@@ -329,6 +337,14 @@ button:focus {
 .prose-invert ol {
   margin: 0.5em 0;
   padding-left: 1.5em;
+}
+
+.prose-invert ul {
+  list-style-type: disc;
+}
+
+.prose-invert ol {
+  list-style-type: decimal;
 }
 
 .prose-invert li {

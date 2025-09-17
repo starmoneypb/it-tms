@@ -102,6 +102,9 @@ func main() {
 	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
 	admin.Post("/tickets/:id/classify", h.TicketsClassify)
 
+	// Static file serving
+	app.Static("/uploads", cfg.UploadDir)
+	
 	// Swagger UI
 	app.Static("/swagger", "./public")
 	app.Get("/", func(c *fiber.Ctx) error {
