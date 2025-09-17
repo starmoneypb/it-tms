@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,4 +55,57 @@ func (r *UserRepo) UpdateProfilePicture(ctx context.Context, id, profilePicture 
 		return models.User{}, err
 	}
 	return r.GetByID(ctx, id)
+}
+
+func (r *UserRepo) Search(ctx context.Context, query string, roles []string, limit int) ([]models.User, error) {
+	args := []any{}
+	arg := 1
+	
+	whereClause := "1=1"
+	
+	// Add search query if provided
+	if query != "" {
+		whereClause += fmt.Sprintf(" AND (name ILIKE $%d OR email ILIKE $%d)", arg, arg)
+		args = append(args, "%"+query+"%")
+		arg++
+	}
+	
+	// Add role filter if provided
+	if len(roles) > 0 {
+		placeholders := make([]string, len(roles))
+		for i, role := range roles {
+			placeholders[i] = fmt.Sprintf("$%d", arg)
+			args = append(args, role)
+			arg++
+		}
+		whereClause += fmt.Sprintf(" AND role IN (%s)", strings.Join(placeholders, ","))
+	}
+	
+	// Add limit
+	args = append(args, limit)
+	
+	sql := fmt.Sprintf(`
+		SELECT id, name, email, role, profile_picture, created_at, updated_at
+		FROM users 
+		WHERE %s 
+		ORDER BY name ASC 
+		LIMIT $%d`, whereClause, arg)
+	
+	rows, err := r.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.ProfilePicture, &u.CreatedAt, &u.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	
+	return users, nil
 }

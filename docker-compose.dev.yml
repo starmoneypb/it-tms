@@ -56,6 +56,8 @@ services:
         psql -h db -p 5432 -U postgres -d it_tms -f /workspace/db/migrations/0002_indexes.up.sql;
         echo 'Applying 0003_add_profile_picture.up.sql...';
         psql -h db -p 5432 -U postgres -d it_tms -f /workspace/db/migrations/0003_add_profile_picture.up.sql;
+        echo 'Applying 0004_multiple_assignees.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f /workspace/db/migrations/0004_multiple_assignees.up.sql;
         echo 'Seeding database...';
         go run cmd/seed/main.go;
         echo 'Database setup complete!';

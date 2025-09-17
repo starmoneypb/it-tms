@@ -153,6 +153,52 @@ func (h *Handlers) Me(c *fiber.Ctx) error {
 	}))
 }
 
+// -------------------- Users --------------------
+
+func (h *Handlers) UsersSearch(c *fiber.Ctx) error {
+	// Only authenticated users can search for other users
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
+	}
+	
+	query := c.Query("q", "")
+	roleFilter := c.Query("role", "")
+	limit := 20 // Default limit
+	
+	var roles []string
+	if roleFilter != "" {
+		roles = []string{roleFilter}
+	}
+	
+	ctx := context.Background()
+	users, err := h.repo.Users.Search(ctx, query, roles, limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"search failed"}})
+	}
+	
+	// Convert profile picture paths to URLs and remove password hashes
+	var result []fiber.Map
+	for _, user := range users {
+		var profilePictureURL *string
+		if user.ProfilePicture != nil && *user.ProfilePicture != "" {
+			filename := filepath.Base(*user.ProfilePicture)
+			url := fmt.Sprintf("/uploads/%s", filename)
+			profilePictureURL = &url
+		}
+		
+		result = append(result, fiber.Map{
+			"id": user.ID,
+			"name": user.Name,
+			"email": user.Email,
+			"role": user.Role,
+			"profilePicture": profilePictureURL,
+		})
+	}
+	
+	return c.JSON(h.envelope(result))
+}
+
 // -------------------- Priority --------------------
 
 func (h *Handlers) PriorityCompute(c *fiber.Ctx) error {
@@ -434,8 +480,13 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 }
 
 type AssignReq struct {
-	AssigneeID *string `json:"assigneeId"`
-	Self       bool    `json:"self"`
+	AssigneeID  *string  `json:"assigneeId"`  // Deprecated: use AssigneeIDs
+	AssigneeIDs []string `json:"assigneeIds"` // New: support multiple assignees
+	Self        bool     `json:"self"`
+}
+
+type UnassignReq struct {
+	AssigneeIDs []string `json:"assigneeIds"`
 }
 
 func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
@@ -444,26 +495,136 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
 	}
+	
 	userClaims, _ := c.Locals("user").(jwt.MapClaims)
 	if userClaims == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"auth required"}})
 	}
-	role, _ := userClaims["role"].(string)
-	userID, _ := userClaims["sub"].(string)
-
-	// Users can self-assign only
-	if body.Self {
-		body.AssigneeID = &userID
-	} else if role == "User" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors/managers can assign others"}})
-	}
-
+	
+	userID, role, _ := middleware.GetUserFromContext(c)
 	ctx := context.Background()
-	if err := h.repo.Tickets.Assign(ctx, id, body.AssigneeID); err != nil {
+	
+	// Get current assignees for comparison
+	currentAssignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get current assignees"}})
+	}
+	
+	// Determine which users to assign
+	var assigneeIDs []string
+	
+	if body.Self {
+		assigneeIDs = []string{userID}
+	} else if len(body.AssigneeIDs) > 0 {
+		// Users can only self-assign
+		if role == "User" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors/managers can assign others"}})
+		}
+		assigneeIDs = body.AssigneeIDs
+	} else if body.AssigneeID != nil {
+		// Backward compatibility with single assignee
+		if role == "User" && *body.AssigneeID != userID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors/managers can assign others"}})
+		}
+		assigneeIDs = []string{*body.AssigneeID}
+	} else {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"no assignees specified"}})
+	}
+	
+	// Assign users
+	if err := h.repo.Tickets.AssignUsers(ctx, id, assigneeIDs, &userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"assign failed"}})
 	}
+	
+	// Get updated assignees and user names for comment
+	newAssignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get updated assignees"}})
+	}
+	
+	// Generate assignment comment
+	var assignmentChanges []string
+	
+	// Find newly assigned users
+	currentAssigneeMap := make(map[string]bool)
+	for _, assignee := range currentAssignees {
+		currentAssigneeMap[assignee.ID] = true
+	}
+	
+	for _, assignee := range newAssignees {
+		if !currentAssigneeMap[assignee.ID] {
+			assignmentChanges = append(assignmentChanges, fmt.Sprintf("✅ Assigned to %s (%s)", assignee.Name, assignee.Role))
+		}
+	}
+	
+	// Add automatic comment if there were changes
+	if len(assignmentChanges) > 0 {
+		commentBody := fmt.Sprintf("👤 Assignment updated by %s:\n\n%s", role, strings.Join(assignmentChanges, "\n"))
+		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+	}
+	
 	h.repo.Audits.Insert(ctx, id, &userID, "assign", nil, body)
-	return c.JSON(h.envelope(fiber.Map{"id": id, "assigneeId": body.AssigneeID}))
+	return c.JSON(h.envelope(fiber.Map{"id": id, "assignees": newAssignees}))
+}
+
+func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var body UnassignReq
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
+	}
+	
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"auth required"}})
+	}
+	
+	userID, role, _ := middleware.GetUserFromContext(c)
+	
+	// Only Supervisors and Managers can unassign others
+	if role == "User" {
+		// Users can only unassign themselves
+		body.AssigneeIDs = []string{userID}
+	}
+	
+	ctx := context.Background()
+	
+	// Get current assignees for comment generation
+	currentAssignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get current assignees"}})
+	}
+	
+	// Find users being unassigned for comment
+	var unassignmentChanges []string
+	for _, assignee := range currentAssignees {
+		for _, unassigneeID := range body.AssigneeIDs {
+			if assignee.ID == unassigneeID {
+				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("❌ Unassigned %s (%s)", assignee.Name, assignee.Role))
+				break
+			}
+		}
+	}
+	
+	// Unassign users
+	if err := h.repo.Tickets.UnassignUsers(ctx, id, body.AssigneeIDs); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"unassign failed"}})
+	}
+	
+	// Get updated assignees
+	newAssignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get updated assignees"}})
+	}
+	
+	// Add automatic comment if there were changes
+	if len(unassignmentChanges) > 0 {
+		commentBody := fmt.Sprintf("👤 Assignment updated by %s:\n\n%s", role, strings.Join(unassignmentChanges, "\n"))
+		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+	}
+	
+	h.repo.Audits.Insert(ctx, id, &userID, "unassign", nil, body)
+	return c.JSON(h.envelope(fiber.Map{"id": id, "assignees": newAssignees}))
 }
 
 type StatusReq struct {

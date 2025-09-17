@@ -16,14 +16,21 @@ type MetricsSummary struct {
 	PriorityCounts  map[string]int      `json:"priorityCounts"`
 }
 
+type AssigneeSummary struct {
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	ProfilePicture *string `json:"profilePicture"`
+}
+
 type TicketSummary struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	Priority     string    `json:"priority"`
-	AssigneeID   *string   `json:"assigneeId"`
-	AssigneeName *string   `json:"assigneeName"`
-	UpdatedAt    time.Time `json:"updatedAt"`
-	LatestComment *string  `json:"latestComment"`
+	ID            string            `json:"id"`
+	Title         string            `json:"title"`
+	Priority      string            `json:"priority"`
+	AssigneeID    *string           `json:"assigneeId"`    // Deprecated: for backward compatibility
+	AssigneeName  *string           `json:"assigneeName"`  // Deprecated: for backward compatibility
+	Assignees     []AssigneeSummary `json:"assignees"`     // New: detailed assignee info
+	UpdatedAt     time.Time         `json:"updatedAt"`
+	LatestComment *string           `json:"latestComment"`
 }
 
 func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
@@ -41,7 +48,11 @@ func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
 			t.assignee_id,
 			u.name as assignee_name,
 			t.updated_at,
-			(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
+			(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment,
+			(SELECT STRING_AGG(au.name, ', ' ORDER BY au.name) 
+			 FROM ticket_assignments ta 
+			 JOIN users au ON ta.assignee_id = au.id 
+			 WHERE ta.ticket_id = t.id) as assignee_names
 		FROM tickets t
 		LEFT JOIN users u ON t.assignee_id = u.id
 		WHERE t.status='in_progress' AND DATE(t.updated_at)=CURRENT_DATE 
@@ -50,8 +61,46 @@ func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
 		for rows.Next() {
 			var ticket TicketSummary
 			var latestComment *string
-			rows.Scan(&ticket.ID, &ticket.Title, &ticket.Priority, &ticket.AssigneeID, &ticket.AssigneeName, &ticket.UpdatedAt, &latestComment)
+			var assigneeNames *string
+			rows.Scan(&ticket.ID, &ticket.Title, &ticket.Priority, &ticket.AssigneeID, &ticket.AssigneeName, &ticket.UpdatedAt, &latestComment, &assigneeNames)
 			ticket.LatestComment = latestComment
+			
+			// Use new assignee names if available, fallback to old single assignee
+			if assigneeNames != nil && *assigneeNames != "" {
+				ticket.AssigneeName = assigneeNames
+			}
+			
+			// Fetch detailed assignee information
+			assigneeRows, assigneeErr := r.pool.Query(ctx, `
+				SELECT u.id, u.name, u.profile_picture
+				FROM ticket_assignments ta
+				JOIN users u ON ta.assignee_id = u.id
+				WHERE ta.ticket_id = $1
+				ORDER BY u.name ASC`, ticket.ID)
+			
+			if assigneeErr == nil {
+				for assigneeRows.Next() {
+					var assignee AssigneeSummary
+					assigneeRows.Scan(&assignee.ID, &assignee.Name, &assignee.ProfilePicture)
+					ticket.Assignees = append(ticket.Assignees, assignee)
+				}
+				assigneeRows.Close()
+			}
+			
+			// If no new assignees found but there's a legacy assignee, add it
+			if len(ticket.Assignees) == 0 && ticket.AssigneeID != nil && ticket.AssigneeName != nil {
+				legacyAssignee := AssigneeSummary{
+					ID:   *ticket.AssigneeID,
+					Name: *ticket.AssigneeName,
+				}
+				// Try to get profile picture for legacy assignee
+				var profilePicture *string
+				profileRow := r.pool.QueryRow(ctx, `SELECT profile_picture FROM users WHERE id = $1`, *ticket.AssigneeID)
+				profileRow.Scan(&profilePicture)
+				legacyAssignee.ProfilePicture = profilePicture
+				ticket.Assignees = append(ticket.Assignees, legacyAssignee)
+			}
+			
 			res.InProgressToday = append(res.InProgressToday, ticket)
 		}
 		rows.Close()

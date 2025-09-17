@@ -6,12 +6,19 @@ import DOMPurify from "isomorphic-dompurify";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+type AssigneeSummary = {
+  id: string;
+  name: string;
+  profilePicture?: string | null;
+};
+
 type TicketSummary = {
   id: string;
   title: string;
   priority: string;
-  assigneeId?: string | null;
-  assigneeName?: string | null;
+  assigneeId?: string | null;    // Deprecated: for backward compatibility
+  assigneeName?: string | null;  // Deprecated: for backward compatibility
+  assignees?: AssigneeSummary[]; // New: detailed assignee info
   updatedAt: string;
   latestComment?: string | null;
 };
@@ -123,7 +130,7 @@ export default function Dashboard() {
               {data.inProgressToday.map((ticket) => (
                 <div 
                   key={ticket.id} 
-                  className="min-w-[300px] flex-shrink-0 glass rounded-lg p-4 hover:scale-105 hover:shadow-xl transition-all duration-200 cursor-pointer group relative z-10 border border-white/5"
+                  className="w-[320px] h-[240px] flex-shrink-0 glass rounded-lg p-4 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col"
                   onClick={() => window.location.href = `/tickets/${ticket.id}`}
                 >
                   {/* Header with Title and Priority */}
@@ -143,27 +150,78 @@ export default function Dashboard() {
                   </div>
 
                   {/* Latest Comment */}
-                  {ticket.latestComment && (
-                    <div className="mb-3">
-                      <div className="text-xs text-white/50 mb-1">Latest comment:</div>
-                      <div 
-                        className="text-sm text-white/80 line-clamp-2 bg-white/5 rounded-lg p-2 prose prose-invert prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ 
-                          __html: DOMPurify.sanitize(ticket.latestComment) 
-                        }}
-                      />
-                    </div>
-                  )}
+                  <div className="flex-1 min-h-0 mb-3">
+                    {ticket.latestComment ? (
+                      <>
+                        <div className="text-xs text-white/50 mb-1">Latest comment:</div>
+                        <div className="h-[60px] bg-white/5 rounded-lg p-2 overflow-hidden relative">
+                          <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
+                            {(() => {
+                              const cleanText = ticket.latestComment
+                                .replace(/<br\s*\/?>/gi, ' ')
+                                .replace(/<\/p>\s*<p>/gi, ' ')
+                                .replace(/<[^>]*>/g, '')
+                                .replace(/\s+/g, ' ')
+                                .trim();
+                              
+                              // Manually truncate to fit in 3 lines (approximately 120 characters)
+                              return cleanText.length > 120 ? cleanText.substring(0, 120) + '...' : cleanText;
+                            })()}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-[60px] flex items-center justify-center text-white/40 text-sm">
+                        No recent activity
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Assignee */}
-                  <div className="flex items-center justify-between">
+                  {/* Assignees */}
+                  <div className="flex items-center justify-between mt-auto">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
-                        {ticket.assigneeName ? ticket.assigneeName.charAt(0).toUpperCase() : '?'}
-                      </div>
-                      <div className="text-sm text-white/70">
-                        {ticket.assigneeName || 'Unassigned'}
-                      </div>
+                      {ticket.assignees && ticket.assignees.length > 0 ? (
+                        <div className="flex items-center gap-1">
+                          <div className="flex -space-x-1 overflow-hidden">
+                            {ticket.assignees.slice(0, 4).map((assignee: any, index: number) => (
+                              <div
+                                key={assignee.id}
+                                className="relative w-6 h-6 rounded-full border-2 border-gray-800 bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium overflow-hidden"
+                                style={{ zIndex: 10 - index }}
+                                title={assignee.name}
+                              >
+                                {assignee.profilePicture ? (
+                                  <img
+                                    src={`${API}${assignee.profilePicture}`}
+                                    alt={assignee.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  assignee.name.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                            ))}
+                            {ticket.assignees.length > 4 && (
+                              <div className="relative w-6 h-6 rounded-full border-2 border-gray-800 bg-gray-600 flex items-center justify-center text-white text-xs font-medium">
+                                +{ticket.assignees.length - 4}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm text-white/70 ml-1">
+                            {ticket.assignees.length === 1 
+                              ? ticket.assignees[0].name 
+                              : `${ticket.assignees.length} assignees`
+                            }
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs font-medium">
+                            ?
+                          </div>
+                          <div className="text-sm text-white/70">Unassigned</div>
+                        </>
+                      )}
                     </div>
                     <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors">
                       View →

@@ -19,7 +19,8 @@ type Ticket struct {
 	FinalScore   int32              `json:"finalScore"`
 	RedFlag      bool               `json:"redFlag"`
 	Priority     TicketPriority     `json:"priority"`
-	AssigneeID   *string            `json:"assigneeId,omitempty"`
+	AssigneeID   *string            `json:"assigneeId,omitempty"` // Deprecated: use Assignees
+	Assignees    []User             `json:"assignees,omitempty"`
 	CreatedAt    time.Time          `json:"createdAt"`
 	UpdatedAt    time.Time          `json:"updatedAt"`
 	ClosedAt     *time.Time         `json:"closedAt,omitempty"`
@@ -43,6 +44,14 @@ type Attachment struct {
 	Size      int64     `json:"size"`
 	Path      string    `json:"path"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+type TicketAssignment struct {
+	ID         string    `json:"id"`
+	TicketID   string    `json:"ticketId"`
+	AssigneeID string    `json:"assigneeId"`
+	AssignedAt time.Time `json:"assignedAt"`
+	AssignedBy *string   `json:"assignedBy,omitempty"`
 }
 
 type AuditLog struct {

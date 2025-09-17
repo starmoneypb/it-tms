@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem } from "@heroui/react";
 import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
+import UserSearchSelect from "@/components/UserSearchSelect";
 import DOMPurify from "isomorphic-dompurify";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -51,6 +52,9 @@ export default function TicketDetails() {
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [contentEditLoading, setContentEditLoading] = useState(false);
   const [contentEditError, setContentEditError] = useState("");
+  
+  // Assignment state
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [contentEditForm, setContentEditForm] = useState({
     title: "",
     description: ""
@@ -363,6 +367,53 @@ export default function TicketDetails() {
               )}
             </div>
 
+            <Divider />
+
+            {/* Ticket Metadata */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Ticket Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-white/60">Ticket ID:</span>
+                  <span className="ml-2 font-medium">#{t.code}</span>
+                </div>
+                <div>
+                  <span className="text-white/60">Created:</span>
+                  <span className="ml-2">{new Date(t.createdAt).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-white/60">Last Updated:</span>
+                  <span className="ml-2">{new Date(t.updatedAt).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-white/60">Type:</span>
+                  <span className="ml-2">{t.initialType.replace(/_/g, ' ')}</span>
+                </div>
+                {t.assignees && t.assignees.length > 0 && (
+                  <div className="md:col-span-2">
+                    <span className="text-white/60">Assigned to:</span>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {t.assignees.map((assignee: any) => (
+                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
+                            {assignee.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm">{assignee.name}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            assignee.role === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
+                            assignee.role === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
+                            'bg-gray-500/20 text-gray-300'
+                          }`}>
+                            {assignee.role}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Steps to Reproduce section for Issue Reports */}
             {t.initialType === 'ISSUE_REPORT' && t.details?.steps && (
               <>
@@ -547,25 +598,102 @@ export default function TicketDetails() {
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  👤 Assign Ticket
+                  👤 Manage Assignments
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
+                {/* Current Assignees */}
+                {data.ticket.assignees && data.ticket.assignees.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-white/80 mb-2">Current Assignees:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {data.ticket.assignees.map((assignee: any) => (
+                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
+                            {assignee.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm">{assignee.name}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            assignee.role === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
+                            assignee.role === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
+                            'bg-gray-500/20 text-gray-300'
+                          }`}>
+                            {assignee.role}
+                          </span>
+                          {(canModifyTicketFields() || user?.id === assignee.id) && (
+                            <Button
+                              size="sm"
+                              color="danger"
+                              variant="light"
+                              onPress={async () => {
+                                await fetch(`${API}/api/v1/tickets/${id}/assign`, {
+                                  method: "DELETE",
+                                  credentials: "include",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ assigneeIds: [assignee.id] }),
+                                });
+                                load();
+                              }}
+                              className="min-w-0 w-6 h-6 p-0"
+                            >
+                              ×
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Self-Assign */}
                 <Button 
                   color="secondary" 
-                  onPress={() => {
-                    // Self-assign functionality
-                    fetch(`${API}/api/v1/tickets/${id}/assign`, {
+                  variant="flat"
+                  onPress={async () => {
+                    await fetch(`${API}/api/v1/tickets/${id}/assign`, {
                       method: "POST",
                       credentials: "include",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ self: true }),
-                    }).then(() => load());
+                    });
+                    load();
                   }}
                   className="w-full"
                 >
                   Assign to Me
                 </Button>
+
+                {/* Multi-User Assignment (Supervisors/Managers only) */}
+                {canModifyTicketFields() && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-white/80">Assign Multiple Users:</h4>
+                    <UserSearchSelect
+                      selectedUserIds={selectedAssignees}
+                      onSelectionChange={setSelectedAssignees}
+                      placeholder="Search for users to assign..."
+                      excludeUserIds={data.ticket.assignees?.map((a: any) => a.id) || []}
+                    />
+                    <Button
+                      color="primary"
+                      onPress={async () => {
+                        if (selectedAssignees.length > 0) {
+                          await fetch(`${API}/api/v1/tickets/${id}/assign`, {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ assigneeIds: selectedAssignees }),
+                          });
+                          setSelectedAssignees([]);
+                          load();
+                        }
+                      }}
+                      isDisabled={selectedAssignees.length === 0}
+                      className="w-full"
+                    >
+                      Assign Selected Users
+                    </Button>
+                  </div>
+                )}
               </CardBody>
             </Card>
           )}

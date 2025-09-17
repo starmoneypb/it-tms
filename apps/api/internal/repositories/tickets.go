@@ -138,6 +138,24 @@ func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ti
 		r2.Close()
 	}
 
+	// Fetch assignees
+	assignees := []models.User{}
+	r3, err := r.pool.Query(ctx, `
+		SELECT u.id, u.name, u.email, u.role, u.profile_picture, u.created_at, u.updated_at
+		FROM ticket_assignments ta
+		JOIN users u ON ta.assignee_id = u.id
+		WHERE ta.ticket_id=$1 
+		ORDER BY ta.assigned_at ASC`, id)
+	if err == nil {
+		for r3.Next() {
+			var u models.User
+			r3.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.ProfilePicture, &u.CreatedAt, &u.UpdatedAt)
+			assignees = append(assignees, u)
+		}
+		r3.Close()
+	}
+	t.Assignees = assignees
+
 	return t, comments, atts, nil
 }
 
@@ -255,4 +273,79 @@ func (r *TicketRepo) Classify(ctx context.Context, id string, resolved models.Ti
 	}
 	_, err := r.pool.Exec(ctx, `UPDATE tickets SET resolved_type=$1, updated_at=NOW() WHERE id=$2`, resolved, id)
 	return err
+}
+
+// Multi-assignee methods
+func (r *TicketRepo) AssignUsers(ctx context.Context, ticketID string, assigneeIDs []string, assignedBy *string) error {
+	if len(assigneeIDs) == 0 {
+		return nil
+	}
+	
+	// Insert new assignments
+	for _, assigneeID := range assigneeIDs {
+		_, err := r.pool.Exec(ctx, `
+			INSERT INTO ticket_assignments (ticket_id, assignee_id, assigned_by) 
+			VALUES ($1, $2, $3)
+			ON CONFLICT (ticket_id, assignee_id) DO NOTHING`, 
+			ticketID, assigneeID, assignedBy)
+		if err != nil {
+			return err
+		}
+	}
+	
+	// Update ticket timestamp
+	_, err := r.pool.Exec(ctx, `UPDATE tickets SET updated_at=NOW() WHERE id=$1`, ticketID)
+	return err
+}
+
+func (r *TicketRepo) UnassignUsers(ctx context.Context, ticketID string, assigneeIDs []string) error {
+	if len(assigneeIDs) == 0 {
+		return nil
+	}
+	
+	// Build placeholders for IN clause
+	placeholders := make([]string, len(assigneeIDs))
+	args := []any{ticketID}
+	for i, assigneeID := range assigneeIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
+		args = append(args, assigneeID)
+	}
+	
+	sql := fmt.Sprintf(`DELETE FROM ticket_assignments WHERE ticket_id=$1 AND assignee_id IN (%s)`, 
+		strings.Join(placeholders, ","))
+	
+	_, err := r.pool.Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+	
+	// Update ticket timestamp
+	_, err = r.pool.Exec(ctx, `UPDATE tickets SET updated_at=NOW() WHERE id=$1`, ticketID)
+	return err
+}
+
+func (r *TicketRepo) GetAssignees(ctx context.Context, ticketID string) ([]models.User, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id, u.name, u.email, u.role, u.profile_picture, u.created_at, u.updated_at
+		FROM ticket_assignments ta
+		JOIN users u ON ta.assignee_id = u.id
+		WHERE ta.ticket_id=$1 
+		ORDER BY ta.assigned_at ASC`, ticketID)
+	
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var assignees []models.User
+	for rows.Next() {
+		var u models.User
+		err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.ProfilePicture, &u.CreatedAt, &u.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		assignees = append(assignees, u)
+	}
+	
+	return assignees, nil
 }

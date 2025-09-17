@@ -35,6 +35,14 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f db/migrations/00
 echo "Applying 0002_indexes.up.sql..."
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f db/migrations/0002_indexes.up.sql
 
+# Apply profile picture migration
+echo "Applying 0003_add_profile_picture.up.sql..."
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f db/migrations/0003_add_profile_picture.up.sql
+
+# Apply multiple assignees migration
+echo "Applying 0004_multiple_assignees.up.sql..."
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f db/migrations/0004_multiple_assignees.up.sql
+
 echo "Migrations applied successfully!"
 
 # Seed the database

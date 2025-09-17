@@ -24,6 +24,25 @@ func main() {
 	users := []struct{
 		Name, Email, Role, Password string
 	}{
+		// Management Team
+		{"Sarah Johnson", "sarah.johnson@techcorp.com", "Manager", "Password!1"},
+		{"Michael Chen", "michael.chen@techcorp.com", "Manager", "Password!1"},
+		
+		// Supervisors
+		{"Emily Rodriguez", "emily.rodriguez@techcorp.com", "Supervisor", "Password!1"},
+		{"David Kim", "david.kim@techcorp.com", "Supervisor", "Password!1"},
+		{"Lisa Thompson", "lisa.thompson@techcorp.com", "Supervisor", "Password!1"},
+		
+		// Regular Users
+		{"Alex Martinez", "alex.martinez@techcorp.com", "User", "Password!1"},
+		{"Jessica Wong", "jessica.wong@techcorp.com", "User", "Password!1"},
+		{"Ryan O'Connor", "ryan.oconnor@techcorp.com", "User", "Password!1"},
+		{"Priya Patel", "priya.patel@techcorp.com", "User", "Password!1"},
+		{"James Wilson", "james.wilson@techcorp.com", "User", "Password!1"},
+		{"Maria Garcia", "maria.garcia@techcorp.com", "User", "Password!1"},
+		{"Kevin Zhang", "kevin.zhang@techcorp.com", "User", "Password!1"},
+		
+		// Legacy test users (for backward compatibility)
 		{"Manager", "manager@example.com", "Manager", "Password!1"},
 		{"Supervisor", "supervisor@example.com", "Supervisor", "Password!1"},
 		{"User", "user@example.com", "User", "Password!1"},
