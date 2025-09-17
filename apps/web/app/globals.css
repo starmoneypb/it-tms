@@ -193,6 +193,13 @@ button:focus {
   box-shadow: none !important;
 }
 
+/* Temporarily disable problematic global styles for debugging */
+* {
+  outline: none !important;
+}
+
+/* Remove the global opacity/visibility override for debugging */
+
 /* Ensure our custom focus styles take precedence */
 [data-slot="input-wrapper"]:focus-within {
   background: rgba(255, 255, 255, 0.08) !important;
@@ -357,4 +364,76 @@ button:focus {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Recharts SVG fixes - Force visibility */
+.recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  background: transparent !important;
+}
+
+.recharts-wrapper svg {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+  display: block !important;
+  background: transparent !important;
+}
+
+.recharts-pie {
+  outline: none !important;
+  pointer-events: all !important;
+}
+
+.recharts-pie-sector {
+  outline: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  pointer-events: all !important;
+}
+
+.recharts-pie path {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  fill-opacity: 1 !important;
+}
+
+.recharts-text {
+  fill: rgba(255, 255, 255, 0.9) !important;
+  font-size: 11px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.recharts-label {
+  fill: rgba(255, 255, 255, 0.9) !important;
+  font-size: 11px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.recharts-tooltip-wrapper {
+  z-index: 1000 !important;
+}
+
+/* Ensure all SVG elements are visible */
+svg path {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+.recharts-surface {
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+/* Force all recharts elements to be visible */
+.recharts-wrapper * {
+  opacity: 1 !important;
+  visibility: visible !important;
 }

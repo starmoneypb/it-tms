@@ -1,8 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/react";
-import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import DOMPurify from "isomorphic-dompurify";
+import dynamic from "next/dynamic";
+
+// Import the Chart.js pie chart component with SSR disabled
+const ChartJsPieChart = dynamic(() => import("../../components/ChartJsPieChart"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"></div>
+        <p className="text-white/50 text-sm">Loading chart...</p>
+      </div>
+    </div>
+  )
+});
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -30,7 +43,6 @@ type Summary = {
   priorityCounts: Record<string, number>;
 };
 
-const COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
 
 // Utility function to format time since
 function formatTimeSince(dateString: string): string {
@@ -73,11 +85,52 @@ function getPriorityColor(priority: string): string {
 export default function Dashboard() {
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  
   useEffect(() => {
-    fetch(`${API}/api/v1/metrics/summary`)
-      .then((r) => r.json())
-      .then((j) => setData(j.data))
-      .catch((e) => setError(String(e)));
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Fetching metrics from:', `${API}/api/v1/metrics/summary`);
+        const response = await fetch(`${API}/api/v1/metrics/summary`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('API Response:', result);
+        
+        // Handle both direct data and wrapped data formats
+        const metricsData = result.data || result;
+        console.log('Processed metrics data:', metricsData);
+        
+        setData(metricsData);
+        setError(null);
+      } catch (e) {
+        console.error('Error fetching metrics:', e);
+        setError(String(e));
+        
+        // Set fallback demo data for development/testing
+        const fallbackData: Summary = {
+          inProgressToday: [],
+          statusCounts: { 'pending': 5, 'in_progress': 3, 'completed': 12, 'canceled': 1 },
+          categoryCounts: { 'ISSUE_REPORT': 8, 'SERVICE_REQUEST_GENERAL': 6, 'CHANGE_REQUEST_NORMAL': 4, 'SERVICE_REQUEST_DATA_CORRECTION': 3 },
+          priorityCounts: { 'P0': 2, 'P1': 4, 'P2': 8, 'P3': 7 }
+        };
+        
+        console.log('Using fallback data:', fallbackData);
+        setData(fallbackData);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
   }, []);
 
   if (error) return (
@@ -91,19 +144,27 @@ export default function Dashboard() {
     </div>
   );
   
-  if (!data) return (
+  if (!mounted || loading || !data) return (
     <div className="container">
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-white/70">Loading dashboard...</p>
+          {error && (
+            <p className="text-orange-400 text-sm mt-2">
+              API connection failed - using demo data
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 
   const toPie = (obj: Record<string, number>) =>
-    Object.entries(obj).map(([name, value]) => ({ name, value }));
+    Object.entries(obj).map(([name, value]) => ({ 
+      name, 
+      value: Number(value) || 0 // Ensure it's a number, default to 0 if invalid
+    })).filter(item => item.value > 0); // Only include items with positive values
 
   return (
     <div className="container">
@@ -242,8 +303,6 @@ export default function Dashboard() {
 }
 
 function ChartCard({ title, data, icon }: { title: string; data: { name: string; value: number }[]; icon: string }) {
-  const hasData = data && data.length > 0 && data.some(item => item.value > 0);
-  
   return (
     <Card className="glass">
       <CardHeader className="pb-3">
@@ -251,41 +310,8 @@ function ChartCard({ title, data, icon }: { title: string; data: { name: string;
           {icon} {title}
         </h3>
       </CardHeader>
-      <CardBody style={{ height: 280 }}>
-        {hasData ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                dataKey="value"
-                isAnimationActive={true}
-                data={data}
-                outerRadius={90}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                labelLine={false}
-              >
-                {data.map((_, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip 
-                formatter={(value: number) => [value, 'Count']}
-                contentStyle={{
-                  backgroundColor: 'rgba(15, 22, 41, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  color: 'white'
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="text-4xl mb-2">📊</div>
-              <p className="text-white/50">No data available</p>
-            </div>
-          </div>
-        )}
+      <CardBody className="p-4">
+        <ChartJsPieChart data={data} title={title} />
       </CardBody>
     </Card>
   );
