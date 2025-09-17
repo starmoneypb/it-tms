@@ -1,0 +1,31 @@
+# Development Dockerfile with hot reload support
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install pnpm globally
+RUN npm install -g pnpm@9.12.0
+
+# Install development dependencies
+RUN apk add --no-cache git curl
+
+# Create non-root user for development
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# Set environment variables for development
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV WATCHPACK_POLLING=true
+ENV CHOKIDAR_USEPOLLING=true
+
+# Switch to non-root user
+USER nextjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/api/healthz || exit 1
+
+EXPOSE 3000
+
+# Default command - just sleep to let docker-compose override
+CMD ["sh", "-c", "echo 'Development container ready. Use docker-compose to start with hot reload.' && sleep infinity"]

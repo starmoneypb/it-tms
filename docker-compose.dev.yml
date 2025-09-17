@@ -1,0 +1,117 @@
+# Development environment with hot reload
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/it_tms?sslmode=disable
+      PORT: 8080
+      JWT_SECRET: your-secret-key-here
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      GO_ENV: development
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount source code for hot reload
+      - ./apps/api:/app
+      - ./apps/api/uploads:/app/uploads
+      # Mount workspace for migrations
+      - .:/workspace
+      # Cache Go modules
+      - go-mod-cache:/go/pkg/mod
+    restart: "no"
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Setting up development environment...';
+        mkdir -p tmp;
+        
+        echo 'Running database migrations...';
+        apk add --no-cache postgresql-client;
+        export PGPASSWORD=postgres;
+        echo 'Applying 0001_init.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f /workspace/db/migrations/0001_init.up.sql;
+        echo 'Applying 0002_indexes.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f /workspace/db/migrations/0002_indexes.up.sql;
+        echo 'Applying 0003_add_profile_picture.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f /workspace/db/migrations/0003_add_profile_picture.up.sql;
+        echo 'Seeding database...';
+        go run cmd/seed/main.go;
+        echo 'Database setup complete!';
+        
+        echo 'Installing Go dependencies...';
+        go mod download;
+        echo 'Building initial binary...';
+        go build -o ./tmp/main ./cmd/server;
+        echo 'Starting development server with hot reload...';
+        while true; do
+          echo 'Starting server...';
+          ./tmp/main &
+          SERVER_PID=$$!;
+          inotifywait -r -e modify,create,delete --include='\.go\$' . 2>/dev/null || true;
+          echo 'Changes detected, rebuilding...';
+          kill $$SERVER_PID 2>/dev/null || true;
+          sleep 1;
+          go build -o ./tmp/main ./cmd/server;
+        done;
+      "
+
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile.dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      WATCHPACK_POLLING: true
+      CHOKIDAR_USEPOLLING: true
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Exclude node_modules to avoid conflicts
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+    restart: "no"
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    user: "0:0"  # Run as root to avoid permission issues
+    command: >
+      sh -c "
+        echo 'Setting up pnpm store...';
+        mkdir -p /tmp/pnpm-store;
+        pnpm config set store-dir /tmp/pnpm-store;
+        echo 'Installing workspace dependencies...';
+        pnpm install;
+        echo 'Installing web app dependencies...';
+        cd apps/web && pnpm install;
+        echo 'Starting Next.js development server...';
+        pnpm dev --hostname 0.0.0.0;
+      "
+
+volumes:
+  go-mod-cache:

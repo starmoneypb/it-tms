@@ -1,27 +1,29 @@
 # Production overrides for docker-compose.yml
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
 
-version: '3.8'
-
 services:
   db:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-it_tms}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     # Remove port exposure in production
     ports: []
     # Add security settings
     command: >
       postgres
-      -c ssl=on
-      -c ssl_cert_file=/etc/ssl/certs/server.crt
-      -c ssl_key_file=/etc/ssl/private/server.key
-      -c log_statement=all
-      -c log_min_duration_statement=1000
+      -c ssl=off
+      -c log_statement=none
+      -c log_min_duration_statement=5000
+      -c shared_preload_libraries=pg_stat_statements
+
+  # Disable development services in production
+  db-setup:
+    profiles: ["disabled"]
+  
+  pgadmin:
+    profiles: ["disabled"]
 
   api:
     environment:
@@ -29,7 +31,7 @@ services:
       PORT: 8080
       JWT_SECRET: ${JWT_SECRET}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      NODE_ENV: production
+      GO_ENV: production
     restart: unless-stopped
     # Remove port exposure in production (use reverse proxy)
     ports: []
@@ -47,6 +49,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_TELEMETRY_DISABLED: 1
     restart: unless-stopped
     # Remove port exposure in production (use reverse proxy)
     ports: []
@@ -60,17 +63,6 @@ services:
           memory: 128M
           cpus: '0.1'
 
-  # Remove development services
-  db-setup:
-    profiles: ["dev"]
-  
-  pgadmin:
-    profiles: ["dev"]
-
 volumes:
   pgdata:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /var/lib/postgresql/data

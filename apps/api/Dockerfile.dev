@@ -1,0 +1,26 @@
+# Development Dockerfile with hot reload support
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# Install development tools and dependencies
+RUN apk add --no-cache ca-certificates tzdata git build-base curl inotify-tools
+
+# Air will be installed at runtime via docker-compose
+
+# Create uploads directory
+RUN mkdir -p uploads && chmod 755 uploads
+
+# Environment variables for development
+ENV PORT=8080
+ENV UPLOAD_DIR=uploads
+ENV GO_ENV=development
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/healthz || exit 1
+
+EXPOSE 8080
+
+# Default command - just sleep to let docker-compose override
+CMD ["sh", "-c", "echo 'Development container ready. Use docker-compose to start with hot reload.' && sleep infinity"]

@@ -26,6 +26,7 @@ export function WysiwygEditor({
   const [isFocused, setIsFocused] = useState(false);
 
   const editor = useEditor({
+    immediatelyRender: false, 
     extensions: [
       StarterKit,
       Placeholder.configure({
