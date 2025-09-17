@@ -9,7 +9,7 @@
   --color-surface: #0f1629;
   --color-surface-elevated: #1a2332;
   --color-background: #0b0f19;
-  --color-background-gradient: linear-gradient(135deg, #0b0f19 0%, #1a1f2e 100%);
+  --color-background-gradient: linear-gradient(135deg, #0b0f19 0%, #1a1f2e 50%, #0b0f19 100%);
   --color-text: #e5e7eb;
   --color-text-secondary: #9ca3af;
   --color-text-muted: #6b7280;
@@ -29,6 +29,11 @@ html, body {
 body {
   background: var(--color-background);
   background-image: var(--color-background-gradient);
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  min-height: 100vh;
   color: var(--color-text);
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;

@@ -578,6 +578,80 @@ func (h *Handlers) signPath(p string, exp time.Time) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// -------------------- Profile --------------------
+
+type ProfileUpdateReq struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+func (h *Handlers) ProfileUpdate(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
+	}
+	
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"invalid user"}})
+	}
+
+	var body ProfileUpdateReq
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
+	}
+
+	ctx := context.Background()
+	user, err := h.repo.Users.UpdateProfile(ctx, userID, body.Name, body.Email)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
+	}
+
+	return c.JSON(h.envelope(user))
+}
+
+func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
+	}
+	
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"invalid user"}})
+	}
+
+	file, err := c.FormFile("profilePicture")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"no file uploaded"}})
+	}
+
+	// Validate file type
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"file must be an image"}})
+	}
+
+	// Validate file size (5MB limit)
+	if file.Size > 5*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"file too large (max 5MB)"}})
+	}
+
+	// Save file
+	path, err := h.saveUpload(file)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"upload failed"}})
+	}
+
+	// Update user profile picture in database
+	ctx := context.Background()
+	user, err := h.repo.Users.UpdateProfilePicture(ctx, userID, path)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
+	}
+
+	return c.JSON(h.envelope(fiber.Map{"profilePicture": user.ProfilePicture}))
+}
+
 // -------------------- Classification --------------------
 
 type ClassifyReq struct {

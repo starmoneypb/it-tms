@@ -64,12 +64,23 @@ export function Navigation() {
         {user ? (
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="ghost" className="text-white/80 hover:text-white">
+              <Button variant="ghost" className="text-white/80 hover:text-white flex items-center gap-2">
+                {user.profilePicture ? (
+                  <img 
+                    src={user.profilePicture} 
+                    alt={user.name}
+                    className="w-6 h-6 rounded-full"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 {user.name} ({user.role})
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem key="profile" className="text-gray-700">
+              <DropdownItem key="profile" className="text-gray-700" onPress={() => window.location.href = '/profile'}>
                 Profile
               </DropdownItem>
               <DropdownItem key="signout" className="text-danger" onPress={signOut}>
@@ -143,7 +154,18 @@ export function Navigation() {
           <div className="pt-4 mt-4 border-t border-gray-200">
             {user ? (
               <div className="space-y-2">
-                <div className="px-4 py-2 text-sm text-gray-500 bg-gray-50 rounded-lg">
+                <div className="px-4 py-2 text-sm text-gray-500 bg-gray-50 rounded-lg flex items-center gap-2">
+                  {user.profilePicture ? (
+                    <img 
+                      src={user.profilePicture} 
+                      alt={user.name}
+                      className="w-5 h-5 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   {user.name} ({user.role})
                 </div>
                 <button
