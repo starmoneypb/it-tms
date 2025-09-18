@@ -889,7 +889,8 @@ export default function TicketDetails() {
                         
                         {/* Red Flags */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">Red Flags (Critical Issues)</h5>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">Red Flags (Critical Issues) (0/10)</h5>
+                          <p className="text-xs text-white/60 mb-2">Multiple selections allowed. If any item is selected, full 10 points immediately.</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.outage} 
@@ -903,7 +904,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              System-wide outage (+5)
+                              System outage affecting a wide range of users
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.paymentsFailing} 
@@ -917,7 +918,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Payments failing (+5)
+                              Payment failure / unable to process payments
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.securityBreach} 
@@ -931,7 +932,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Security breach (+5)
+                              Severe security issue / data breach
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.nonCompliance} 
@@ -945,57 +946,16 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Legal non-compliance (+5)
+                              Non-compliance with laws / regulations / contracts
                             </Checkbox>
                           </div>
                         </div>
 
                         {/* Impact Assessment */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">Impact Assessment</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.lawNonCompliance} 
-                              onValueChange={(v) => setEditForm(prev => ({
-                                ...prev, 
-                                priorityInput: {
-                                  ...prev.priorityInput, 
-                                  impact: {...prev.priorityInput.impact, lawNonCompliance: v}
-                                }
-                              }))}
-                              className="text-white"
-                              size="sm"
-                            >
-                              Non-compliant with laws/regulations (+5)
-                            </Checkbox>
-                            <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.severeSecurity} 
-                              onValueChange={(v) => setEditForm(prev => ({
-                                ...prev, 
-                                priorityInput: {
-                                  ...prev.priorityInput, 
-                                  impact: {...prev.priorityInput.impact, severeSecurity: v}
-                                }
-                              }))}
-                              className="text-white"
-                              size="sm"
-                            >
-                              Severe security vulnerability (+5)
-                            </Checkbox>
-                            <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.paymentAbnormal} 
-                              onValueChange={(v) => setEditForm(prev => ({
-                                ...prev, 
-                                priorityInput: {
-                                  ...prev.priorityInput, 
-                                  impact: {...prev.priorityInput.impact, paymentAbnormal: v}
-                                }
-                              }))}
-                              className="text-white"
-                              size="sm"
-                            >
-                              Payment processing abnormality (+5)
-                            </Checkbox>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">Impact (0/6)</h5>
+                          <p className="text-xs text-white/60 mb-2">Multiple selections allowed. 2 points each, maximum 6 points.</p>
+                          <div className="grid grid-cols-1 gap-2">
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.impact?.lostRevenue} 
                               onValueChange={(v) => setEditForm(prev => ({
@@ -1008,35 +968,50 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Lost revenue opportunity (+3)
+                              Company loses revenue opportunities (2)
                             </Checkbox>
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.noWorkaround} 
+                              isSelected={!!editForm.priorityInput.impact?.coreProcesses} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
                                   ...prev.priorityInput, 
-                                  impact: {...prev.priorityInput.impact, noWorkaround: v}
+                                  impact: {...prev.priorityInput.impact, coreProcesses: v}
                                 }
                               }))}
-                              className="text-white md:col-span-2"
+                              className="text-white"
                               size="sm"
                             >
-                              No workaround / cannot be avoided (+2)
+                              Core business processes disrupted or halted (2)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.impact?.dataLoss} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  impact: {...prev.priorityInput.impact, dataLoss: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Data loss / corruption / duplication, difficult to recover (2)
                             </Checkbox>
                           </div>
                         </div>
 
                         {/* Urgency Timeline */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">Urgency Timeline</h5>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">Urgency (0/4)</h5>
+                          <p className="text-xs text-white/60 mb-2">Single selection only.</p>
                           <div className="flex gap-2 flex-wrap">
                             {[
-                              { value: "<=48h", label: "≤48h (+5)", score: 5 },
-                              { value: "3-7d", label: "3-7d (+3)", score: 3 },
-                              { value: "8-30d", label: "8-30d (+2)", score: 2 },
-                              { value: ">=31d", label: "≥31d (+1)", score: 1 },
-                              { value: "none", label: "None (0)", score: 0 }
+                              { value: "<=48h", label: "Deadline ≤48 hours (4)", score: 4 },
+                              { value: "3-7d", label: "Deadline 3–7 days (3)", score: 3 },
+                              { value: "8-30d", label: "Deadline 8–30 days (2)", score: 2 },
+                              { value: ">=31d", label: "Deadline ≥31 days (1)", score: 1 },
+                              { value: "none", label: "No deadline (0)", score: 0 }
                             ].map((u) => (
                               <Button 
                                 key={u.value} 
@@ -1069,9 +1044,9 @@ export default function TicketDetails() {
                             const pr = computePriority(editForm.priorityInput);
                             return (
                               <div className="text-xs space-y-1">
-                                <div>Impact: {pr.impact} • Urgency: {pr.urgency} • Final: {pr.final}/45</div>
+                                <div>Red Flags: {pr.redFlag ? 10 : 0}/10 • Impact: {pr.impact}/6 • Urgency: {pr.urgency}/4 • Final: {pr.final}/10</div>
                                 <div className="text-white/60">
-                                  Higher scores = Higher priority (45 = Maximum priority)
+                                  New scoring system: Red Flags give 10 points immediately, or Impact (0/6) + Urgency (0/4) = Total (0/10)
                                 </div>
                                 <div className="font-semibold text-primary-400">
                                   Priority: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}

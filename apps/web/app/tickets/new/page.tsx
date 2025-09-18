@@ -385,89 +385,78 @@ export default function NewTicket() {
                 
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">Red Flags (Critical Issues)</h4>
+                    <h4 className="text-lg font-semibold mb-3">Red Flags (Critical Issues) (0/10)</h4>
+                    <p className="text-sm text-white/70 mb-3">Multiple selections allowed. If any item is selected, full 10 points immediately.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.outage} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, outage: v}}})}
                         className="text-white"
                       >
-                        System-wide outage (+5)
+                        System outage affecting a wide range of users
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.paymentsFailing} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, paymentsFailing: v}}})}
                         className="text-white"
                       >
-                        Payments failing (+5)
+                        Payment failure / unable to process payments
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.securityBreach} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, securityBreach: v}}})}
                         className="text-white"
                       >
-                        Security breach (+5)
+                        Severe security issue / data breach
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.nonCompliance} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, nonCompliance: v}}})}
                         className="text-white"
                       >
-                        Legal non-compliance (+5)
+                        Non-compliance with laws / regulations / contracts
                       </Checkbox>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">Impact Assessment</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Checkbox 
-                        isSelected={!!draft.priority.impact?.lawNonCompliance} 
-                        onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, lawNonCompliance: v}}})}
-                        className="text-white"
-                      >
-                        Non-compliant with laws/regulations (+5)
-                      </Checkbox>
-                      <Checkbox 
-                        isSelected={!!draft.priority.impact?.severeSecurity} 
-                        onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, severeSecurity: v}}})}
-                        className="text-white"
-                      >
-                        Severe security vulnerability (+5)
-                      </Checkbox>
-                      <Checkbox 
-                        isSelected={!!draft.priority.impact?.paymentAbnormal} 
-                        onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, paymentAbnormal: v}}})}
-                        className="text-white"
-                      >
-                        Payment processing abnormality (+5)
-                      </Checkbox>
+                    <h4 className="text-lg font-semibold mb-3">Impact (0/6)</h4>
+                    <p className="text-sm text-white/70 mb-3">Multiple selections allowed. 2 points each, maximum 6 points.</p>
+                    <div className="grid grid-cols-1 gap-3">
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.lostRevenue} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, lostRevenue: v}}})}
                         className="text-white"
                       >
-                        Lost revenue opportunity (+3)
+                        Company loses revenue opportunities (2)
                       </Checkbox>
                       <Checkbox 
-                        isSelected={!!draft.priority.impact?.noWorkaround} 
-                        onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, noWorkaround: v}}})}
-                        className="text-white md:col-span-2"
+                        isSelected={!!draft.priority.impact?.coreProcesses} 
+                        onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, coreProcesses: v}}})}
+                        className="text-white"
                       >
-                        No workaround / cannot be avoided (+2)
+                        Core business processes disrupted or halted (2)
+                      </Checkbox>
+                      <Checkbox 
+                        isSelected={!!draft.priority.impact?.dataLoss} 
+                        onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, dataLoss: v}}})}
+                        className="text-white"
+                      >
+                        Data loss / corruption / duplication, difficult to recover (2)
                       </Checkbox>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">Urgency Timeline</h4>
+                    <h4 className="text-lg font-semibold mb-3">Urgency (0/4)</h4>
+                    <p className="text-sm text-white/70 mb-3">Single selection only.</p>
                     <div className="flex gap-3 flex-wrap">
                       {[
-                        { value: "<=48h", label: "≤48h (+5)", score: 5 },
-                        { value: "3-7d", label: "3-7d (+3)", score: 3 },
-                        { value: "8-30d", label: "8-30d (+2)", score: 2 },
-                        { value: ">=31d", label: "≥31d (+1)", score: 1 },
-                        { value: "none", label: "None (0)", score: 0 }
+                        { value: "<=48h", label: "Deadline ≤48 hours (4)", score: 4 },
+                        { value: "3-7d", label: "Deadline 3–7 days (3)", score: 3 },
+                        { value: "8-30d", label: "Deadline 8–30 days (2)", score: 2 },
+                        { value: ">=31d", label: "Deadline ≥31 days (1)", score: 1 },
+                        { value: "none", label: "No deadline (0)", score: 0 }
                       ].map((u) => (
                         <Button 
                           key={u.value} 
@@ -490,9 +479,9 @@ export default function NewTicket() {
                   <div className="p-6 glass rounded-lg border border-primary-500/20">
                     <h4 className="text-lg font-semibold mb-2">Priority Calculation</h4>
                     <div className="text-sm space-y-1">
-                      <div>Impact: {pr.impact} • Urgency: {pr.urgency} • Final: {pr.final}/45</div>
+                      <div>Red Flags: {pr.redFlag ? 10 : 0}/10 • Impact: {pr.impact}/6 • Urgency: {pr.urgency}/4 • Final: {pr.final}/10</div>
                       <div className="text-xs text-white/60 mb-2">
-                        Additive scoring system: Higher scores = Higher priority (45 = Maximum priority)
+                        New scoring system: Red Flags give 10 points immediately, or Impact (0/6) + Urgency (0/4) = Total (0/10)
                       </div>
                       <div className="font-semibold text-primary-400">
                         Priority: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}

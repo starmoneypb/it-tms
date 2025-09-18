@@ -6,11 +6,9 @@ export type PriorityInput = {
     nonCompliance?: boolean;
   };
   impact: {
-    lawNonCompliance?: boolean;
-    severeSecurity?: boolean;
-    paymentAbnormal?: boolean;
     lostRevenue?: boolean;
-    noWorkaround?: boolean;
+    coreProcesses?: boolean;
+    dataLoss?: boolean;
   };
   urgency: "<=48h" | "3-7d" | "8-30d" | ">=31d" | "none";
 };
@@ -22,55 +20,46 @@ export function computePriority(input: PriorityInput) {
     !!input.redFlags?.securityBreach ||
     !!input.redFlags?.nonCompliance;
 
-  // New additive scoring system - higher impact = higher score
-  // Start from 0 and add points for each checked item
+  // New positive scoring system (0-10 scale)
+  // Red Flags: 0/10 - If any red flag is selected, immediately get full 10 points
+  let final = 0;
   let impact = 0;
-  if (input.impact?.lawNonCompliance) impact += 5;  // Highest importance: +5
-  if (input.impact?.severeSecurity) impact += 5;   // Highest importance: +5
-  if (input.impact?.paymentAbnormal) impact += 5;  // Highest importance: +5
-  if (input.impact?.lostRevenue) impact += 3;      // Medium importance: +3
-  if (input.impact?.noWorkaround) impact += 2;     // Lower importance: +2
-  // Max impact: 20
-
-  // Urgency scoring - more urgent = higher score
-  const urgency =
-    input.urgency === "<=48h" ? 5 :   // Most urgent: +5
-    input.urgency === "3-7d" ? 3 :    // High urgency: +3
-    input.urgency === "8-30d" ? 2 :   // Medium urgency: +2
-    input.urgency === ">=31d" ? 1 :   // Low urgency: +1
-    0;                                // No urgency: 0
-  // Max urgency: 5
-
-  // Calculate base final score
-  let final = impact + urgency;
+  let urgency = 0;
   
-  // Red Flag scoring - 5 points each (additive)
   if (red) {
-    // Count active red flags
-    let redFlagCount = 0;
-    if (input.redFlags?.outage) redFlagCount++;
-    if (input.redFlags?.paymentsFailing) redFlagCount++;
-    if (input.redFlags?.securityBreach) redFlagCount++;
-    if (input.redFlags?.nonCompliance) redFlagCount++;
-    
-    // Each red flag adds +5 points (more critical = higher score)
-    final += redFlagCount * 5;
-  }
-  // Max red flag bonus: 20
-  // Overall maximum score: 20 (impact) + 5 (urgency) + 20 (red flags) = 45
+    // If any red flag is selected, score is immediately 10
+    final = 10;
+  } else {
+    // Impact: 0/6 - Multiple selections allowed, 2 points each, max 6 points
+    if (input.impact?.lostRevenue) impact += 2;      // Company loses revenue opportunities
+    if (input.impact?.coreProcesses) impact += 2;    // Core business processes disrupted
+    if (input.impact?.dataLoss) impact += 2;         // Data loss/corruption/duplication
+    if (impact > 6) impact = 6;  // Cap at maximum 6 points
 
-  // Priority determination based on additive 0-45 scale
-  // Higher scores = Higher priority
-  const priority = 
-    red || final >= 35 ? "P0" :      // Most critical (35+ or red flag)
-    final >= 25 ? "P1" :             // High priority (25-34 range)
-    final >= 10 ? "P2" : "P3";       // Medium priority (10-24 range), P3 for < 10
+    // Urgency: 0/4 - Single selection only
+    urgency =
+      input.urgency === "<=48h" ? 4 :   // Deadline ≤48 hours
+      input.urgency === "3-7d" ? 3 :    // Deadline 3-7 days
+      input.urgency === "8-30d" ? 2 :   // Deadline 8-30 days
+      input.urgency === ">=31d" ? 1 :   // Deadline ≥31 days
+      0;                                // No deadline
+
+    // Calculate final score (max 10: 6 impact + 4 urgency)
+    final = impact + urgency;
+    if (final > 10) final = 10;  // Cap at maximum 10 points
+  }
+
+  // Determine priority based on score ranges
+  const priority =
+    red || final === 10 ? "P0" :  // Red flag or maximum score (10)
+    final >= 8 ? "P1" :           // High score (8-9)
+    final >= 5 ? "P2" : "P3";    // Medium score (5-7), P3 for low scores (0-4)
 
   return { 
     redFlag: red, 
-    impact,        // Direct value (0-20 range)
-    urgency,       // Direct value (0-5 range)
-    final,         // Direct value (0-45 range)
+    impact,
+    urgency,
+    final,
     priority 
   };
 }
