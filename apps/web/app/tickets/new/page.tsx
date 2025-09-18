@@ -31,6 +31,9 @@ type Draft = {
   contactPhone?: string;
   files?: File[];
   priority: PriorityInput;
+  redFlagsData?: Record<string, any>;
+  impactAssessmentData?: Record<string, any>;
+  urgencyTimelineData?: Record<string, any>;
 };
 
 const initialDraft: Draft = {
@@ -69,6 +72,20 @@ export default function NewTicket() {
         contactEmail: draft.contactEmail,
         contactPhone: draft.contactPhone,
         priorityInput: draft.priority,
+        redFlagsData: {
+          criticalIssues: draft.priority.redFlags,
+          description: "Initial red flags assessment during ticket creation"
+        },
+        impactAssessmentData: {
+          impacts: draft.priority.impact,
+          score: pr.impact,
+          description: "Initial impact assessment during ticket creation"
+        },
+        urgencyTimelineData: {
+          timeline: draft.priority.urgency,
+          score: pr.urgency,
+          description: "Initial urgency timeline assessment during ticket creation"
+        },
       };
       
       // Create ticket first
@@ -375,28 +392,28 @@ export default function NewTicket() {
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, outage: v}}})}
                         className="text-white"
                       >
-                        System-wide outage
+                        System-wide outage (+5)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.paymentsFailing} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, paymentsFailing: v}}})}
                         className="text-white"
                       >
-                        Payments failing
+                        Payments failing (+5)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.securityBreach} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, securityBreach: v}}})}
                         className="text-white"
                       >
-                        Security breach
+                        Security breach (+5)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.nonCompliance} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, nonCompliance: v}}})}
                         className="text-white"
                       >
-                        Legal non-compliance
+                        Legal non-compliance (+5)
                       </Checkbox>
                     </div>
                   </div>
@@ -409,35 +426,35 @@ export default function NewTicket() {
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, lawNonCompliance: v}}})}
                         className="text-white"
                       >
-                        Non-compliant with laws/regulations (+4)
+                        Non-compliant with laws/regulations (+5)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.severeSecurity} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, severeSecurity: v}}})}
                         className="text-white"
                       >
-                        Severe security vulnerability (+4)
+                        Severe security vulnerability (+5)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.paymentAbnormal} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, paymentAbnormal: v}}})}
                         className="text-white"
                       >
-                        Payment processing abnormality (+4)
+                        Payment processing abnormality (+5)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.lostRevenue} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, lostRevenue: v}}})}
                         className="text-white"
                       >
-                        Lost revenue opportunity (+2)
+                        Lost revenue opportunity (+3)
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.noWorkaround} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, noWorkaround: v}}})}
                         className="text-white md:col-span-2"
                       >
-                        No workaround / cannot be avoided (+1)
+                        No workaround / cannot be avoided (+2)
                       </Checkbox>
                     </div>
                   </div>
@@ -445,20 +462,26 @@ export default function NewTicket() {
                   <div>
                     <h4 className="text-lg font-semibold mb-3">Urgency Timeline</h4>
                     <div className="flex gap-3 flex-wrap">
-                      {["<=48h", "3-7d", "8-30d", ">=31d", "none"].map((u) => (
+                      {[
+                        { value: "<=48h", label: "≤48h (+5)", score: 5 },
+                        { value: "3-7d", label: "3-7d (+3)", score: 3 },
+                        { value: "8-30d", label: "8-30d (+2)", score: 2 },
+                        { value: ">=31d", label: "≥31d (+1)", score: 1 },
+                        { value: "none", label: "None (0)", score: 0 }
+                      ].map((u) => (
                         <Button 
-                          key={u} 
-                          onPress={()=>setDraft({...draft, priority:{...draft.priority, urgency: u as any}})} 
+                          key={u.value} 
+                          onPress={()=>setDraft({...draft, priority:{...draft.priority, urgency: u.value as any}})} 
                           color="default"
                           variant="bordered"
                           size="md"
                           className={`transition-all duration-200 ${
-                            draft.priority.urgency === u 
+                            draft.priority.urgency === u.value 
                               ? "!bg-primary-600 !text-white border-primary-500 shadow-lg scale-105 font-semibold hover:!bg-primary-700 focus:!bg-primary-600" 
                               : "hover:scale-102 hover:bg-default-100"
                           }`}
                         >
-                          {u}
+                          {u.label}
                         </Button>
                       ))}
                     </div>
@@ -467,7 +490,10 @@ export default function NewTicket() {
                   <div className="p-6 glass rounded-lg border border-primary-500/20">
                     <h4 className="text-lg font-semibold mb-2">Priority Calculation</h4>
                     <div className="text-sm space-y-1">
-                      <div>Impact: {pr.impact} • Urgency: {pr.urgency} • Final: {pr.final}</div>
+                      <div>Impact: {pr.impact} • Urgency: {pr.urgency} • Final: {pr.final}/45</div>
+                      <div className="text-xs text-white/60 mb-2">
+                        Additive scoring system: Higher scores = Higher priority (45 = Maximum priority)
+                      </div>
                       <div className="font-semibold text-primary-400">
                         Priority: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}
                       </div>

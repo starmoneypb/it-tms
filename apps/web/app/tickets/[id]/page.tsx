@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem } from "@heroui/react";
+import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox } from "@heroui/react";
 import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
+import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import DOMPurify from "isomorphic-dompurify";
 import { 
@@ -51,11 +52,7 @@ export default function TicketDetails() {
   const [editForm, setEditForm] = useState({
     initialType: "",
     resolvedType: "",
-    priority: "",
-    impactScore: "",
-    urgencyScore: "",
-    finalScore: "",
-    redFlag: false
+    priorityInput: { redFlags: {}, impact: {}, urgency: "none" } as PriorityInput
   });
   
   // Title and description editing state
@@ -79,14 +76,18 @@ export default function TicketDetails() {
         setStatus(j.data.ticket.status);
         // Initialize edit form with current ticket data
         const ticket = j.data.ticket;
+        
+        // Reconstruct priority input from stored data (if available) or use defaults
+        const priorityInput: PriorityInput = {
+          redFlags: ticket.priorityInput?.redFlags || {},
+          impact: ticket.priorityInput?.impact || {},
+          urgency: ticket.priorityInput?.urgency || "none"
+        };
+        
         setEditForm({
           initialType: ticket.initialType || "",
           resolvedType: ticket.resolvedType || "",
-          priority: ticket.priority || "",
-          impactScore: ticket.impactScore?.toString() || "",
-          urgencyScore: ticket.urgencyScore?.toString() || "",
-          finalScore: ticket.finalScore?.toString() || "",
-          redFlag: ticket.redFlag || false
+          priorityInput
         });
         // Initialize content edit form
         setContentEditForm({
@@ -105,6 +106,9 @@ export default function TicketDetails() {
     setEditError("");
     
     try {
+      // Compute priority from the input
+      const pr = computePriority(editForm.priorityInput);
+      
       const payload: any = {};
       
       // Only include fields that have been changed
@@ -114,26 +118,14 @@ export default function TicketDetails() {
       if (editForm.resolvedType && editForm.resolvedType !== data.ticket.resolvedType) {
         payload.resolvedType = editForm.resolvedType;
       }
-      if (editForm.priority && editForm.priority !== data.ticket.priority) {
-        payload.priority = editForm.priority;
-      }
-      if (editForm.impactScore && parseInt(editForm.impactScore) !== data.ticket.impactScore) {
-        payload.impactScore = parseInt(editForm.impactScore);
-      }
-      if (editForm.urgencyScore && parseInt(editForm.urgencyScore) !== data.ticket.urgencyScore) {
-        payload.urgencyScore = parseInt(editForm.urgencyScore);
-      }
-      if (editForm.finalScore && parseInt(editForm.finalScore) !== data.ticket.finalScore) {
-        payload.finalScore = parseInt(editForm.finalScore);
-      }
-      if (editForm.redFlag !== data.ticket.redFlag) {
-        payload.redFlag = editForm.redFlag;
-      }
       
-      if (Object.keys(payload).length === 0) {
-        setEditError("No changes detected");
-        return;
-      }
+      // Always update priority fields when editing (they are computed from the checklist)
+      payload.priorityInput = editForm.priorityInput;
+      payload.priority = pr.priority;
+      payload.impactScore = pr.impact;
+      payload.urgencyScore = pr.urgency;
+      payload.finalScore = pr.final;
+      payload.redFlag = pr.redFlag;
       
       const response = await fetch(`${API}/api/v1/tickets/${id}/fields`, {
         method: "PATCH",
@@ -530,15 +522,15 @@ export default function TicketDetails() {
                 </div>
                 <div>
                   <span className="text-white/60 text-sm">Impact Score:</span>
-                  <div className="font-medium">{t.impactScore}</div>
+                  <div className="font-medium">{Math.abs(t.impactScore)}</div>
                 </div>
                 <div>
                   <span className="text-white/60 text-sm">Urgency Score:</span>
-                  <div className="font-medium">{t.urgencyScore}</div>
+                  <div className="font-medium">{Math.abs(t.urgencyScore)}</div>
                 </div>
                 <div>
                   <span className="text-white/60 text-sm">Final Score:</span>
-                  <div className="font-medium">{t.finalScore}</div>
+                  <div className="font-medium">{Math.abs(t.finalScore)}</div>
                 </div>
                 {t.redFlag && (
                   <div className="md:col-span-2">
@@ -891,62 +883,203 @@ export default function TicketDetails() {
                         <SelectItem key="DATA_CORRECTION">Data Correction</SelectItem>
                       </Select>
 
-                      <Select 
-                        label="Priority" 
-                        placeholder="Select priority"
-                        selectedKeys={editForm.priority ? [editForm.priority] : []}
-                        onSelectionChange={(keys) => {
-                          const selected = Array.from(keys)[0] as string;
-                          setEditForm(prev => ({ ...prev, priority: selected || "" }));
-                        }}
-                        variant="bordered"
-                        size="sm"
-                      >
-                        <SelectItem key="P0">P0 - Critical</SelectItem>
-                        <SelectItem key="P1">P1 - High</SelectItem>
-                        <SelectItem key="P2">P2 - Medium</SelectItem>
-                        <SelectItem key="P3">P3 - Low</SelectItem>
-                      </Select>
+                      {/* Priority Assessment Section */}
+                      <div className="space-y-4 p-4 border border-white/20 rounded-lg">
+                        <h4 className="text-lg font-semibold">Priority Assessment</h4>
+                        
+                        {/* Red Flags */}
+                        <div>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">Red Flags (Critical Issues)</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.redFlags?.outage} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  redFlags: {...prev.priorityInput.redFlags, outage: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              System-wide outage (+5)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.redFlags?.paymentsFailing} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  redFlags: {...prev.priorityInput.redFlags, paymentsFailing: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Payments failing (+5)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.redFlags?.securityBreach} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  redFlags: {...prev.priorityInput.redFlags, securityBreach: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Security breach (+5)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.redFlags?.nonCompliance} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  redFlags: {...prev.priorityInput.redFlags, nonCompliance: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Legal non-compliance (+5)
+                            </Checkbox>
+                          </div>
+                        </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          label="Impact Score"
-                          type="number"
-                          value={editForm.impactScore}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, impactScore: e.target.value }))}
-                          variant="bordered"
-                          size="sm"
-                        />
-                        <Input
-                          label="Urgency Score"
-                          type="number"
-                          value={editForm.urgencyScore}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, urgencyScore: e.target.value }))}
-                          variant="bordered"
-                          size="sm"
-                        />
-                      </div>
+                        {/* Impact Assessment */}
+                        <div>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">Impact Assessment</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.impact?.lawNonCompliance} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  impact: {...prev.priorityInput.impact, lawNonCompliance: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Non-compliant with laws/regulations (+5)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.impact?.severeSecurity} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  impact: {...prev.priorityInput.impact, severeSecurity: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Severe security vulnerability (+5)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.impact?.paymentAbnormal} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  impact: {...prev.priorityInput.impact, paymentAbnormal: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Payment processing abnormality (+5)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.impact?.lostRevenue} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  impact: {...prev.priorityInput.impact, lostRevenue: v}
+                                }
+                              }))}
+                              className="text-white"
+                              size="sm"
+                            >
+                              Lost revenue opportunity (+3)
+                            </Checkbox>
+                            <Checkbox 
+                              isSelected={!!editForm.priorityInput.impact?.noWorkaround} 
+                              onValueChange={(v) => setEditForm(prev => ({
+                                ...prev, 
+                                priorityInput: {
+                                  ...prev.priorityInput, 
+                                  impact: {...prev.priorityInput.impact, noWorkaround: v}
+                                }
+                              }))}
+                              className="text-white md:col-span-2"
+                              size="sm"
+                            >
+                              No workaround / cannot be avoided (+2)
+                            </Checkbox>
+                          </div>
+                        </div>
 
-                      <Input
-                        label="Final Score"
-                        type="number"
-                        value={editForm.finalScore}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, finalScore: e.target.value }))}
-                        variant="bordered"
-                        size="sm"
-                      />
+                        {/* Urgency Timeline */}
+                        <div>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">Urgency Timeline</h5>
+                          <div className="flex gap-2 flex-wrap">
+                            {[
+                              { value: "<=48h", label: "≤48h (+5)", score: 5 },
+                              { value: "3-7d", label: "3-7d (+3)", score: 3 },
+                              { value: "8-30d", label: "8-30d (+2)", score: 2 },
+                              { value: ">=31d", label: "≥31d (+1)", score: 1 },
+                              { value: "none", label: "None (0)", score: 0 }
+                            ].map((u) => (
+                              <Button 
+                                key={u.value} 
+                                onPress={() => setEditForm(prev => ({
+                                  ...prev, 
+                                  priorityInput: {
+                                    ...prev.priorityInput, 
+                                    urgency: u.value as any
+                                  }
+                                }))} 
+                                color="default"
+                                variant="bordered"
+                                size="sm"
+                                className={`transition-all duration-200 ${
+                                  editForm.priorityInput.urgency === u.value 
+                                    ? "!bg-primary-600 !text-white border-primary-500 shadow-lg scale-105 font-semibold hover:!bg-primary-700 focus:!bg-primary-600" 
+                                    : "hover:scale-102 hover:bg-default-100"
+                                }`}
+                              >
+                                {u.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
 
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="redFlag"
-                          checked={editForm.redFlag}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, redFlag: e.target.checked }))}
-                          className="rounded"
-                        />
-                        <label htmlFor="redFlag" className="text-sm text-white/80">
-                          Red Flag
-                        </label>
+                        {/* Priority Calculation Display */}
+                        <div className="p-3 bg-white/5 rounded-lg border border-primary-500/20">
+                          <h5 className="text-sm font-semibold mb-1">Priority Calculation</h5>
+                          {(() => {
+                            const pr = computePriority(editForm.priorityInput);
+                            return (
+                              <div className="text-xs space-y-1">
+                                <div>Impact: {pr.impact} • Urgency: {pr.urgency} • Final: {pr.final}/45</div>
+                                <div className="text-white/60">
+                                  Higher scores = Higher priority (45 = Maximum priority)
+                                </div>
+                                <div className="font-semibold text-primary-400">
+                                  Priority: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
 

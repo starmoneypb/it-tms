@@ -29,18 +29,26 @@ interface UserSearchSelectProps {
   selectedUserIds: string[];
   onSelectionChange: (userIds: string[]) => void;
   placeholder?: string;
+  label?: string;
+  variant?: "flat" | "bordered" | "faded" | "underlined";
   isMultiple?: boolean;
   isDisabled?: boolean;
   excludeUserIds?: string[];
+  allowClear?: boolean;
 }
+
+const DEFAULT_EXCLUDE_USER_IDS: string[] = [];
 
 export default function UserSearchSelect({
   selectedUserIds,
   onSelectionChange,
   placeholder = "Search and select users...",
+  label,
+  variant = "flat",
   isMultiple = true,
   isDisabled = false,
-  excludeUserIds = [],
+  excludeUserIds = DEFAULT_EXCLUDE_USER_IDS,
+  allowClear = true,
 }: UserSearchSelectProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,7 +88,13 @@ export default function UserSearchSelect({
           const filteredUsers = data.data.filter((user: User) => 
             !excludeUserIds.includes(user.id)
           );
-          setUsers(filteredUsers);
+          
+          // Add clear option if allowClear is enabled and not multiple selection
+          const usersWithClearOption = allowClear && !isMultiple 
+            ? [{ id: "", name: "Any assignee", email: "", role: "", profilePicture: undefined }, ...filteredUsers]
+            : filteredUsers;
+          
+          setUsers(usersWithClearOption);
         }
       } catch (error) {
         console.error("Failed to fetch users:", error);
@@ -91,7 +105,7 @@ export default function UserSearchSelect({
     };
 
     fetchUsers();
-  }, [searchQuery, excludeUserIds]);
+  }, [searchQuery, excludeUserIds.join(','), allowClear, isMultiple]);
 
   const handleSelectionChange = (keys: any) => {
     if (keys === "all") {
@@ -102,10 +116,10 @@ export default function UserSearchSelect({
     }
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string | undefined): "default" | "primary" | "secondary" | "success" | "warning" | "danger" => {
     switch (role) {
-      case "Manager": return "purple";
-      case "Supervisor": return "blue";
+      case "Manager": return "primary";
+      case "Supervisor": return "secondary";
       case "User": return "default";
       default: return "default";
     }
@@ -115,43 +129,49 @@ export default function UserSearchSelect({
     <div className="w-full">
       <Select
         items={users}
+        label={label}
         placeholder={placeholder}
+        variant={variant}
         isLoading={loading}
         selectionMode={isMultiple ? "multiple" : "single"}
         selectedKeys={new Set(selectedUserIds)}
         onSelectionChange={handleSelectionChange}
         isDisabled={isDisabled}
-        onInputChange={setInputValue}
-        inputValue={inputValue}
         className="w-full"
-        classNames={{
+        classNames={variant === "bordered" ? {} : {
           trigger: "glass border-white/20",
           popoverContent: "glass",
           listbox: "text-white",
         }}
-        renderValue={(items) => (
-          <div className="flex flex-wrap gap-1">
-            {items.map((item) => (
-              <Chip
-                key={item.key}
-                size="sm"
-                color={getRoleColor(item.data?.role)}
-                variant="flat"
-                avatar={
-                  item.data?.profilePicture ? (
-                    <Avatar
-                      alt={item.data.name}
-                      className="w-4 h-4"
-                      src={`${API}${item.data.profilePicture}`}
-                    />
-                  ) : undefined
-                }
-              >
-                {item.data?.name}
-              </Chip>
-            ))}
-          </div>
-        )}
+        renderValue={(items) => {
+          if (!isMultiple && items.length === 1) {
+            const item = Array.from(items)[0];
+            return item.data?.name || placeholder;
+          }
+          return (
+            <div className="flex flex-wrap gap-1">
+              {items.map((item) => (
+                <Chip
+                  key={item.key}
+                  size="sm"
+                  color={getRoleColor(item.data?.role)}
+                  variant="flat"
+                  avatar={
+                    item.data?.profilePicture ? (
+                      <Avatar
+                        alt={item.data.name}
+                        className="w-4 h-4"
+                        src={`${API}${item.data.profilePicture}`}
+                      />
+                    ) : undefined
+                  }
+                >
+                  {item.data?.name}
+                </Chip>
+              ))}
+            </div>
+          );
+        }}
       >
         {(user) => (
           <SelectItem
@@ -159,26 +179,40 @@ export default function UserSearchSelect({
             textValue={user.name}
             className="text-white"
           >
-            <div className="flex items-center gap-3">
-              <Avatar
-                alt={user.name}
-                className="w-8 h-8"
-                src={user.profilePicture ? `${API}${user.profilePicture}` : undefined}
-                name={user.name.charAt(0).toUpperCase()}
-              />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{user.name}</span>
-                <span className="text-xs text-white/60">{user.email}</span>
+            {user.id === "" ? (
+              // Special rendering for "Any assignee" option
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center">
+                  <span className="text-white text-xs">?</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-white/60">Clear filter</span>
+                </div>
               </div>
-              <Chip
-                size="sm"
-                color={getRoleColor(user.role)}
-                variant="flat"
-                className="ml-auto"
-              >
-                {user.role}
-              </Chip>
-            </div>
+            ) : (
+              // Normal user rendering
+              <div className="flex items-center gap-3">
+                <Avatar
+                  alt={user.name}
+                  className="w-8 h-8"
+                  src={user.profilePicture ? `${API}${user.profilePicture}` : undefined}
+                  name={user.name.charAt(0).toUpperCase()}
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-white/60">{user.email}</span>
+                </div>
+                <Chip
+                  size="sm"
+                  color={getRoleColor(user.role)}
+                  variant="flat"
+                  className="ml-auto"
+                >
+                  {user.role}
+                </Chip>
+              </div>
+            )}
           </SelectItem>
         )}
       </Select>

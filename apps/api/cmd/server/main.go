@@ -89,6 +89,7 @@ func main() {
 	v1.Get("/tickets/:id", middleware.AuthOptional(cfg.JWTSecret), h.TicketsDetail)
 	v1.Post("/tickets/:id/attachments", middleware.AuthOptional(cfg.JWTSecret), h.TicketsUploadAttachments)
 	v1.Get("/metrics/summary", h.MetricsSummary)
+	v1.Get("/rankings", h.GetUserRankings)
 	v1.Post("/priority/compute", h.PriorityCompute)
 
 	// Protected routes (require authentication)
@@ -112,6 +113,9 @@ func main() {
 	// Admin routes (require Supervisor or Manager roles)
 	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
 	admin.Post("/tickets/:id/classify", h.TicketsClassify)
+	admin.Put("/tickets/:id/red-flags", h.TicketsUpdateRedFlags)
+	admin.Put("/tickets/:id/impact-assessment", h.TicketsUpdateImpactAssessment)
+	admin.Put("/tickets/:id/urgency-timeline", h.TicketsUpdateUrgencyTimeline)
 
 	// Static file serving - protected with authentication
 	app.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {

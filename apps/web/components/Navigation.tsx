@@ -124,7 +124,7 @@ export function Navigation() {
             <DropdownTrigger>
               <Button 
                 variant="ghost" 
-                className="glass text-white/90 hover:text-white hover:bg-white/10 px-2 rounded-xl border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:shadow-xl hover:border-white/30 flex items-center gap-3"
+                className="glass text-white/90 hover:text-white hover:bg-white/10 pr-4 rounded-full border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:shadow-xl hover:border-white/30 flex items-center gap-3"
               >
                 {user.profilePicture ? (
                   <img 

@@ -18,11 +18,15 @@ type TicketRepo struct{ pool *pgxpool.Pool }
 
 func (r *TicketRepo) Create(ctx context.Context, t *models.Ticket) error {
 	details, _ := json.Marshal(t.Details)
+	redFlagsData, _ := json.Marshal(t.RedFlagsData)
+	impactAssessmentData, _ := json.Marshal(t.ImpactAssessmentData)
+	urgencyTimelineData, _ := json.Marshal(t.UrgencyTimelineData)
+	
 	row := r.pool.QueryRow(ctx, `INSERT INTO tickets 
-		(created_by, contact_email, contact_phone, initial_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority) 
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		(created_by, contact_email, contact_phone, initial_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, red_flags_data, impact_assessment_data, urgency_timeline_data) 
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 		RETURNING id, code, created_at, updated_at`,
-		t.CreatedBy, t.ContactEmail, t.ContactPhone, t.InitialType, t.Status, t.Title, t.Description, details, t.ImpactScore, t.UrgencyScore, t.FinalScore, t.RedFlag, t.Priority,
+		t.CreatedBy, t.ContactEmail, t.ContactPhone, t.InitialType, t.Status, t.Title, t.Description, details, t.ImpactScore, t.UrgencyScore, t.FinalScore, t.RedFlag, t.Priority, redFlagsData, impactAssessmentData, urgencyTimelineData,
 	)
 	return row.Scan(&t.ID, &t.Code, &t.CreatedAt, &t.UpdatedAt)
 }
@@ -46,7 +50,8 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 		clauses = append(clauses, fmt.Sprintf("priority = $%d", arg)); args = append(args, f.Priority); arg++
 	}
 	if f.AssigneeID != "" {
-		clauses = append(clauses, fmt.Sprintf("assignee_id = $%d", arg)); args = append(args, f.AssigneeID); arg++
+		// Check both the new multiple assignee system and legacy single assignee field
+		clauses = append(clauses, fmt.Sprintf("(assignee_id = $%d OR EXISTS (SELECT 1 FROM ticket_assignments ta WHERE ta.ticket_id = t.id AND ta.assignee_id = $%d))", arg, arg)); args = append(args, f.AssigneeID); arg++
 	}
 	if f.CreatedBy != "" {
 		clauses = append(clauses, fmt.Sprintf("created_by = $%d", arg)); args = append(args, f.CreatedBy); arg++
@@ -76,6 +81,26 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 		if err != nil { return nil, 0, err }
 		json.Unmarshal(details, &t.Details)
 		t.LatestComment = latestComment
+		
+		// Fetch assignees for this ticket
+		assignees := []models.User{}
+		assigneeRows, assigneeErr := r.pool.Query(ctx, `
+			SELECT u.id, u.name, u.email, u.role, u.profile_picture, u.created_at, u.updated_at
+			FROM ticket_assignments ta
+			JOIN users u ON ta.assignee_id = u.id
+			WHERE ta.ticket_id=$1 
+			ORDER BY ta.assigned_at ASC`, t.ID)
+		
+		if assigneeErr == nil {
+			for assigneeRows.Next() {
+				var u models.User
+				assigneeRows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.ProfilePicture, &u.CreatedAt, &u.UpdatedAt)
+				assignees = append(assignees, u)
+			}
+			assigneeRows.Close()
+		}
+		t.Assignees = assignees
+		
 		items = append(items, t)
 	}
 
@@ -86,7 +111,8 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 		row := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM tickets`)
 		if err := row.Scan(&total); err != nil { return nil, 0, err }
 	} else {
-		row := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM tickets WHERE `+where, countArgs...)
+		countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM tickets t WHERE %s`, where)
+		row := r.pool.QueryRow(ctx, countSQL, countArgs...)
 		if err := row.Scan(&total); err != nil { return nil, 0, err }
 	}
 
@@ -95,17 +121,20 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 
 func (r *TicketRepo) GetByID(ctx context.Context, id string) (models.Ticket, error) {
 	var t models.Ticket
-	var details []byte
+	var details, redFlagsData, impactAssessmentData, urgencyTimelineData []byte
 	var latestComment *string
 	row := r.pool.QueryRow(ctx, `SELECT 
-		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
+		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.created_at, t.updated_at, t.closed_at,
 		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE t.id=$1`, id)
-	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
+	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return t, ErrNotFound }
 		return t, err
 	}
 	json.Unmarshal(details, &t.Details)
+	json.Unmarshal(redFlagsData, &t.RedFlagsData)
+	json.Unmarshal(impactAssessmentData, &t.ImpactAssessmentData)
+	json.Unmarshal(urgencyTimelineData, &t.UrgencyTimelineData)
 	t.LatestComment = latestComment
 	return t, nil
 }
@@ -210,6 +239,17 @@ func (r *TicketRepo) Assign(ctx context.Context, id string, assigneeID *string) 
 }
 
 func (r *TicketRepo) ChangeStatus(ctx context.Context, id string, status models.TicketStatus) error {
+	// Validate completion requirements
+	if status == models.StatusCompleted {
+		assignees, err := r.GetAssignees(ctx, id)
+		if err != nil {
+			return err
+		}
+		if len(assignees) == 0 {
+			return errors.New("cannot complete ticket without at least one assignee")
+		}
+	}
+
 	now := time.Now()
 	var closedAt *time.Time
 	if status == models.StatusCompleted || status == models.StatusCanceled {
@@ -270,7 +310,12 @@ func (r *TicketRepo) UpdateTicketFields(ctx context.Context, id string, initialT
 }
 
 func (r *TicketRepo) AddComment(ctx context.Context, id string, authorID *string, body string) error {
-	_, err := r.pool.Exec(ctx, `INSERT INTO comments (ticket_id, author_id, body) VALUES ($1,$2,$3)`, id, authorID, body)
+	_, err := r.pool.Exec(ctx, `INSERT INTO comments (ticket_id, author_id, body, is_system_generated) VALUES ($1,$2,$3,$4)`, id, authorID, body, false)
+	return err
+}
+
+func (r *TicketRepo) AddSystemComment(ctx context.Context, id string, body string) error {
+	_, err := r.pool.Exec(ctx, `INSERT INTO comments (ticket_id, author_id, body, is_system_generated) VALUES ($1,NULL,$2,$3)`, id, body, true)
 	return err
 }
 
@@ -306,6 +351,49 @@ func (r *TicketRepo) GetCommentAttachments(ctx context.Context, commentID string
 		attachments = append(attachments, a)
 	}
 	return attachments, rows.Err()
+}
+
+// UpdateRedFlags updates red flags data and creates automatic comment
+// Note: This should trigger score recalculation in the handler, not here
+func (r *TicketRepo) UpdateRedFlags(ctx context.Context, id string, redFlagsData map[string]any, authorName string) error {
+	redFlagsJSON, _ := json.Marshal(redFlagsData)
+	
+	_, err := r.pool.Exec(ctx, `UPDATE tickets SET red_flags_data=$1, updated_at=NOW() WHERE id=$2`, redFlagsJSON, id)
+	if err != nil {
+		return err
+	}
+	
+	// Add automatic comment
+	commentBody := fmt.Sprintf("Red Flags (Critical Issues) updated by %s", authorName)
+	return r.AddSystemComment(ctx, id, commentBody)
+}
+
+// UpdateImpactAssessment updates impact assessment data and creates automatic comment
+func (r *TicketRepo) UpdateImpactAssessment(ctx context.Context, id string, impactAssessmentData map[string]any, authorName string) error {
+	impactJSON, _ := json.Marshal(impactAssessmentData)
+	
+	_, err := r.pool.Exec(ctx, `UPDATE tickets SET impact_assessment_data=$1, updated_at=NOW() WHERE id=$2`, impactJSON, id)
+	if err != nil {
+		return err
+	}
+	
+	// Add automatic comment
+	commentBody := fmt.Sprintf("Impact Assessment updated by %s", authorName)
+	return r.AddSystemComment(ctx, id, commentBody)
+}
+
+// UpdateUrgencyTimeline updates urgency timeline data and creates automatic comment
+func (r *TicketRepo) UpdateUrgencyTimeline(ctx context.Context, id string, urgencyTimelineData map[string]any, authorName string) error {
+	urgencyJSON, _ := json.Marshal(urgencyTimelineData)
+	
+	_, err := r.pool.Exec(ctx, `UPDATE tickets SET urgency_timeline_data=$1, updated_at=NOW() WHERE id=$2`, urgencyJSON, id)
+	if err != nil {
+		return err
+	}
+	
+	// Add automatic comment
+	commentBody := fmt.Sprintf("Urgency Timeline updated by %s", authorName)
+	return r.AddSystemComment(ctx, id, commentBody)
 }
 
 func (r *TicketRepo) GetAttachmentByID(ctx context.Context, attachmentID string) (models.Attachment, error) {
@@ -399,6 +487,7 @@ func (r *TicketRepo) UnassignUsers(ctx context.Context, ticketID string, assigne
 }
 
 func (r *TicketRepo) GetAssignees(ctx context.Context, ticketID string) ([]models.User, error) {
+	// First try the new multiple assignees system
 	rows, err := r.pool.Query(ctx, `
 		SELECT u.id, u.name, u.email, u.role, u.profile_picture, u.created_at, u.updated_at
 		FROM ticket_assignments ta
@@ -419,6 +508,23 @@ func (r *TicketRepo) GetAssignees(ctx context.Context, ticketID string) ([]model
 			return nil, err
 		}
 		assignees = append(assignees, u)
+	}
+	
+	// If no assignees found in the new system, try the legacy single assignee system
+	if len(assignees) == 0 {
+		var legacyAssignee models.User
+		legacyErr := r.pool.QueryRow(ctx, `
+			SELECT u.id, u.name, u.email, u.role, u.profile_picture, u.created_at, u.updated_at
+			FROM tickets t
+			JOIN users u ON t.assignee_id = u.id
+			WHERE t.id = $1 AND t.assignee_id IS NOT NULL`, ticketID).Scan(
+			&legacyAssignee.ID, &legacyAssignee.Name, &legacyAssignee.Email, 
+			&legacyAssignee.Role, &legacyAssignee.ProfilePicture, 
+			&legacyAssignee.CreatedAt, &legacyAssignee.UpdatedAt)
+		
+		if legacyErr == nil {
+			assignees = append(assignees, legacyAssignee)
+		}
 	}
 	
 	return assignees, nil

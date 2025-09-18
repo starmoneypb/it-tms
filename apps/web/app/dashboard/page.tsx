@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/react";
 import DOMPurify from "isomorphic-dompurify";
 import dynamic from "next/dynamic";
-import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap } from "lucide-react";
+import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award } from "lucide-react";
 
 // Import the Chart.js pie chart component with SSR disabled
 const ChartJsPieChart = dynamic(() => import("../../components/ChartJsPieChart"), {
@@ -42,6 +42,16 @@ type Summary = {
   statusCounts: Record<string, number>;
   categoryCounts: Record<string, number>;
   priorityCounts: Record<string, number>;
+};
+
+type UserRanking = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  totalPoints: number;
+  ticketsCompleted: number;
+  rank: number;
 };
 
 
@@ -85,6 +95,7 @@ function getPriorityColor(priority: string): string {
 
 export default function Dashboard() {
   const [data, setData] = useState<Summary | null>(null);
+  const [rankings, setRankings] = useState<UserRanking[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -97,20 +108,35 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         console.log('Fetching metrics from:', `${API}/api/v1/metrics/summary`);
-        const response = await fetch(`${API}/api/v1/metrics/summary`);
+        const [metricsResponse, rankingsResponse] = await Promise.all([
+          fetch(`${API}/api/v1/metrics/summary`, {
+            credentials: "include",
+          }),
+          fetch(`${API}/api/v1/rankings`, {
+            credentials: "include",
+          })
+        ]);
         
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (!metricsResponse.ok) {
+          throw new Error(`HTTP ${metricsResponse.status}: ${metricsResponse.statusText}`);
         }
         
-        const result = await response.json();
-        console.log('API Response:', result);
+        const metricsResult = await metricsResponse.json();
+        console.log('API Response:', metricsResult);
         
         // Handle both direct data and wrapped data formats
-        const metricsData = result.data || result;
+        const metricsData = metricsResult.data || metricsResult;
         console.log('Processed metrics data:', metricsData);
         
         setData(metricsData);
+        
+        // Fetch rankings if available
+        if (rankingsResponse.ok) {
+          const rankingsResult = await rankingsResponse.json();
+          const rankingsData = rankingsResult.data || rankingsResult;
+          setRankings(Array.isArray(rankingsData) ? rankingsData : []);
+        }
+        
         setError(null);
       } catch (e) {
         console.error('Error fetching metrics:', e);
@@ -124,8 +150,15 @@ export default function Dashboard() {
           priorityCounts: { 'P0': 2, 'P1': 4, 'P2': 8, 'P3': 7 }
         };
         
+        const fallbackRankings: UserRanking[] = [
+          { id: '1', name: 'John Doe', email: 'john@example.com', role: 'User', totalPoints: 125.5, ticketsCompleted: 15, rank: 1 },
+          { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'Supervisor', totalPoints: 98.0, ticketsCompleted: 12, rank: 2 },
+          { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'User', totalPoints: 87.5, ticketsCompleted: 10, rank: 3 }
+        ];
+        
         console.log('Using fallback data:', fallbackData);
         setData(fallbackData);
+        setRankings(fallbackRankings);
       } finally {
         setLoading(false);
       }
@@ -199,7 +232,7 @@ export default function Dashboard() {
               {data.inProgressToday.map((ticket) => (
                 <div 
                   key={ticket.id} 
-                  className="w-[320px] h-[240px] flex-shrink-0 glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col"
+                  className="w-[320px] h-[280px] flex-shrink-0 glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col"
                   onClick={() => window.location.href = `/tickets/${ticket.id}`}
                 >
                   {/* Header with Title and Priority */}
@@ -219,11 +252,11 @@ export default function Dashboard() {
                   </div>
 
                   {/* Latest Comment */}
-                  <div className="flex-1 min-h-0 mb-3">
+                  <div className="flex-1 min-h-0 mb-4">
                     {ticket.latestComment ? (
                       <>
                         <div className="text-xs text-white/50 mb-1">Latest comment:</div>
-                        <div className="h-[60px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
+                        <div className="h-[80px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                           <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
                             {(() => {
                               const cleanText = ticket.latestComment
@@ -233,14 +266,14 @@ export default function Dashboard() {
                                 .replace(/\s+/g, ' ')
                                 .trim();
                               
-                              // Manually truncate to fit in 3 lines (approximately 120 characters)
-                              return cleanText.length > 120 ? cleanText.substring(0, 120) + '...' : cleanText;
+                              // Manually truncate to fit in 4 lines (approximately 160 characters)
+                              return cleanText.length > 160 ? cleanText.substring(0, 160) + '...' : cleanText;
                             })()}
                           </div>
                         </div>
                       </>
                     ) : (
-                      <div className="h-[60px] flex items-center justify-center text-white/40 text-sm">
+                      <div className="h-[80px] flex items-center justify-center text-white/40 text-sm">
                         No recent activity
                       </div>
                     )}
@@ -305,6 +338,66 @@ export default function Dashboard() {
         <ChartCard title="Status Distribution" data={toPie(data.statusCounts)} icon={<BarChart3 size={18} className="text-primary-400" />} />
         <ChartCard title="Category Breakdown" data={toPie(data.categoryCounts)} icon={<FolderOpen size={18} className="text-primary-400" />} />
         <ChartCard title="Priority Levels" data={toPie(data.priorityCounts)} icon={<Zap size={18} className="text-primary-400" />} />
+
+        {/* User Rankings Section */}
+        <Card className="lg:col-span-3 glass p-2">
+          <CardHeader className="pb-3">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Trophy size={20} className="text-yellow-400" />
+              Top Performers
+            </h2>
+          </CardHeader>
+          <CardBody>
+            {rankings.length === 0 ? (
+              <div className="text-center py-8">
+                <Trophy size={48} className="mx-auto text-gray-400 mb-4" />
+                <p className="text-white/50">No rankings available yet</p>
+                <p className="text-white/30 text-sm mt-2">Complete tickets to earn points and appear in rankings!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rankings.slice(0, 10).map((user, index) => (
+                  <div
+                    key={user.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
+                      index === 0 
+                        ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30' 
+                        : index === 1 
+                        ? 'bg-gradient-to-r from-gray-400/20 to-slate-500/20 border border-gray-400/30'
+                        : index === 2
+                        ? 'bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-600/30'
+                        : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                    }`}
+                  >
+                    <div className="flex-shrink-0">
+                      {index === 0 && <Trophy size={20} className="text-yellow-400" />}
+                      {index === 1 && <Award size={20} className="text-gray-400" />}
+                      {index === 2 && <Star size={20} className="text-amber-600" />}
+                      {index > 2 && (
+                        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium">
+                          {user.rank}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-white truncate">{user.name}</p>
+                          <p className="text-xs text-white/50 truncate">{user.role}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-2">
+                          <p className="font-semibold text-primary-400">{user.totalPoints.toFixed(1)}</p>
+                          <p className="text-xs text-white/50">{user.ticketsCompleted} tickets</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardBody>
+        </Card>
       </div>
     </div>
   );

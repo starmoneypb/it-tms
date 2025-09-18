@@ -5,11 +5,12 @@ globs:
   - "apps/web/**"
 alwaysApply: false
 ---
-# Priority
+# Priority - New Negative Scoring System
 
-- **Red Flag**: any true ⇒ `P0`.
-- **Impact Score** = min(7, Σ impacts with weights: 4/4/4/2/1).
-- **Urgency Score** = 3 (≤48h), 2 (3–7d), 1 (8–30d), 0 (≥31d or none).
-- **Final Score** = min(10, Impact + Urgency).
-- **Priority**: P0 = 9–10 or Red Flag; P1 = 6–8; P2 = 3–5; P3 = 0–2.
-- Table-driven tests cover edge cases.
+- **Red Flag**: any true ⇒ `P0`. Each Red Flag = -5 points.
+- **Impact Score** = Σ impacts with weights: -5/-5/-5/-3/-2 (LawNonCompliance/SevereSecurity/PaymentAbnormal/LostRevenue/NoWorkaround).
+- **Urgency Score** = -5 (≤48h), -3 (3–7d), -2 (8–30d), 0 (≥31d or none).
+- **Final Score** = Impact + Urgency + RedFlags + 45 (normalized to 0-45 scale).
+- **Maximum Score**: Exactly 0 (all criteria met: -20 impact + -5 urgency + -20 red flags + 45 = 0).
+- **Priority Thresholds**: P0 = 0–10 or Red Flag; P1 = 11–20; P2 = 21–35; P3 = 36–45.
+- **Lower scores = Higher priority** (inverted scale for intuitive critical scoring).

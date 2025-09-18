@@ -55,6 +55,8 @@ services:
         psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0004_multiple_assignees.up.sql;
         echo 'Applying 0005_comment_attachments.up.sql...';
         psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0005_comment_attachments.up.sql;
+        echo 'Applying 0006_enhanced_scoring_system.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0006_enhanced_scoring_system.up.sql;
         echo 'Migrations applied successfully!';
         echo 'Seeding database...';
         cd apps/api;

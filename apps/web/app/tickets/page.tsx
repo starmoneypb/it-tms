@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
-import { Search, Clock, Inbox } from "lucide-react";
+import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle } from "lucide-react";
+import UserSearchSelect from "@/components/UserSearchSelect";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -78,10 +79,59 @@ function getPriorityColor(priority: string): string {
   }
 }
 
+// Status indicator component
+function StatusIndicator({ status }: { status: string }) {
+  const getStatusConfig = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return {
+          icon: AlertCircle,
+          color: 'text-yellow-400 bg-yellow-400/10',
+          label: 'Pending'
+        };
+      case 'in_progress':
+        return {
+          icon: Play,
+          color: 'text-blue-400 bg-blue-400/10',
+          label: 'In Progress'
+        };
+      case 'completed':
+        return {
+          icon: CheckCircle,
+          color: 'text-green-400 bg-green-400/10',
+          label: 'Completed'
+        };
+      case 'canceled':
+        return {
+          icon: XCircle,
+          color: 'text-red-400 bg-red-400/10',
+          label: 'Canceled'
+        };
+      default:
+        return {
+          icon: AlertCircle,
+          color: 'text-gray-400 bg-gray-400/10',
+          label: status
+        };
+    }
+  };
+
+  const config = getStatusConfig(status);
+  const IconComponent = config.icon;
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <IconComponent size={12} />
+      {config.label}
+    </span>
+  );
+}
+
 export default function TicketsPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<{ data: Ticket[]; total: number; totalPages: number; } | null>(null);
@@ -93,11 +143,13 @@ export default function TicketsPage() {
     if (q) params.set("q", q);
     if (status) params.set("status", status);
     if (priority) params.set("priority", priority);
+    // For now, we'll use the first assignee ID for backward compatibility with the API
+    if (assigneeIds.length > 0) params.set("assigneeId", assigneeIds[0]);
     fetch(`${API}/api/v1/tickets?` + params.toString(), { credentials: "include" })
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false));
-  }, [page, pageSize, q, status, priority]);
+  }, [page, pageSize, q, status, priority, assigneeIds.join(',')]);
 
   // Debounced search for text input - resets to page 1
   useEffect(() => {
@@ -108,10 +160,10 @@ export default function TicketsPage() {
     return () => clearTimeout(timeoutId);
   }, [q]);
 
-  // Immediate search for status and priority changes - resets to page 1
+  // Immediate search for status, priority, and assignee changes - resets to page 1
   useEffect(() => {
     setPage(1);
-  }, [status, priority]);
+  }, [status, priority, assigneeIds.join(',')]);
 
   // Load data when any parameter changes
   useEffect(() => { 
@@ -133,7 +185,7 @@ export default function TicketsPage() {
               Search & Filter
             </h2>
           </CardHeader>
-          <CardBody className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardBody className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input 
               label="Search tickets" 
               placeholder="Search by title..."
@@ -165,6 +217,15 @@ export default function TicketsPage() {
                 <SelectItem key={s}>{s || "Any"}</SelectItem>
               ))}
             </Select>
+            <UserSearchSelect
+              selectedUserIds={assigneeIds}
+              onSelectionChange={setAssigneeIds}
+              placeholder="Any assignee"
+              label="Assignee"
+              variant="bordered"
+              isMultiple={false}
+              allowClear={true}
+            />
           </CardBody>
         </Card>
 
@@ -181,7 +242,7 @@ export default function TicketsPage() {
           {data?.data?.map((ticket) => (
             <div 
               key={ticket.id} 
-              className="glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col h-[240px]"
+              className="glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col h-[280px]"
               onClick={() => window.location.href = `/tickets/${ticket.id}`}
             >
               {/* Header with Title and Priority */}
@@ -189,9 +250,12 @@ export default function TicketsPage() {
                 <h3 className="text-base font-semibold group-hover:text-primary-400 transition-colors line-clamp-2 flex-1 mr-2">
                   #{ticket.code} — {ticket.title}
                 </h3>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                  {ticket.priority}
-                </span>
+                <div className="flex flex-col gap-2 items-end">
+                  <StatusIndicator status={ticket.status} />
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                    {ticket.priority}
+                  </span>
+                </div>
               </div>
 
               {/* Time in Progress */}
@@ -201,11 +265,11 @@ export default function TicketsPage() {
               </div>
 
               {/* Latest Comment */}
-              <div className="flex-1 min-h-0 mb-3">
+              <div className="flex-1 min-h-0 mb-4">
                 {ticket.latestComment ? (
                   <>
                     <div className="text-xs text-white/50 mb-1">Latest comment:</div>
-                    <div className="h-[60px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
+                    <div className="h-[80px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                       <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
                         {(() => {
                           const cleanText = ticket.latestComment
@@ -215,14 +279,14 @@ export default function TicketsPage() {
                             .replace(/\s+/g, ' ')
                             .trim();
                           
-                          // Manually truncate to fit in 3 lines (approximately 120 characters)
-                          return cleanText.length > 120 ? cleanText.substring(0, 120) + '...' : cleanText;
+                          // Manually truncate to fit in 4 lines (approximately 160 characters)
+                          return cleanText.length > 160 ? cleanText.substring(0, 160) + '...' : cleanText;
                         })()}
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="h-[60px] flex items-center justify-center text-white/40 text-sm">
+                  <div className="h-[80px] flex items-center justify-center text-white/40 text-sm">
                     No recent activity
                   </div>
                 )}
@@ -306,7 +370,7 @@ export default function TicketsPage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">No tickets found</h3>
               <p className="text-white/70 mb-4">
-                {q || status || priority 
+                {q || status || priority || assigneeIds.length > 0
                   ? "Try adjusting your search criteria" 
                   : "Get started by creating your first ticket"
                 }
