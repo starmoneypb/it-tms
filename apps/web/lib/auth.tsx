@@ -20,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (name: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   signOut: () => void;
+  refreshUser: () => Promise<void>;
   hasRole: (role: UserRole) => boolean;
   hasAnyRole: (roles: UserRole[]) => boolean;
   canEditTicket: (ticketCreatedBy?: string) => boolean;
@@ -114,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    await checkAuth();
+  };
+
   const hasRole = (role: UserRole): boolean => {
     return user?.role === role;
   };
@@ -181,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        refreshUser,
         hasRole,
         hasAnyRole,
         canEditTicket,

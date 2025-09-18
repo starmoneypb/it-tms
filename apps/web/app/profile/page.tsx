@@ -25,10 +25,12 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
   
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -43,7 +45,20 @@ export default function ProfilePage() {
     }
   }, [user, setValue]);
 
+  // Clear error messages when user starts typing
+  const watchedName = watch("name");
+  const watchedEmail = watch("email");
+  
+  useEffect(() => {
+    if (updateError) {
+      setUpdateError(null);
+    }
+  }, [watchedName, watchedEmail, updateError]);
+
   const onSubmit = async (data: ProfileForm) => {
+    setUpdateError(null);
+    setUpdateSuccess(null);
+    
     try {
       const response = await fetch(`${API}/api/v1/profile`, {
         method: "PATCH",
@@ -55,16 +70,22 @@ export default function ProfilePage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update profile");
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error?.message || "Failed to update profile");
       }
 
       const result = await response.json();
       setProfile(result.data);
       
-      // Update the auth context
-      window.location.reload(); // Simple refresh to update auth state
+      // Update the auth context without page reload
+      await refreshUser();
+      setUpdateSuccess("Profile updated successfully!");
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setUpdateSuccess(null), 3000);
     } catch (error) {
       console.error("Error updating profile:", error);
+      setUpdateError(error instanceof Error ? error.message : "Failed to update profile");
     }
   };
 
@@ -103,8 +124,9 @@ export default function ProfilePage() {
       const result = await response.json();
       setProfile(prev => prev ? { ...prev, profilePicture: result.data.profilePicture } : null);
       
-      // Update the auth context
-      window.location.reload(); // Simple refresh to update auth state
+      // Update the auth context without page reload
+      await refreshUser();
+      setUploadError(null); // Clear any previous errors
     } catch (error) {
       console.error("Error uploading profile picture:", error);
       setUploadError('Failed to upload profile picture');
@@ -201,6 +223,18 @@ export default function ProfilePage() {
           </CardHeader>
           <CardBody>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Success/Error Messages */}
+              {updateSuccess && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 text-green-400 text-sm">
+                  {updateSuccess}
+                </div>
+              )}
+              {updateError && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 text-sm">
+                  {updateError}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Display Name"

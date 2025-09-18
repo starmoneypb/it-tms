@@ -124,24 +124,24 @@ export function Navigation() {
             <DropdownTrigger>
               <Button 
                 variant="ghost" 
-                className="glass text-white/90 hover:text-white hover:bg-white/10 pr-4 rounded-full border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:shadow-xl hover:border-white/30 flex items-center gap-3"
+                className="glass text-white/90 hover:text-white hover:bg-white/10 rounded-full border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:shadow-xl hover:border-white/30 flex items-center p-0 pl-0 relative"
               >
                 {user.profilePicture ? (
                   <img 
                     src={`${API}${user.profilePicture}`} 
                     alt={user.name}
-                    className="w-8 h-8 rounded-full ring-2 ring-white/20"
+                    className="w-10 h-10 rounded-full ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2"
                     onError={(e) => {
                       // Hide image if it fails to load
                       e.currentTarget.style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="flex flex-col items-start">
+                <div className="flex flex-col items-start pl-12 pr-4">
                   <span className="text-sm font-medium">{user.name}</span>
                   <span className="text-xs text-white/60">{user.role}</span>
                 </div>
