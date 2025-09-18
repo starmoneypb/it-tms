@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
 import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle } from "lucide-react";
 import UserSearchSelect from "@/components/UserSearchSelect";
+import { useTranslations, useLocale } from 'next-intl';
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -81,31 +82,33 @@ function getPriorityColor(priority: string): string {
 
 // Status indicator component
 function StatusIndicator({ status }: { status: string }) {
+  const t = useTranslations('tickets');
+  
   const getStatusConfig = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending':
         return {
           icon: AlertCircle,
           color: 'text-yellow-400 bg-yellow-400/10',
-          label: 'Pending'
+          label: t('status.pending')
         };
       case 'in_progress':
         return {
           icon: Play,
           color: 'text-blue-400 bg-blue-400/10',
-          label: 'In Progress'
+          label: t('status.in_progress')
         };
       case 'completed':
         return {
           icon: CheckCircle,
           color: 'text-green-400 bg-green-400/10',
-          label: 'Completed'
+          label: t('status.completed')
         };
       case 'canceled':
         return {
           icon: XCircle,
           color: 'text-red-400 bg-red-400/10',
-          label: 'Canceled'
+          label: t('status.canceled')
         };
       default:
         return {
@@ -128,6 +131,9 @@ function StatusIndicator({ status }: { status: string }) {
 }
 
 export default function TicketsPage() {
+  const t = useTranslations('tickets');
+  const tCommon = useTranslations('common');
+  const locale = useLocale();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
@@ -173,8 +179,8 @@ export default function TicketsPage() {
   return (
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Tickets</h1>
-        <p className="text-white/70">Manage and track your support tickets</p>
+        <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+        <p className="text-white/70">{t('subtitle')}</p>
       </div>
 
       <div className="space-y-6">
@@ -182,45 +188,45 @@ export default function TicketsPage() {
           <CardHeader className="pb-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Search size={18} className="text-primary-400" />
-              Search & Filter
+              {t('searchAndFilter')}
             </h2>
           </CardHeader>
           <CardBody className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input 
-              label="Search tickets" 
-              placeholder="Search by title..."
+              label={tCommon('search')} 
+              placeholder={t('searchPlaceholder')}
               value={q} 
               onValueChange={setQ} 
               variant="bordered"
             />
             <Select 
               label="Status" 
-              placeholder="Any status"
+              placeholder={t('anyStatus')}
               selectedKeys={status ? [status] : []} 
               onChange={(e)=>setStatus(e.target.value)}
               variant="bordered"
             >
-              <SelectItem key="">Any</SelectItem>
-              <SelectItem key="pending">Pending</SelectItem>
-              <SelectItem key="in_progress">In Progress</SelectItem>
-              <SelectItem key="completed">Completed</SelectItem>
-              <SelectItem key="canceled">Canceled</SelectItem>
+              <SelectItem key="">{t('any')}</SelectItem>
+              <SelectItem key="pending">{t('status.pending')}</SelectItem>
+              <SelectItem key="in_progress">{t('status.in_progress')}</SelectItem>
+              <SelectItem key="completed">{t('status.completed')}</SelectItem>
+              <SelectItem key="canceled">{t('status.canceled')}</SelectItem>
             </Select>
             <Select 
               label="Priority" 
-              placeholder="Any priority"
+              placeholder={t('anyPriority')}
               selectedKeys={priority ? [priority] : []} 
               onChange={(e)=>setPriority(e.target.value)}
               variant="bordered"
             >
               {["", "P0", "P1", "P2", "P3"].map(s => (
-                <SelectItem key={s}>{s || "Any"}</SelectItem>
+                <SelectItem key={s}>{s || t('any')}</SelectItem>
               ))}
             </Select>
             <UserSearchSelect
               selectedUserIds={assigneeIds}
               onSelectionChange={setAssigneeIds}
-              placeholder="Any assignee"
+              placeholder={t('anyAssignee')}
               label="Assignee"
               variant="bordered"
               isMultiple={false}
@@ -233,7 +239,7 @@ export default function TicketsPage() {
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-              <p className="text-white/70">Loading tickets...</p>
+              <p className="text-white/70">{t('loadingTickets')}</p>
             </div>
           </div>
         )}
@@ -243,7 +249,7 @@ export default function TicketsPage() {
             <div 
               key={ticket.id} 
               className="glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col h-[280px]"
-              onClick={() => window.location.href = `/tickets/${ticket.id}`}
+              onClick={() => window.location.href = `/${locale}/tickets/${ticket.id}`}
             >
               {/* Header with Title and Priority */}
               <div className="flex items-start justify-between mb-3">
@@ -261,14 +267,14 @@ export default function TicketsPage() {
               {/* Time in Progress */}
               <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
                 <Clock size={14} className="text-blue-400" />
-                <span>Updated {formatTimeSince(ticket.updatedAt || ticket.createdAt)}</span>
+                <span>{tCommon('updated')} {formatTimeSince(ticket.updatedAt || ticket.createdAt)}</span>
               </div>
 
               {/* Latest Comment */}
               <div className="flex-1 min-h-0 mb-4">
                 {ticket.latestComment ? (
                   <>
-                    <div className="text-xs text-white/50 mb-1">Latest comment:</div>
+                        <div className="text-xs text-white/50 mb-1">{tCommon('latestComment')}</div>
                     <div className="h-[80px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                       <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
                         {(() => {
@@ -287,7 +293,7 @@ export default function TicketsPage() {
                   </>
                 ) : (
                   <div className="h-[80px] flex items-center justify-center text-white/40 text-sm">
-                    No recent activity
+                    {tCommon('noRecentActivity')}
                   </div>
                 )}
               </div>
@@ -322,24 +328,24 @@ export default function TicketsPage() {
                           </div>
                         )}
                       </div>
-                      <div className="text-sm text-white/70 ml-1">
-                        {ticket.assignees.length === 1 
-                          ? ticket.assignees[0].name 
-                          : `${ticket.assignees.length} assignees`
-                        }
-                      </div>
+                          <div className="text-sm text-white/70 ml-1">
+                            {ticket.assignees.length === 1 
+                              ? ticket.assignees[0].name 
+                              : `${ticket.assignees.length} ${tCommon('assignees')}`
+                            }
+                          </div>
                     </div>
                   ) : (
                     <>
                       <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs font-medium">
                         ?
                       </div>
-                      <div className="text-sm text-white/70">Unassigned</div>
+                      <div className="text-sm text-white/70">{tCommon('unassigned')}</div>
                     </>
                   )}
                 </div>
                 <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors">
-                  View →
+                  {tCommon('view')} →
                 </div>
               </div>
             </div>
@@ -366,20 +372,20 @@ export default function TicketsPage() {
             <CardBody className="text-center py-16">
               <div className="text-lg mb-4 text-gray-400 font-semibold flex items-center justify-center gap-2">
                 <Inbox size={20} />
-                No Results
+                {tCommon('noResults')}
               </div>
-              <h3 className="text-lg font-semibold mb-2">No tickets found</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('noTicketsFound')}</h3>
               <p className="text-white/70 mb-4">
                 {q || status || priority || assigneeIds.length > 0
-                  ? "Try adjusting your search criteria" 
-                  : "Get started by creating your first ticket"
+                  ? tCommon('tryAdjusting')
+                  : tCommon('getStartedFirst')
                 }
               </p>
               <a 
-                href="/tickets/new"
+                href={`/${locale}/tickets/new`}
                 className="inline-flex items-center justify-center px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
               >
-                Create Ticket
+                {tCommon('createTicket')}
               </a>
             </CardBody>
           </Card>

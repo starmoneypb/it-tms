@@ -4,9 +4,10 @@ import { Card, CardBody, CardHeader, Avatar } from "@heroui/react";
 import DOMPurify from "isomorphic-dompurify";
 import dynamic from "next/dynamic";
 import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award } from "lucide-react";
+import { useTranslations, useLocale } from 'next-intl';
 
 // Import the Chart.js pie chart component with SSR disabled
-const ChartJsPieChart = dynamic(() => import("../../components/ChartJsPieChart"), {
+const ChartJsPieChart = dynamic(() => import("@/components/ChartJsPieChart"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-64">
@@ -95,6 +96,9 @@ function getPriorityColor(priority: string): string {
 }
 
 export default function Dashboard() {
+  const t = useTranslations('dashboard');
+  const tCommon = useTranslations('common');
+  const locale = useLocale();
   const [data, setData] = useState<Summary | null>(null);
   const [rankings, setRankings] = useState<UserRanking[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +178,7 @@ export default function Dashboard() {
         <CardBody className="text-center py-8">
           <div className="text-red-400 text-lg mb-2 flex items-center justify-center gap-2">
             <AlertTriangle size={20} />
-            Error Loading Dashboard
+            {t('errorLoadingDashboard')}
           </div>
           <p className="text-white/70">{error}</p>
         </CardBody>
@@ -187,10 +191,10 @@ export default function Dashboard() {
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-white/70">Loading dashboard...</p>
+          <p className="text-white/70">{t('loadingDashboard')}</p>
           {error && (
             <p className="text-orange-400 text-sm mt-2">
-              API connection failed - using demo data
+              {t('apiConnectionFailed')}
             </p>
           )}
         </div>
@@ -207,8 +211,8 @@ export default function Dashboard() {
   return (
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Dashboard</h1>
-        <p className="text-white/70">Monitor your IT support operations and ticket metrics</p>
+        <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+        <p className="text-white/70">{t('subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -216,7 +220,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Clipboard size={20} className="text-primary-400" />
-              Active Tickets Today
+              {t('activeTicketsToday')}
             </h2>
           </CardHeader>
           <CardBody>
@@ -225,16 +229,16 @@ export default function Dashboard() {
                 <div className="w-full text-center py-8">
                   <div className="text-lg mb-2 text-green-400 font-semibold flex items-center justify-center gap-2">
                     <PartyPopper size={20} />
-                    Great!
+                    {t('great')}
                   </div>
-                  <p className="text-white/70">No tickets in progress today!</p>
+                  <p className="text-white/70">{t('noTicketsInProgress')}</p>
                 </div>
               )}
               {data.inProgressToday.map((ticket) => (
                 <div 
                   key={ticket.id} 
                   className="w-[320px] h-[280px] flex-shrink-0 glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col"
-                  onClick={() => window.location.href = `/tickets/${ticket.id}`}
+                  onClick={() => window.location.href = `/${locale}/tickets/${ticket.id}`}
                 >
                   {/* Header with Title and Priority */}
                   <div className="flex items-start justify-between mb-3">
@@ -249,14 +253,14 @@ export default function Dashboard() {
                   {/* Time in Progress */}
                   <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
                     <Clock size={14} className="text-blue-400" />
-                    <span>In progress for {formatTimeSince(ticket.updatedAt)}</span>
+                    <span>{t('inProgressFor')} {formatTimeSince(ticket.updatedAt)}</span>
                   </div>
 
                   {/* Latest Comment */}
                   <div className="flex-1 min-h-0 mb-4">
                     {ticket.latestComment ? (
                       <>
-                        <div className="text-xs text-white/50 mb-1">Latest comment:</div>
+                        <div className="text-xs text-white/50 mb-1">{tCommon('latestComment')}</div>
                         <div className="h-[80px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                           <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
                             {(() => {
@@ -275,7 +279,7 @@ export default function Dashboard() {
                       </>
                     ) : (
                       <div className="h-[80px] flex items-center justify-center text-white/40 text-sm">
-                        No recent activity
+                        {tCommon('noRecentActivity')}
                       </div>
                     )}
                   </div>
@@ -322,12 +326,12 @@ export default function Dashboard() {
                           <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs font-medium">
                             ?
                           </div>
-                          <div className="text-sm text-white/70">Unassigned</div>
+                          <div className="text-sm text-white/70">{tCommon('unassigned')}</div>
                         </>
                       )}
                     </div>
                     <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors">
-                      View →
+                      {tCommon('view')} →
                     </div>
                   </div>
                 </div>
@@ -336,24 +340,24 @@ export default function Dashboard() {
           </CardBody>
         </Card>
 
-        <ChartCard title="Status Distribution" data={toPie(data.statusCounts)} icon={<BarChart3 size={18} className="text-primary-400" />} />
-        <ChartCard title="Category Breakdown" data={toPie(data.categoryCounts)} icon={<FolderOpen size={18} className="text-primary-400" />} />
-        <ChartCard title="Priority Levels" data={toPie(data.priorityCounts)} icon={<Zap size={18} className="text-primary-400" />} />
+        <ChartCard title={t('statusDistribution')} data={toPie(data.statusCounts)} icon={<BarChart3 size={18} className="text-primary-400" />} />
+        <ChartCard title={t('categoryBreakdown')} data={toPie(data.categoryCounts)} icon={<FolderOpen size={18} className="text-primary-400" />} />
+        <ChartCard title={t('priorityLevels')} data={toPie(data.priorityCounts)} icon={<Zap size={18} className="text-primary-400" />} />
 
         {/* User Rankings Section */}
         <Card className="lg:col-span-3 glass p-2">
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Trophy size={20} className="text-yellow-400" />
-              Top Performers
+              {t('topPerformers')}
             </h2>
           </CardHeader>
           <CardBody>
             {rankings.length === 0 ? (
               <div className="text-center py-8">
                 <Trophy size={48} className="mx-auto text-gray-400 mb-4" />
-                <p className="text-white/50">No rankings available yet</p>
-                <p className="text-white/30 text-sm mt-2">Complete tickets to earn points and appear in rankings!</p>
+                <p className="text-white/50">{t('noRankings')}</p>
+                <p className="text-white/30 text-sm mt-2">{t('completeTickets')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -412,7 +416,7 @@ export default function Dashboard() {
                           }`}>
                             {user.totalPoints.toFixed(1)}
                           </p>
-                          <p className="text-xs text-white/50 mt-1">{user.ticketsCompleted} tickets</p>
+                          <p className="text-xs text-white/50 mt-1">{user.ticketsCompleted} {t('tickets')}</p>
                         </div>
                       </div>
                     </div>

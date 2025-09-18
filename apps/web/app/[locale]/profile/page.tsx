@@ -4,8 +4,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Card, CardBody, CardHeader, Input, Button, Avatar } from "@heroui/react";
-import { useAuth } from "../../lib/auth";
+import { useAuth } from "@/lib/auth";
 import { AlertTriangle, Camera, User } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -25,6 +26,8 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+  const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   const { user, isLoading, refreshUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -167,8 +170,8 @@ export default function ProfilePage() {
   return (
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Profile Settings</h1>
-        <p className="text-white/70">Manage your account information and preferences</p>
+        <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+        <p className="text-white/70">{t('subtitle')}</p>
       </div>
 
       <div className="max-w-2xl mx-auto space-y-6">
@@ -177,7 +180,7 @@ export default function ProfilePage() {
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Camera size={20} className="text-primary-400" />
-              Profile Picture
+              {t('profilePicture')}
             </h2>
           </CardHeader>
           <CardBody className="space-y-4">
@@ -218,7 +221,7 @@ export default function ProfilePage() {
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <User size={20} className="text-primary-400" />
-              Profile Information
+              {t('personalInfo')}
             </h2>
           </CardHeader>
           <CardBody>
@@ -237,17 +240,17 @@ export default function ProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Display Name"
+                  label={t('name')}
                   variant="bordered"
-                  placeholder="Enter your display name"
+                  placeholder={t('enterDisplayName')}
                   {...register("name")}
                   errorMessage={errors.name?.message}
                   isInvalid={!!errors.name}
                 />
                 <Input
-                  label="Email Address"
+                  label={t('email')}
                   variant="bordered"
-                  placeholder="Enter your email"
+                  placeholder={t('enterEmail')}
                   {...register("email")}
                   errorMessage={errors.email?.message}
                   isInvalid={!!errors.email}
@@ -255,10 +258,10 @@ export default function ProfilePage() {
               </div>
 
               <div className="bg-white/5 rounded-lg p-6">
-                <div className="text-sm text-white/70 mb-2">Account Information</div>
+                <div className="text-sm text-white/70 mb-2">{t('accountInfo')}</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-white/50">Role:</span>
+                    <span className="text-white/50">{t('currentRole')}:</span>
                     <span className="ml-2 text-white/80">{profile.role}</span>
                   </div>
                   <div>

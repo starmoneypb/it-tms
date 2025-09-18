@@ -4,6 +4,7 @@ import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox, Progress
 import { computePriority, PriorityInput } from "@/lib/priority";
 import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
+import { useLocale, useTranslations } from 'next-intl';
 import { 
   AlertTriangle, 
   Plus, 
@@ -42,17 +43,22 @@ const initialDraft: Draft = {
   priority: { redFlags: {}, impact: {}, urgency: "none" }
 };
 
-const steps = [
-  { number: 1, title: "Issue Type", description: "Determine if this is an abnormal system issue" },
-  { number: 2, title: "Ticket Details", description: "Provide specific information about your request" },
-  { number: 3, title: "Additional Info", description: "Add title, description, and attachments" },
-  { number: 4, title: "Priority & Submit", description: "Set priority level and submit your ticket" }
-];
+// Steps will be defined inside the component to access translations
 
 export default function NewTicket() {
+  const locale = useLocale();
+  const t = useTranslations('newTicket');
+  const tCommon = useTranslations('common');
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [submitting, setSubmitting] = useState(false);
   const { user, canCreateTicketType } = useAuth();
+
+  const steps = [
+    { number: 1, title: t('steps.issueType.title'), description: t('steps.issueType.description') },
+    { number: 2, title: t('steps.ticketDetails.title'), description: t('steps.ticketDetails.description') },
+    { number: 3, title: t('steps.additionalInfo.title'), description: t('steps.additionalInfo.description') },
+    { number: 4, title: t('steps.prioritySubmit.title'), description: t('steps.prioritySubmit.description') }
+  ];
 
   const pr = computePriority(draft.priority);
 
@@ -97,7 +103,7 @@ export default function NewTicket() {
       });
       
       if (!res.ok) {
-        alert("Failed to submit ticket");
+        alert(t('failedToSubmit'));
         return;
       }
       
@@ -120,15 +126,15 @@ export default function NewTicket() {
         if (!uploadRes.ok) {
           const errorData = await uploadRes.text();
           console.error("Failed to upload attachments:", errorData);
-          alert("Ticket created successfully, but some attachments failed to upload. Please try adding them again from the ticket page.");
+          alert(t('ticketCreatedSuccess'));
         }
       }
       
       // Redirect after all uploads are complete
-      window.location.href = `/tickets/${ticketId}`;
+      window.location.href = `/${locale}/tickets/${ticketId}`;
     } catch (error) {
       console.error("Error submitting ticket:", error);
-      alert("Failed to submit ticket");
+      alert(t('failedToSubmit'));
     } finally {
       setSubmitting(false);
     }
@@ -139,17 +145,17 @@ export default function NewTicket() {
   return (
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Create New Ticket</h1>
-        <p className="text-white/70">Submit a new support request or issue report</p>
+        <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+        <p className="text-white/70">{t('subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 glass p-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between w-full">
-              <h2 className="text-xl font-semibold">Ticket Creation Wizard</h2>
+              <h2 className="text-xl font-semibold">{t('ticketCreationWizard')}</h2>
               <div className="text-sm text-white/60">
-                Step {draft.step} of {steps.length}
+                {t('stepOf', { step: draft.step, total: steps.length })}
               </div>
             </div>
             <Progress 
@@ -163,8 +169,8 @@ export default function NewTicket() {
             {draft.step === 1 && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">What type of issue are you experiencing?</h3>
-                  <p className="text-white/70 mb-6">This helps us route your ticket to the right team</p>
+                  <h3 className="text-xl font-semibold mb-2">{t('whatTypeIssue')}</h3>
+                  <p className="text-white/70 mb-6">{t('helpsRoute')}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                   <Button 
@@ -175,8 +181,8 @@ export default function NewTicket() {
                     onPress={() => setDraft({ ...draft, isAbnormal: true, step: 2, type: "ISSUE_REPORT" })}
                   >
                     <AlertTriangle size={24} className="text-red-400 mb-1" />
-                    <div className="font-semibold text-sm mb-1">System Issue</div>
-                    <div className="text-xs opacity-70 text-center px-2">Something is broken</div>
+                    <div className="font-semibold text-sm mb-1">{t('yes')}</div>
+                    <div className="text-xs opacity-70 text-center px-2">{t('systemIssue')}</div>
                   </Button>
                   <Button 
                     color={draft.isAbnormal === false ? "primary" : "default"} 
@@ -186,8 +192,8 @@ export default function NewTicket() {
                     onPress={() => setDraft({ ...draft, isAbnormal: false, step: 2 })}
                   >
                     <Plus size={24} className="text-blue-400 mb-1" />
-                    <div className="font-semibold text-sm mb-1">Service Request</div>
-                    <div className="text-xs opacity-70 text-center px-2">Need assistance</div>
+                    <div className="font-semibold text-sm mb-1">{t('no')}</div>
+                    <div className="text-xs opacity-70 text-center px-2">{t('serviceRequest')}</div>
                   </Button>
                 </div>
               </section>
@@ -196,37 +202,37 @@ export default function NewTicket() {
             {draft.step === 2 && draft.isAbnormal === true && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Issue Report Details</h3>
-                  <p className="text-white/70 mb-6">Please provide detailed information about the problem</p>
+                  <h3 className="text-xl font-semibold mb-2">{t('issueReportDetails')}</h3>
+                  <p className="text-white/70 mb-6">{t('provideDetailedInfo')}</p>
                 </div>
                 <div className="space-y-4">
                   <WysiwygEditor 
-                    label="Problem Description" 
-                    placeholder="Describe the issue in detail..."
+                    label={t('problemDescription')} 
+                    placeholder={t('problemPlaceholder')}
                     value={draft.description || ""} 
                     onChange={(v)=>setDraft({...draft, description: v})}
                     minHeight="120px"
                   />
                   <WysiwygEditor 
-                    label="Steps to Reproduce" 
-                    placeholder="How can we reproduce this issue?"
+                    label={t('stepsToReproduce')} 
+                    placeholder={t('howToReproduce')}
                     value={(draft.details?.steps)|| ""} 
                     onChange={(v)=>setDraft({...draft, details: {...(draft.details||{}), steps: v}})}
                     minHeight="100px"
                   />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input 
-                      label="Contact Email" 
-                      placeholder="your@email.com"
+                      label={t('contactEmail')} 
+                      placeholder={t('yourEmail')}
                       variant="flat" 
                       value={draft.contactEmail||""} 
                       onValueChange={(v)=>setDraft({...draft, contactEmail: v})}
                       isRequired={!user}
-                      description={!user ? "Required for anonymous users" : ""}
+                      description={!user ? t('requiredForAnonymous') : ""}
                     />
                     <Input 
-                      label="Contact Phone" 
-                      placeholder="+1 (555) 123-4567"
+                      label={t('contactPhone')} 
+                      placeholder={t('yourPhone')}
                       variant="flat" 
                       value={draft.contactPhone||""} 
                       onValueChange={(v)=>setDraft({...draft, contactPhone: v})}
@@ -235,10 +241,10 @@ export default function NewTicket() {
                 </div>
                 <div className="flex gap-3">
                   <Button onPress={()=>setDraft({...draft, step: 3})} color="primary" size="lg">
-                    Continue
+                    {t('continue')}
                   </Button>
                   <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg">
-                    Back
+                    {tCommon('back')}
                   </Button>
                 </div>
               </section>
@@ -247,8 +253,8 @@ export default function NewTicket() {
             {draft.step === 2 && draft.isAbnormal === false && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">What type of service do you need?</h3>
-                  <p className="text-white/70 mb-6">Select the most appropriate category</p>
+                  <h3 className="text-xl font-semibold mb-2">{t('whatTypeService')}</h3>
+                  <p className="text-white/70 mb-6">{t('selectMostAppropriate')}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
                   {canCreateTicketType("CHANGE_REQUEST_NORMAL") && (
@@ -259,8 +265,8 @@ export default function NewTicket() {
                       className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
                       <RotateCcw size={24} className="text-yellow-400 mb-1" />
-                      <div className="font-semibold text-sm mb-1">Normal Change</div>
-                      <div className="text-xs opacity-70 text-center px-2">System modifications</div>
+                      <div className="font-semibold text-sm mb-1">{t('normalChange')}</div>
+                      <div className="text-xs opacity-70 text-center px-2">{t('systemModifications')}</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_DATA_CORRECTION") && (
@@ -271,8 +277,8 @@ export default function NewTicket() {
                       className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
                       <Edit3 size={24} className="text-green-400 mb-1" />
-                      <div className="font-semibold text-sm mb-1">Data Correction</div>
-                      <div className="text-xs opacity-70 text-center px-2">Fix incorrect data</div>
+                      <div className="font-semibold text-sm mb-1">{t('dataCorrection')}</div>
+                      <div className="text-xs opacity-70 text-center px-2">{t('fixIncorrectData')}</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_DATA_EXTRACTION") && (
@@ -283,8 +289,8 @@ export default function NewTicket() {
                       className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
                       <Database size={24} className="text-blue-400 mb-1" />
-                      <div className="font-semibold text-sm mb-1">Data Extraction</div>
-                      <div className="text-xs opacity-70 text-center px-2">Export or retrieve data</div>
+                      <div className="font-semibold text-sm mb-1">{t('dataExtraction')}</div>
+                      <div className="text-xs opacity-70 text-center px-2">{t('exportRetrieveData')}</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_ADVISORY") && (
@@ -295,8 +301,8 @@ export default function NewTicket() {
                       className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
                       <HelpCircle size={24} className="text-orange-400 mb-1" />
-                      <div className="font-semibold text-sm mb-1">Advisory</div>
-                      <div className="text-xs opacity-70 text-center px-2">Expert consultation</div>
+                      <div className="font-semibold text-sm mb-1">{t('advisory')}</div>
+                      <div className="text-xs opacity-70 text-center px-2">{t('expertConsultation')}</div>
                     </Button>
                   )}
                   {canCreateTicketType("SERVICE_REQUEST_GENERAL") && (
@@ -307,13 +313,13 @@ export default function NewTicket() {
                       className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02] md:col-span-2"
                     >
                       <Settings size={24} className="text-gray-400 mb-1" />
-                      <div className="font-semibold text-sm mb-1">General Request</div>
-                      <div className="text-xs opacity-70 text-center px-2">Other support needs</div>
+                      <div className="font-semibold text-sm mb-1">{t('generalRequest')}</div>
+                      <div className="text-xs opacity-70 text-center px-2">{t('otherSupportNeeds')}</div>
                     </Button>
                   )}
                 </div>
                 <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg">
-                  Back
+                  {t('back')}
                 </Button>
               </section>
             )}
@@ -321,26 +327,26 @@ export default function NewTicket() {
             {draft.step === 3 && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Additional Information</h3>
-                  <p className="text-white/70 mb-6">Provide a title and detailed description</p>
+                  <h3 className="text-xl font-semibold mb-2">{t('additionalInformation')}</h3>
+                  <p className="text-white/70 mb-6">{t('provideTitleDescription')}</p>
                 </div>
                 <div className="space-y-4">
                   <Input 
-                    label="Ticket Title" 
-                    placeholder="Brief summary of your request"
+                    label={t('ticketTitle')} 
+                    placeholder={t('titlePlaceholder')}
                     variant="flat" 
                     value={draft.title || ""} 
                     onValueChange={(v)=>setDraft({...draft, title: v})}
                   />
                   <WysiwygEditor 
-                    label="Description" 
-                    placeholder="Provide detailed information about your request..."
+                    label={t('description')} 
+                    placeholder={t('descriptionPlaceholder')}
                     value={draft.description || ""} 
                     onChange={(v)=>setDraft({...draft, description: v})}
                     minHeight="150px"
                   />
                   <div>
-                    <label className="text-sm font-medium text-white/80 mb-2 block">Attachments</label>
+                    <label className="text-sm font-medium text-white/80 mb-2 block">{t('attachments')}</label>
                     <input 
                       type="file" 
                       multiple 
@@ -357,7 +363,7 @@ export default function NewTicket() {
                               onClick={() => setDraft({...draft, files: draft.files?.filter((_, i) => i !== index)})}
                               className="text-red-400 hover:text-red-300"
                             >
-                              Remove
+                              {t('remove')}
                             </button>
                           </div>
                         ))}
@@ -367,10 +373,10 @@ export default function NewTicket() {
                 </div>
                 <div className="flex gap-3">
                   <Button onPress={()=>setDraft({...draft, step: 4})} color="primary" size="lg">
-                    Continue
+                    {t('continue')}
                   </Button>
                   <Button onPress={()=>setDraft({...draft, step: 2})} variant="flat" size="lg">
-                    Back
+                    {tCommon('back')}
                   </Button>
                 </div>
               </section>
@@ -379,84 +385,84 @@ export default function NewTicket() {
             {draft.step === 4 && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Priority Assessment</h3>
-                  <p className="text-white/70 mb-6">Help us prioritize your ticket</p>
+                  <h3 className="text-xl font-semibold mb-2">{t('priorityAssessment')}</h3>
+                  <p className="text-white/70 mb-6">{t('helpUsPrioritize')}</p>
                 </div>
                 
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">Red Flags (Critical Issues) (0/10)</h4>
-                    <p className="text-sm text-white/70 mb-3">Multiple selections allowed. If any item is selected, full 10 points immediately.</p>
+                    <h4 className="text-lg font-semibold mb-3">{t('redFlagsCriticalIssues')}</h4>
+                    <p className="text-sm text-white/70 mb-3">{t('multipleSelectionsAllowed')}</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.outage} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, outage: v}}})}
                         className="text-white"
                       >
-                        System outage affecting a wide range of users
+                        {t('systemOutage')}
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.paymentsFailing} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, paymentsFailing: v}}})}
                         className="text-white"
                       >
-                        Payment failure / unable to process payments
+                        {t('paymentFailure')}
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.securityBreach} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, securityBreach: v}}})}
                         className="text-white"
                       >
-                        Severe security issue / data breach
+                        {t('securityBreach')}
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.nonCompliance} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, nonCompliance: v}}})}
                         className="text-white"
                       >
-                        Non-compliance with laws / regulations / contracts
+                        {t('nonCompliance')}
                       </Checkbox>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">Impact (0/6)</h4>
-                    <p className="text-sm text-white/70 mb-3">Multiple selections allowed. 2 points each, maximum 6 points.</p>
+                    <h4 className="text-lg font-semibold mb-3">{t('impact0to6')}</h4>
+                    <p className="text-sm text-white/70 mb-3">{t('multipleSelectionsAllowedImpact')}</p>
                     <div className="grid grid-cols-1 gap-3">
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.lostRevenue} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, lostRevenue: v}}})}
                         className="text-white"
                       >
-                        Company loses revenue opportunities (2)
+                        {t('lostRevenue')}
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.coreProcesses} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, coreProcesses: v}}})}
                         className="text-white"
                       >
-                        Core business processes disrupted or halted (2)
+                        {t('coreProcesses')}
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.dataLoss} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, dataLoss: v}}})}
                         className="text-white"
                       >
-                        Data loss / corruption / duplication, difficult to recover (2)
+                        {t('dataLoss')}
                       </Checkbox>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">Urgency (0/4)</h4>
-                    <p className="text-sm text-white/70 mb-3">Single selection only.</p>
+                    <h4 className="text-lg font-semibold mb-3">{t('urgency0to4')}</h4>
+                    <p className="text-sm text-white/70 mb-3">{t('singleSelectionOnly')}</p>
                     <div className="flex gap-3 flex-wrap">
                       {[
-                        { value: "<=48h", label: "Deadline ≤48 hours (4)", score: 4 },
-                        { value: "3-7d", label: "Deadline 3–7 days (3)", score: 3 },
-                        { value: "8-30d", label: "Deadline 8–30 days (2)", score: 2 },
-                        { value: ">=31d", label: "Deadline ≥31 days (1)", score: 1 },
-                        { value: "none", label: "No deadline (0)", score: 0 }
+                        { value: "<=48h", label: t('deadline48h'), score: 4 },
+                        { value: "3-7d", label: t('deadline3to7d'), score: 3 },
+                        { value: "8-30d", label: t('deadline8to30d'), score: 2 },
+                        { value: ">=31d", label: t('deadline31dPlus'), score: 1 },
+                        { value: "none", label: t('noDeadline'), score: 0 }
                       ].map((u) => (
                         <Button 
                           key={u.value} 
@@ -477,14 +483,14 @@ export default function NewTicket() {
                   </div>
 
                   <div className="p-6 glass rounded-lg border border-primary-500/20">
-                    <h4 className="text-lg font-semibold mb-2">Priority Calculation</h4>
+                    <h4 className="text-lg font-semibold mb-2">{t('priorityCalculation')}</h4>
                     <div className="text-sm space-y-1">
                       <div>Red Flags: {pr.redFlag ? 10 : 0}/10 • Impact: {pr.impact}/6 • Urgency: {pr.urgency}/4 • Final: {pr.final}/10</div>
                       <div className="text-xs text-white/60 mb-2">
-                        New scoring system: Red Flags give 10 points immediately, or Impact (0/6) + Urgency (0/4) = Total (0/10)
+                        {t('newScoringSystem')}
                       </div>
                       <div className="font-semibold text-primary-400">
-                        Priority: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}
+                        {t('priority')}: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}
                       </div>
                     </div>
                   </div>
@@ -498,14 +504,14 @@ export default function NewTicket() {
                     isLoading={submitting}
                     className="flex-1"
                   >
-                    {submitting ? "Submitting..." : "Submit Ticket"}
+                    {submitting ? t('submitting') : t('submit')}
                   </Button>
                   <Button 
                     onPress={()=>setDraft({...draft, step: 3})} 
                     variant="flat" 
                     size="lg"
                   >
-                    Back
+                    {tCommon('back')}
                   </Button>
                 </div>
               </section>
@@ -517,7 +523,7 @@ export default function NewTicket() {
           <CardHeader className="pb-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <ClipboardList size={18} className="text-primary-400" />
-              Progress
+              {t('progress')}
             </h3>
           </CardHeader>
           <CardBody>

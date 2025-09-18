@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -26,6 +27,8 @@ type Ticket = {
 };
 
 export default function ClassifyPage() {
+  const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
   const [items, setItems] = useState<Ticket[]>([]);
   const [sel, setSel] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -88,8 +91,8 @@ export default function ClassifyPage() {
   return (
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Admin Classification</h1>
-        <p className="text-white/70">Classify issue reports into appropriate categories</p>
+        <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+        <p className="text-white/70">{t('subtitle')}</p>
       </div>
 
       <div className="space-y-6">
@@ -98,10 +101,10 @@ export default function ClassifyPage() {
             <div className="flex items-center justify-between w-full">
               <h2 className="text-xl font-semibold flex items-center gap-2">
                 <Tags size={20} className="text-primary-400" />
-                Issue Classification
+                {t('classification')}
               </h2>
               <Chip color="primary" variant="flat">
-                {items.length} pending
+                {items.length} {t('pending')}
               </Chip>
             </div>
           </CardHeader>
@@ -110,10 +113,10 @@ export default function ClassifyPage() {
               <div className="text-center py-16">
                 <div className="text-lg mb-4 text-green-400 font-semibold flex items-center justify-center gap-2">
                   <CheckCircle size={20} />
-                  Complete!
+                  {t('complete')}
                 </div>
-                <h3 className="text-lg font-semibold mb-2">All Caught Up!</h3>
-                <p className="text-white/70">No Issue Reports awaiting classification.</p>
+                <h3 className="text-lg font-semibold mb-2">{t('allCaughtUp')}</h3>
+                <p className="text-white/70">{t('noIssueReports')}</p>
               </div>
             )}
             

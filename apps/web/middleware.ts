@@ -1,45 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
+import { locales, defaultLocale } from './i18n';
 
-// Protected routes that require authentication
-const protectedRoutes = [
-  '/dashboard',
-  '/profile', 
-  '/admin',
-  '/tickets/new',
-  // Note: /tickets and /tickets/[id] allow anonymous viewing per requirements
-];
+const intlMiddleware = createIntlMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: 'always'
+});
 
-// Routes that should redirect authenticated users away
-const authRoutes = ['/sign-in'];
-
-export function middleware(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('token')?.value;
+
   
-  // Check if this is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route)
-  );
+  // Extract locale from pathname
+  const segments = pathname.split('/').filter(Boolean);
+  const urlLocale = segments[0] && locales.includes(segments[0] as any) ? segments[0] : null;
   
-  // Check if this is an auth route (sign-in page)
-  const isAuthRoute = authRoutes.some(route => 
-    pathname.startsWith(route)
-  );
+
   
-  // If accessing a protected route without a token, redirect to sign-in
-  if (isProtectedRoute && !token) {
-    const signInUrl = new URL('/sign-in', request.url);
-    signInUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(signInUrl);
+  const response = intlMiddleware(request);
+  
+  // If there's a URL locale and it doesn't match the cookie, clear the cookie
+  const localeCookie = request.cookies.get('NEXT_LOCALE')?.value;
+  if (urlLocale && localeCookie && localeCookie !== urlLocale) {
+  
+    response.cookies.delete('NEXT_LOCALE');
+    response.cookies.set('NEXT_LOCALE', urlLocale, { path: '/' });
   }
   
-  // If accessing sign-in page with a valid token, redirect to dashboard
-  if (isAuthRoute && token) {
-    const redirectUrl = request.nextUrl.searchParams.get('redirect') || '/dashboard';
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
-  }
+
   
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
@@ -50,8 +41,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - logo.svg (logo file)
      * - public folder
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|logo.svg|public).*)',
   ],
 };

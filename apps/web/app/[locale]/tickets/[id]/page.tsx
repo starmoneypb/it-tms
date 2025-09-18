@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import DOMPurify from "isomorphic-dompurify";
+import { useTranslations, useLocale } from 'next-intl';
 import { 
   AlertTriangle, 
   Paperclip, 
@@ -34,6 +35,13 @@ const priorityColors = {
 } as const;
 
 export default function TicketDetails() {
+  const t = useTranslations('ticketDetails');
+  const tCommon = useTranslations('common');
+  const tTickets = useTranslations('tickets');
+  const tStatus = useTranslations('statusOptions');
+  const tTypes = useTranslations('typeOptions');
+  const tResolvedTypes = useTranslations('resolvedTypeOptions');
+  const locale = useLocale();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { user, canEditTicket, canCancelTicket, canAssignTicket, canModifyTicketFields, canEditTicketContent } = useAuth();
@@ -279,7 +287,7 @@ export default function TicketDetails() {
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-            <p className="text-white/70">Loading ticket details...</p>
+            <p className="text-white/70">{t('loadingTicket')}</p>
           </div>
         </div>
       </div>
@@ -293,25 +301,25 @@ export default function TicketDetails() {
           <CardBody className="text-center py-8">
             <div className="text-red-400 text-lg mb-2 flex items-center justify-center gap-2">
               <AlertTriangle size={20} />
-              Error Loading Ticket
+              {t('errorLoadingTicket')}
             </div>
-            <p className="text-white/70">Unable to load ticket details</p>
+            <p className="text-white/70">{t('unableToLoadTicket')}</p>
           </CardBody>
         </Card>
       </div>
     );
   }
 
-  const t = data.ticket;
+  const ticket = data.ticket;
 
   return (
     <div className="container">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold gradient-text mb-2">Ticket #{t.code}</h1>
+            <h1 className="text-3xl font-bold gradient-text mb-2">Ticket #{ticket.code}</h1>
             {!isEditingContent ? (
-              <p className="text-white/70">{t.title}</p>
+              <p className="text-white/70">{ticket.title}</p>
             ) : (
               <Input
                 value={contentEditForm.title}
@@ -322,7 +330,7 @@ export default function TicketDetails() {
               />
             )}
           </div>
-          {canEditTicketContent(t.createdBy) && (
+          {canEditTicketContent(ticket.createdBy) && (
             <div className="flex gap-2">
               {!isEditingContent ? (
                 <Button
@@ -331,7 +339,7 @@ export default function TicketDetails() {
                   size="sm"
                   onPress={() => setIsEditingContent(true)}
                 >
-                  Edit Content
+                  {t('editContent')}
                 </Button>
               ) : (
                 <div className="flex gap-2">
@@ -342,7 +350,7 @@ export default function TicketDetails() {
                     isLoading={contentEditLoading}
                     isDisabled={contentEditLoading}
                   >
-                    Save
+                    {t('save')}
                   </Button>
                   <Button
                     color="default"
@@ -353,12 +361,12 @@ export default function TicketDetails() {
                       setContentEditError("");
                       // Reset form to original values
                       setContentEditForm({
-                        title: t.title,
-                        description: t.description
+                        title: ticket.title,
+                        description: ticket.description
                       });
                     }}
                   >
-                    Cancel
+                    {t('cancel')}
                   </Button>
                 </div>
               )}
@@ -377,38 +385,38 @@ export default function TicketDetails() {
         <Card className="lg:col-span-2 glass p-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between w-full">
-              <h2 className="text-xl font-semibold">Details</h2>
+              <h2 className="text-xl font-semibold">{t('details')}</h2>
               <div className="flex items-center gap-2">
                 <Chip 
-                  color={statusColors[t.status as keyof typeof statusColors] || "default"}
+                  color={statusColors[ticket.status as keyof typeof statusColors] || "default"}
                   variant="flat"
                 >
-                  {t.status.replace('_', ' ')}
+                  {ticket.status.replace('_', ' ')}
                 </Chip>
                 <Chip 
-                  color={priorityColors[t.priority as keyof typeof priorityColors] || "default"}
+                  color={priorityColors[ticket.priority as keyof typeof priorityColors] || "default"}
                   variant="flat"
                 >
-                  {t.priority}
+                  {ticket.priority}
                 </Chip>
               </div>
             </div>
           </CardHeader>
           <CardBody className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-3">Description</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
               {!isEditingContent ? (
                 <div 
                   className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ 
-                    __html: DOMPurify.sanitize(t.description) 
+                    __html: DOMPurify.sanitize(ticket.description) 
                   }}
                 />
               ) : (
                 <WysiwygEditor 
                   value={contentEditForm.description} 
                   onChange={(value) => setContentEditForm(prev => ({ ...prev, description: value }))} 
-                  placeholder="Enter ticket description..."
+                  placeholder={t('enterTicketDescription')}
                   minHeight="200px"
                 />
               )}
@@ -417,10 +425,10 @@ export default function TicketDetails() {
             {/* Ticket Attachments */}
             {data.attachments && data.attachments.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Paperclip size={18} className="text-primary-400" />
-                  Attachments
-                </h3>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Paperclip size={18} className="text-primary-400" />
+                      {t('attachments')}
+                    </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {data.attachments.map((att: any) => (
                     <a
@@ -452,29 +460,29 @@ export default function TicketDetails() {
 
             {/* Ticket Metadata */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">Ticket Information</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('ticketInformation')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-white/60">Ticket ID:</span>
-                  <span className="ml-2 font-medium">#{t.code}</span>
+                  <span className="text-white/60">{t('ticketId')}:</span>
+                  <span className="ml-2 font-medium">#{ticket.code}</span>
                 </div>
                 <div>
-                  <span className="text-white/60">Created:</span>
-                  <span className="ml-2">{new Date(t.createdAt).toLocaleString()}</span>
+                  <span className="text-white/60">{t('created')}:</span>
+                  <span className="ml-2">{new Date(ticket.createdAt).toLocaleString()}</span>
                 </div>
                 <div>
-                  <span className="text-white/60">Last Updated:</span>
-                  <span className="ml-2">{new Date(t.updatedAt).toLocaleString()}</span>
+                  <span className="text-white/60">{t('lastUpdated')}:</span>
+                  <span className="ml-2">{new Date(ticket.updatedAt).toLocaleString()}</span>
                 </div>
                 <div>
-                  <span className="text-white/60">Type:</span>
-                  <span className="ml-2">{t.initialType.replace(/_/g, ' ')}</span>
+                  <span className="text-white/60">{t('type')}:</span>
+                  <span className="ml-2">{ticket.initialType.replace(/_/g, ' ')}</span>
                 </div>
-                {t.assignees && t.assignees.length > 0 && (
+                {ticket.assignees && ticket.assignees.length > 0 && (
                   <div className="md:col-span-2">
-                    <span className="text-white/60">Assigned to:</span>
+                    <span className="text-white/60">{t('assignedTo')}:</span>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {t.assignees.map((assignee: any) => (
+                      {ticket.assignees.map((assignee: any) => (
                         <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
                           <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
                             {assignee.name.charAt(0).toUpperCase()}
@@ -496,15 +504,15 @@ export default function TicketDetails() {
             </div>
 
             {/* Steps to Reproduce section for Issue Reports */}
-            {t.initialType === 'ISSUE_REPORT' && t.details?.steps && (
+            {ticket.initialType === 'ISSUE_REPORT' && ticket.details?.steps && (
               <>
                 <Divider />
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Steps to Reproduce</h3>
+                  <h3 className="text-lg font-semibold mb-3">{t('stepsToReproduce')}</h3>
                   <div 
                     className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none bg-white/5 p-6 rounded-lg"
                     dangerouslySetInnerHTML={{ 
-                      __html: DOMPurify.sanitize(t.details.steps) 
+                      __html: DOMPurify.sanitize(ticket.details.steps) 
                     }}
                   />
                 </div>
@@ -514,29 +522,29 @@ export default function TicketDetails() {
             <Divider />
 
             <div>
-              <h3 className="text-lg font-semibold mb-3">Ticket Information</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('ticketInformation')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <span className="text-white/60 text-sm">Type:</span>
-                  <div className="font-medium">{t.initialType.replace(/_/g, ' ')}</div>
+                    <span className="text-white/60 text-sm">{t('type')}:</span>
+                  <div className="font-medium">{ticket.initialType.replace(/_/g, ' ')}</div>
                 </div>
                 <div>
-                  <span className="text-white/60 text-sm">Impact Score:</span>
-                  <div className="font-medium">{Math.abs(t.impactScore)}</div>
+                    <span className="text-white/60 text-sm">{t('impactScore')}:</span>
+                  <div className="font-medium">{Math.abs(ticket.impactScore)}</div>
                 </div>
                 <div>
-                  <span className="text-white/60 text-sm">Urgency Score:</span>
-                  <div className="font-medium">{Math.abs(t.urgencyScore)}</div>
+                    <span className="text-white/60 text-sm">{t('urgencyScore')}:</span>
+                  <div className="font-medium">{Math.abs(ticket.urgencyScore)}</div>
                 </div>
                 <div>
-                  <span className="text-white/60 text-sm">Final Score:</span>
-                  <div className="font-medium">{Math.abs(t.finalScore)}</div>
+                    <span className="text-white/60 text-sm">{t('finalScore')}:</span>
+                  <div className="font-medium">{Math.abs(ticket.finalScore)}</div>
                 </div>
-                {t.redFlag && (
+                {ticket.redFlag && (
                   <div className="md:col-span-2">
                     <Chip color="danger" variant="flat" size="sm">
                       <Flag size={14} className="mr-1" />
-                      Red Flag
+                      {t('redFlag')}
                     </Chip>
                   </div>
                 )}
@@ -546,7 +554,7 @@ export default function TicketDetails() {
             <Divider />
 
             <div>
-              <h3 className="text-lg font-semibold mb-3">Attachments</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('attachments')}</h3>
               {data.attachments && data.attachments.length > 0 ? (
                 <div className="space-y-2">
                   {data.attachments.map((a: any) => (
@@ -557,14 +565,14 @@ export default function TicketDetails() {
                   ))}
                 </div>
               ) : (
-                <p className="text-white/60">No attachments</p>
+                <p className="text-white/60">{t('noAttachments')}</p>
               )}
             </div>
 
             <Divider />
 
             <div>
-              <h3 className="text-lg font-semibold mb-3">Activity Timeline</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('activityTimeline')}</h3>
               {data.comments && data.comments.length > 0 ? (
                 <div className="space-y-3">
                   {data.comments.map((c: any) => (
@@ -598,7 +606,7 @@ export default function TicketDetails() {
                       />
                       {c.attachments && c.attachments.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <h4 className="text-xs font-medium text-white/60">Attachments:</h4>
+                          <h4 className="text-xs font-medium text-white/60">{t('attachmentsColon')}</h4>
                           <div className="flex flex-wrap gap-2">
                             {c.attachments.map((att: any) => (
                               <a
@@ -620,7 +628,7 @@ export default function TicketDetails() {
                   ))}
                 </div>
               ) : (
-                <p className="text-white/60">No comments yet</p>
+                <p className="text-white/60">{t('noComments')}</p>
               )}
             </div>
           </CardBody>
@@ -632,18 +640,18 @@ export default function TicketDetails() {
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <MessageSquare size={18} className="text-primary-400" />
-                  Add Comment
+                  {t('addComment')}
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
                 <WysiwygEditor 
                   value={comment} 
                   onChange={setComment} 
-                  placeholder="Write your comment..."
+                  placeholder={t('writeComment')}
                   minHeight="120px"
                 />
                 <div>
-                  <label className="text-sm font-medium text-white/80 mb-2 block">Attachments</label>
+                  <label className="text-sm font-medium text-white/80 mb-2 block">{t('attachments')}</label>
                   <input 
                     type="file" 
                     multiple 
@@ -660,7 +668,7 @@ export default function TicketDetails() {
                             onClick={() => setCommentFiles(commentFiles.filter((_, i) => i !== index))}
                             className="text-red-400 hover:text-red-300"
                           >
-                            Remove
+                            {t('remove')}
                           </button>
                         </div>
                       ))}
@@ -673,7 +681,7 @@ export default function TicketDetails() {
                   isDisabled={!comment.trim()}
                   className="w-full"
                 >
-                  Post Comment
+                  {t('postComment')}
                 </Button>
               </CardBody>
             </Card>
@@ -684,13 +692,13 @@ export default function TicketDetails() {
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <RotateCcw size={18} className="text-primary-400" />
-                  Change Status
+                  {t('changeStatus')}
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
                 <Select 
-                  label="New Status" 
-                  placeholder="Select status"
+                  label={t('newStatus')} 
+                  placeholder={t('selectStatus')}
                   selectedKeys={status ? [status] : []}
                   onSelectionChange={(keys) => {
                     const selected = Array.from(keys)[0] as string;
@@ -698,10 +706,10 @@ export default function TicketDetails() {
                   }}
                   variant="bordered"
                 >
-                  <SelectItem key="pending">Pending</SelectItem>
-                  <SelectItem key="in_progress">In Progress</SelectItem>
-                  <SelectItem key="completed">Completed</SelectItem>
-                  <SelectItem key="canceled">Canceled</SelectItem>
+                  <SelectItem key="pending">{tStatus('pending')}</SelectItem>
+                  <SelectItem key="in_progress">{tStatus('in_progress')}</SelectItem>
+                  <SelectItem key="completed">{tStatus('completed')}</SelectItem>
+                  <SelectItem key="canceled">{tStatus('canceled')}</SelectItem>
                 </Select>
                 
                 {statusError && (
@@ -718,7 +726,7 @@ export default function TicketDetails() {
                   isLoading={statusLoading}
                   className="w-full"
                 >
-                  {statusLoading ? "Updating..." : "Update Status"}
+                  {statusLoading ? t('updating') : t('updateStatus')}
                 </Button>
               </CardBody>
             </Card>
@@ -729,14 +737,14 @@ export default function TicketDetails() {
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Users size={18} className="text-primary-400" />
-                  Manage Assignments
+                  {t('manageAssignments')}
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
                 {/* Current Assignees */}
                 {data.ticket.assignees && data.ticket.assignees.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium text-white/80 mb-2">Current Assignees:</h4>
+                    <h4 className="text-sm font-medium text-white/80 mb-2">{t('currentAssignees')}:</h4>
                     <div className="flex flex-wrap gap-2">
                       {data.ticket.assignees.map((assignee: any) => (
                         <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
@@ -791,17 +799,17 @@ export default function TicketDetails() {
                   }}
                   className="w-full"
                 >
-                  Assign to Me
+                  {t('assignToMe')}
                 </Button>
 
                 {/* Multi-User Assignment (Supervisors/Managers only) */}
                 {canModifyTicketFields() && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-white/80">Assign Multiple Users:</h4>
+                    <h4 className="text-sm font-medium text-white/80">{t('assignMultipleUsers')}:</h4>
                     <UserSearchSelect
                       selectedUserIds={selectedAssignees}
                       onSelectionChange={setSelectedAssignees}
-                      placeholder="Search for users to assign..."
+                      placeholder={t('searchUsersToAssign')}
                       excludeUserIds={data.ticket.assignees?.map((a: any) => a.id) || []}
                     />
                     <Button
@@ -821,7 +829,7 @@ export default function TicketDetails() {
                       isDisabled={selectedAssignees.length === 0}
                       className="w-full"
                     >
-                      Assign Selected Users
+                      {t('assignSelectedUsers')}
                     </Button>
                   </div>
                 )}
@@ -834,7 +842,7 @@ export default function TicketDetails() {
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Settings size={18} className="text-primary-400" />
-                  Edit Ticket Fields
+                  {t('editTicketFields')}
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
@@ -844,14 +852,14 @@ export default function TicketDetails() {
                     onPress={() => setIsEditing(true)}
                     className="w-full"
                   >
-                    Edit Fields
+                    {t('editFields')}
                   </Button>
                 ) : (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-3">
                       <Select 
-                        label="Initial Type" 
-                        placeholder="Select type"
+                        label={t('initialType')} 
+                        placeholder={t('selectType')}
                         selectedKeys={editForm.initialType ? [editForm.initialType] : []}
                         onSelectionChange={(keys) => {
                           const selected = Array.from(keys)[0] as string;
@@ -860,17 +868,17 @@ export default function TicketDetails() {
                         variant="bordered"
                         size="sm"
                       >
-                        <SelectItem key="ISSUE_REPORT">Issue Report</SelectItem>
-                        <SelectItem key="CHANGE_REQUEST_NORMAL">Change Request Normal</SelectItem>
-                        <SelectItem key="SERVICE_REQUEST_DATA_CORRECTION">Service Request Data Correction</SelectItem>
-                        <SelectItem key="SERVICE_REQUEST_DATA_EXTRACTION">Service Request Data Extraction</SelectItem>
-                        <SelectItem key="SERVICE_REQUEST_ADVISORY">Service Request Advisory</SelectItem>
-                        <SelectItem key="SERVICE_REQUEST_GENERAL">Service Request General</SelectItem>
+                        <SelectItem key="ISSUE_REPORT">{tTypes('ISSUE_REPORT')}</SelectItem>
+                        <SelectItem key="CHANGE_REQUEST_NORMAL">{tTypes('CHANGE_REQUEST_NORMAL')}</SelectItem>
+                        <SelectItem key="SERVICE_REQUEST_DATA_CORRECTION">{tTypes('SERVICE_REQUEST_DATA_CORRECTION')}</SelectItem>
+                        <SelectItem key="SERVICE_REQUEST_DATA_EXTRACTION">{tTypes('SERVICE_REQUEST_DATA_EXTRACTION')}</SelectItem>
+                        <SelectItem key="SERVICE_REQUEST_ADVISORY">{tTypes('SERVICE_REQUEST_ADVISORY')}</SelectItem>
+                        <SelectItem key="SERVICE_REQUEST_GENERAL">{tTypes('SERVICE_REQUEST_GENERAL')}</SelectItem>
                       </Select>
 
                       <Select 
-                        label="Resolved Type" 
-                        placeholder="Select resolved type"
+                        label={t('resolvedType')} 
+                        placeholder={t('selectResolvedType')}
                         selectedKeys={editForm.resolvedType ? [editForm.resolvedType] : []}
                         onSelectionChange={(keys) => {
                           const selected = Array.from(keys)[0] as string;
@@ -879,18 +887,18 @@ export default function TicketDetails() {
                         variant="bordered"
                         size="sm"
                       >
-                        <SelectItem key="EMERGENCY_CHANGE">Emergency Change</SelectItem>
-                        <SelectItem key="DATA_CORRECTION">Data Correction</SelectItem>
+                        <SelectItem key="EMERGENCY_CHANGE">{tResolvedTypes('EMERGENCY_CHANGE')}</SelectItem>
+                        <SelectItem key="DATA_CORRECTION">{tResolvedTypes('DATA_CORRECTION')}</SelectItem>
                       </Select>
 
                       {/* Priority Assessment Section */}
                       <div className="space-y-4 p-4 border border-white/20 rounded-lg">
-                        <h4 className="text-lg font-semibold">Priority Assessment</h4>
+                        <h4 className="text-lg font-semibold">{t('priorityAssessment')}</h4>
                         
                         {/* Red Flags */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">Red Flags (Critical Issues) (0/10)</h5>
-                          <p className="text-xs text-white/60 mb-2">Multiple selections allowed. If any item is selected, full 10 points immediately.</p>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">{t('redFlagsCriticalIssues')}</h5>
+                          <p className="text-xs text-white/60 mb-2">{t('multipleSelectionsAllowed')}</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.outage} 
@@ -904,7 +912,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              System outage affecting a wide range of users
+                              {t('systemOutage')}
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.paymentsFailing} 
@@ -918,7 +926,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Payment failure / unable to process payments
+                              {t('paymentFailure')}
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.securityBreach} 
@@ -932,7 +940,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Severe security issue / data breach
+                              {t('securityBreach')}
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.nonCompliance} 
@@ -946,15 +954,15 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Non-compliance with laws / regulations / contracts
+                              {t('nonCompliance')}
                             </Checkbox>
                           </div>
                         </div>
 
                         {/* Impact Assessment */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">Impact (0/6)</h5>
-                          <p className="text-xs text-white/60 mb-2">Multiple selections allowed. 2 points each, maximum 6 points.</p>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">{t('impact0to6')}</h5>
+                          <p className="text-xs text-white/60 mb-2">{t('multipleSelectionsAllowedImpact')}</p>
                           <div className="grid grid-cols-1 gap-2">
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.impact?.lostRevenue} 
@@ -968,7 +976,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Company loses revenue opportunities (2)
+                              {t('lostRevenue')}
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.impact?.coreProcesses} 
@@ -982,7 +990,7 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Core business processes disrupted or halted (2)
+                              {t('coreProcesses')}
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.impact?.dataLoss} 
@@ -996,22 +1004,22 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              Data loss / corruption / duplication, difficult to recover (2)
+                              {t('dataLoss')}
                             </Checkbox>
                           </div>
                         </div>
 
                         {/* Urgency Timeline */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">Urgency (0/4)</h5>
-                          <p className="text-xs text-white/60 mb-2">Single selection only.</p>
+                          <h5 className="text-sm font-medium text-white/80 mb-2">{t('urgency0to4')}</h5>
+                          <p className="text-xs text-white/60 mb-2">{t('singleSelectionOnly')}</p>
                           <div className="flex gap-2 flex-wrap">
                             {[
-                              { value: "<=48h", label: "Deadline ≤48 hours (4)", score: 4 },
-                              { value: "3-7d", label: "Deadline 3–7 days (3)", score: 3 },
-                              { value: "8-30d", label: "Deadline 8–30 days (2)", score: 2 },
-                              { value: ">=31d", label: "Deadline ≥31 days (1)", score: 1 },
-                              { value: "none", label: "No deadline (0)", score: 0 }
+                              { value: "<=48h", label: t('deadline48h'), score: 4 },
+                              { value: "3-7d", label: t('deadline3to7d'), score: 3 },
+                              { value: "8-30d", label: t('deadline8to30d'), score: 2 },
+                              { value: ">=31d", label: t('deadline31dPlus'), score: 1 },
+                              { value: "none", label: t('noDeadline'), score: 0 }
                             ].map((u) => (
                               <Button 
                                 key={u.value} 
@@ -1039,17 +1047,17 @@ export default function TicketDetails() {
 
                         {/* Priority Calculation Display */}
                         <div className="p-3 bg-white/5 rounded-lg border border-primary-500/20">
-                          <h5 className="text-sm font-semibold mb-1">Priority Calculation</h5>
+                          <h5 className="text-sm font-semibold mb-1">{t('priorityCalculation')}</h5>
                           {(() => {
                             const pr = computePriority(editForm.priorityInput);
                             return (
                               <div className="text-xs space-y-1">
                                 <div>Red Flags: {pr.redFlag ? 10 : 0}/10 • Impact: {pr.impact}/6 • Urgency: {pr.urgency}/4 • Final: {pr.final}/10</div>
                                 <div className="text-white/60">
-                                  New scoring system: Red Flags give 10 points immediately, or Impact (0/6) + Urgency (0/4) = Total (0/10)
+                                  {t('newScoringSystem')}
                                 </div>
                                 <div className="font-semibold text-primary-400">
-                                  Priority: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}
+                                  {t('priority')}: {pr.priority} {pr.redFlag ? `(${t('redFlag')})` : ""}
                                 </div>
                               </div>
                             );
@@ -1074,7 +1082,7 @@ export default function TicketDetails() {
                         className="flex-1"
                         size="sm"
                       >
-                        {editLoading ? "Saving..." : "Save Changes"}
+                        {editLoading ? t('saving') : t('saveChanges')}
                       </Button>
                       <Button 
                         color="default" 
@@ -1086,7 +1094,7 @@ export default function TicketDetails() {
                         className="flex-1"
                         size="sm"
                       >
-                        Cancel
+                        {t('cancel')}
                       </Button>
                     </div>
                   </div>

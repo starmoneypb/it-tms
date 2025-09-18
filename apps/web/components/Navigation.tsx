@@ -5,15 +5,28 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { useTranslations, useLocale } from 'next-intl';
+import { LanguageToggle } from './LanguageToggle';
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export function Navigation() {
   const { user, isLoading, signOut, hasAnyRole } = useAuth();
+  const t = useTranslations('navigation');
+  const locale = useLocale();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileButtonRef = useRef<HTMLButtonElement>(null);
+
+  console.log('Navigation component - Current locale:', locale);
+
+  // Helper function to create locale-aware URLs
+  const createLocalizedUrl = (path: string) => {
+    const url = `/${locale}${path}`;
+    console.log('Creating localized URL:', { path, locale, url });
+    return url as any;
+  };
 
   // Handle click outside to close mobile menu
   useEffect(() => {
@@ -58,7 +71,7 @@ export function Navigation() {
   if (isLoading) {
     return (
       <nav className="container flex items-center justify-between py-4">
-        <Link href="/" className="flex items-center">
+        <Link href={createLocalizedUrl("/")} className="flex items-center">
           <Image
             src="/logo.svg"
             alt="IT-TMS Logo"
@@ -76,7 +89,7 @@ export function Navigation() {
 
   return (
     <nav className="container relative flex items-center justify-between py-6">
-      <Link href="/" className="flex items-center">
+      <Link href={createLocalizedUrl("/")} className="flex items-center">
         <Image
           src="/logo.svg"
           alt="IT-TMS Logo"
@@ -90,33 +103,36 @@ export function Navigation() {
       <div className="hidden md:flex items-center gap-6 py-1">
         {/* Always visible links */}
         <Link 
-          href="/dashboard" 
+          href={createLocalizedUrl("/dashboard")} 
           className="text-sm font-medium text-white/80 hover:text-white transition-colors"
         >
-          Dashboard
+          {t('dashboard')}
         </Link>
         <Link 
-          href="/tickets" 
+          href={createLocalizedUrl("/tickets")} 
           className="text-sm font-medium text-white/80 hover:text-white transition-colors"
         >
-          Tickets
+          {t('tickets')}
         </Link>
         <Link 
-          href="/tickets/new" 
+          href={createLocalizedUrl("/tickets/new")} 
           className="text-sm font-medium text-white/80 hover:text-white transition-colors"
         >
-          Open Ticket
+          {t('openTicket')}
         </Link>
 
         {/* Role-based links */}
         {hasAnyRole(["Supervisor", "Manager"]) && (
           <Link 
-            href="/admin/classify" 
+            href={createLocalizedUrl("/admin/classify")} 
             className="text-sm font-medium text-white/80 hover:text-white transition-colors"
           >
-            Admin
+            {t('admin')}
           </Link>
         )}
+
+        {/* Language Toggle */}
+        <LanguageToggle />
 
         {/* Authentication section */}
         {user ? (
@@ -148,20 +164,20 @@ export function Navigation() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu className="glass rounded-xl">
-              <DropdownItem key="profile" className="text-white/90" onPress={() => window.location.href = '/profile'}>
-                Profile
+              <DropdownItem key="profile" className="text-white/90" onPress={() => window.location.href = createLocalizedUrl('/profile')}>
+                {t('profile')}
               </DropdownItem>
               <DropdownItem key="signout" className="text-danger" onPress={signOut}>
-                Sign Out
+                {t('signOut')}
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         ) : (
           <Link 
-            href="/sign-in" 
+            href={createLocalizedUrl("/sign-in")} 
             className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors"
           >
-            Sign In
+            {t('signIn')}
           </Link>
         )}
       </div>
@@ -194,36 +210,41 @@ export function Navigation() {
           {/* Navigation Links */}
           <div className="space-y-1">
             <Link 
-              href="/dashboard" 
+              href={createLocalizedUrl("/dashboard")} 
               className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Dashboard
+              {t('dashboard')}
             </Link>
             <Link 
-              href="/tickets" 
+              href={createLocalizedUrl("/tickets")} 
               className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Tickets
+              {t('tickets')}
             </Link>
             <Link 
-              href="/tickets/new" 
+              href={createLocalizedUrl("/tickets/new")} 
               className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Open Ticket
+              {t('openTicket')}
             </Link>
 
             {hasAnyRole(["Supervisor", "Manager"]) && (
               <Link 
-                href="/admin/classify" 
+                href={createLocalizedUrl("/admin/classify")} 
                 className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Admin
+                {t('admin')}
               </Link>
             )}
+            
+            {/* Mobile Language Toggle */}
+            <div className="px-4 py-3">
+              <LanguageToggle />
+            </div>
           </div>
 
           {/* Authentication section */}
@@ -249,11 +270,11 @@ export function Navigation() {
                   </div>
                 </div>
                 <Link
-                  href="/profile"
+                  href={createLocalizedUrl("/profile")}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center w-full px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
                 >
-                  Profile
+                  {t('profile')}
                 </Link>
                 <button
                   onClick={() => {
@@ -262,16 +283,16 @@ export function Navigation() {
                   }}
                   className="flex items-center w-full px-4 py-3 text-base font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all duration-200"
                 >
-                  Sign Out
+                  {t('signOut')}
                 </button>
               </div>
             ) : (
               <Link 
-                href="/sign-in" 
+                href={createLocalizedUrl("/sign-in")} 
                 className="flex items-center justify-center w-full px-4 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-all duration-200"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Sign In
+                {t('signIn')}
               </Link>
             )}
           </div>
