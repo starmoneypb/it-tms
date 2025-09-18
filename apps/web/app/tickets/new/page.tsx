@@ -55,33 +55,66 @@ export default function NewTicket() {
 
   async function submit() {
     setSubmitting(true);
-    const initialType =
-      draft.type ||
-      (draft.isAbnormal
-        ? "ISSUE_REPORT"
-        : "SERVICE_REQUEST_GENERAL");
-    const payload = {
-      title: draft.title || "Untitled",
-      description: draft.description || "",
-      initialType,
-      details: draft.details || {},
-      contactEmail: draft.contactEmail,
-      contactPhone: draft.contactPhone,
-      priorityInput: draft.priority,
-    };
-    const res = await fetch(`${API}/api/v1/tickets`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
-    setSubmitting(false);
-    if (!res.ok) {
-      alert("Failed to submit");
-      return;
+    try {
+      const initialType =
+        draft.type ||
+        (draft.isAbnormal
+          ? "ISSUE_REPORT"
+          : "SERVICE_REQUEST_GENERAL");
+      const payload = {
+        title: draft.title || "Untitled",
+        description: draft.description || "",
+        initialType,
+        details: draft.details || {},
+        contactEmail: draft.contactEmail,
+        contactPhone: draft.contactPhone,
+        priorityInput: draft.priority,
+      };
+      
+      // Create ticket first
+      const res = await fetch(`${API}/api/v1/tickets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      
+      if (!res.ok) {
+        alert("Failed to submit ticket");
+        return;
+      }
+      
+      const { data } = await res.json();
+      const ticketId = data.id;
+      
+      // Upload files if any
+      if (draft.files && draft.files.length > 0) {
+        const formData = new FormData();
+        draft.files.forEach(file => {
+          formData.append('files', file);
+        });
+        
+        const uploadRes = await fetch(`${API}/api/v1/tickets/${ticketId}/attachments`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.text();
+          console.error("Failed to upload attachments:", errorData);
+          alert("Ticket created successfully, but some attachments failed to upload. Please try adding them again from the ticket page.");
+        }
+      }
+      
+      // Redirect after all uploads are complete
+      window.location.href = `/tickets/${ticketId}`;
+    } catch (error) {
+      console.error("Error submitting ticket:", error);
+      alert("Failed to submit ticket");
+    } finally {
+      setSubmitting(false);
     }
-    const { data } = await res.json();
-    window.location.href = `/tickets/${data.id}`;
   }
 
   const progress = ((draft.step - 1) / (steps.length - 1)) * 100;
@@ -294,8 +327,25 @@ export default function NewTicket() {
                     <input 
                       type="file" 
                       multiple 
+                      onChange={(e) => setDraft({...draft, files: Array.from(e.target.files || [])})}
                       className="w-full p-2 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
                     />
+                    {draft.files && draft.files.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {draft.files.map((file, index) => (
+                          <div key={index} className="text-sm text-white/70 flex items-center justify-between bg-white/5 p-2 rounded">
+                            <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                            <button 
+                              type="button"
+                              onClick={() => setDraft({...draft, files: draft.files?.filter((_, i) => i !== index)})}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-3">

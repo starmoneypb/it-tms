@@ -1,16 +1,36 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip } from "@heroui/react";
-import { Tags, CheckCircle, Info } from "lucide-react";
+import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
+import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-type Ticket = { id: string; title: string; initialType: string; resolvedType?: string | null };
+type Ticket = { 
+  id: string; 
+  code: number;
+  title: string; 
+  description: string;
+  initialType: string; 
+  resolvedType?: string | null;
+  priority: string;
+  impactScore: number;
+  urgencyScore: number;
+  finalScore: number;
+  redFlag: boolean;
+  contactEmail?: string;
+  contactPhone?: string;
+  createdBy?: string;
+  latestComment?: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export default function ClassifyPage() {
   const [items, setItems] = useState<Ticket[]>([]);
   const [sel, setSel] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const {isOpen, onOpen, onClose} = useDisclosure();
 
   // Debug function to log selection changes
   const handleSelectionChange = (ticketId: string, keys: any) => {
@@ -24,6 +44,11 @@ export default function ClassifyPage() {
         return newSel;
       });
     }
+  };
+
+  const handleViewDetails = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    onOpen();
   };
 
   function load() {
@@ -100,7 +125,12 @@ export default function ClassifyPage() {
                 <CardBody className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold mb-2">{t.title}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-semibold">{t.title}</h3>
+                        <Chip size="sm" color="primary" variant="flat">
+                          #{t.code}
+                        </Chip>
+                      </div>
                       <div className="flex items-center gap-2 mb-4">
                         <Chip size="sm" variant="flat" className="bg-orange-500/20 text-orange-300">
                           {t.initialType.replace(/_/g, ' ')}
@@ -110,6 +140,15 @@ export default function ClassifyPage() {
                     </div>
                     
                     <div className="flex items-center gap-3">
+                      <Button 
+                        variant="ghost" 
+                        onPress={() => handleViewDetails(t)}
+                        className="min-w-[120px] text-blue-400 hover:text-blue-300"
+                        startContent={<Eye size={16} />}
+                      >
+                        View Details
+                      </Button>
+                      
                       <div className="flex flex-col gap-2">
                         <Select 
                           label="Resolved Type" 
@@ -161,6 +200,143 @@ export default function ClassifyPage() {
           </Card>
         )}
       </div>
+
+      {/* Ticket Details Modal */}
+      <Modal 
+        isOpen={isOpen} 
+        onClose={onClose}
+        size="4xl"
+        scrollBehavior="inside"
+        classNames={{
+          base: "bg-background/95 backdrop-blur-md",
+          backdrop: "bg-black/50"
+        }}
+      >
+        <ModalContent className="glass">
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-semibold">Ticket Details</h3>
+                  {selectedTicket && (
+                    <Chip size="sm" color="primary" variant="flat">
+                      #{selectedTicket.code}
+                    </Chip>
+                  )}
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                {selectedTicket && (
+                  <div className="space-y-6">
+                    {/* Title and Status */}
+                    <div>
+                      <h4 className="text-lg font-semibold mb-2">{selectedTicket.title}</h4>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Chip size="sm" variant="flat" className="bg-orange-500/20 text-orange-300">
+                          {selectedTicket.initialType.replace(/_/g, ' ')}
+                        </Chip>
+                        <Chip size="sm" color={
+                          selectedTicket.priority === 'P0' ? 'danger' :
+                          selectedTicket.priority === 'P1' ? 'warning' :
+                          selectedTicket.priority === 'P2' ? 'primary' : 'default'
+                        } variant="flat">
+                          {selectedTicket.priority}
+                        </Chip>
+                        {selectedTicket.redFlag && (
+                          <Chip size="sm" color="danger" variant="flat" startContent={<AlertTriangle size={12} />}>
+                            Red Flag
+                          </Chip>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <h5 className="font-semibold mb-2 flex items-center gap-2">
+                        <Info size={16} />
+                        Description
+                      </h5>
+                      <div className="bg-default-100 rounded-lg p-4">
+                        <p className="text-sm whitespace-pre-wrap">{selectedTicket.description || 'No description provided'}</p>
+                      </div>
+                    </div>
+
+                    {/* Priority Scores */}
+                    <div>
+                      <h5 className="font-semibold mb-3">Priority Assessment</h5>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-default-100 rounded-lg p-3 text-center">
+                          <div className="text-lg font-bold text-primary">{selectedTicket.impactScore}</div>
+                          <div className="text-xs text-default-500">Impact Score</div>
+                        </div>
+                        <div className="bg-default-100 rounded-lg p-3 text-center">
+                          <div className="text-lg font-bold text-warning">{selectedTicket.urgencyScore}</div>
+                          <div className="text-xs text-default-500">Urgency Score</div>
+                        </div>
+                        <div className="bg-default-100 rounded-lg p-3 text-center">
+                          <div className="text-lg font-bold text-secondary">{selectedTicket.finalScore}</div>
+                          <div className="text-xs text-default-500">Final Score</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contact Information */}
+                    {(selectedTicket.contactEmail || selectedTicket.contactPhone) && (
+                      <div>
+                        <h5 className="font-semibold mb-3">Contact Information</h5>
+                        <div className="space-y-2">
+                          {selectedTicket.contactEmail && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Mail size={16} className="text-blue-400" />
+                              <span>{selectedTicket.contactEmail}</span>
+                            </div>
+                          )}
+                          {selectedTicket.contactPhone && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone size={16} className="text-green-400" />
+                              <span>{selectedTicket.contactPhone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Latest Comment */}
+                    {selectedTicket.latestComment && (
+                      <div>
+                        <h5 className="font-semibold mb-2">Latest Comment</h5>
+                        <div className="bg-default-100 rounded-lg p-4">
+                          <p className="text-sm">{selectedTicket.latestComment}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timestamps */}
+                    <div>
+                      <h5 className="font-semibold mb-3">Timeline</h5>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar size={16} className="text-blue-400" />
+                          <span>Created: {new Date(selectedTicket.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar size={16} className="text-green-400" />
+                          <span>Updated: {new Date(selectedTicket.updatedAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter className="border-t border-white/10">
+                <Button color="primary" variant="light" onPress={onClose}>
+                  Close
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

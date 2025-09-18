@@ -64,6 +64,53 @@ func AuthRequired(secret string) fiber.Handler {
 	}
 }
 
+// AuthRequiredWithRedirect checks for authentication and redirects browser requests to sign-in page
+func AuthRequiredWithRedirect(secret string, signInURL string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		tok := getTokenFromReq(c)
+		if tok == "" {
+			// Check if this is a browser request by looking at Accept header
+			accept := c.Get("Accept")
+			if strings.Contains(accept, "text/html") {
+				// Browser request - redirect to sign-in
+				return c.Redirect(signInURL)
+			}
+			// API request - return JSON error
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "missing token"}})
+		}
+		claims := jwt.MapClaims{}
+		parsed, err := jwt.ParseWithClaims(tok, claims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(secret), nil
+		})
+		if err != nil || !parsed.Valid {
+			log.Warn().Err(err).Msg("invalid token")
+			// Check if this is a browser request
+			accept := c.Get("Accept")
+			if strings.Contains(accept, "text/html") {
+				// Browser request - redirect to sign-in
+				return c.Redirect(signInURL)
+			}
+			// API request - return JSON error
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid token"}})
+		}
+		// exp check
+		if exp, ok := claims["exp"].(float64); ok {
+			if time.Now().After(time.Unix(int64(exp), 0)) {
+				// Check if this is a browser request
+				accept := c.Get("Accept")
+				if strings.Contains(accept, "text/html") {
+					// Browser request - redirect to sign-in
+					return c.Redirect(signInURL)
+				}
+				// API request - return JSON error
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "token expired"}})
+			}
+		}
+		c.Locals("user", claims)
+		return c.Next()
+	}
+}
+
 func RequireAnyRole(secret string, roles []string) fiber.Handler {
 	roleSet := map[string]struct{}{}
 	for _, r := range roles { roleSet[r] = struct{}{} }

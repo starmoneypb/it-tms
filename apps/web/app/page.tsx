@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
 import { Ticket, BarChart3, Clipboard, LogIn } from "lucide-react";
 
@@ -26,7 +27,7 @@ export default function Landing() {
       color: "from-orange-500 to-red-600"
     },
     { 
-      href: "/(auth)/sign-in", 
+      href: "/sign-in", 
       title: "Sign In", 
       desc: "Access more features and manage tickets.",
       icon: <LogIn size={24} />,
@@ -38,6 +39,15 @@ export default function Landing() {
     <div className="container">
       {/* Hero Section */}
       <section className="text-center py-16">
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/logo.svg"
+            alt="IT-TMS Logo"
+            width={80}
+            height={80}
+            className="h-20 w-20"
+          />
+        </div>
         <h1 className="text-5xl font-bold mb-6 gradient-text pb-6">
           IT Ticket Management System
         </h1>

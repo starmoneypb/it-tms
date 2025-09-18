@@ -98,10 +98,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signOut = () => {
-    // Clear cookie by setting it to expire
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    setUser(null);
+  const signOut = async () => {
+    try {
+      // Call server sign-out endpoint to properly clear cookie
+      await fetch(`${API}/api/v1/auth/sign-out`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      // Even if server call fails, clear client state
+    } finally {
+      // Clear client state
+      setUser(null);
+    }
   };
 
   const hasRole = (role: UserRole): boolean => {

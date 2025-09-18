@@ -57,8 +57,10 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 	}
 
 	where := strings.Join(clauses, " AND ")
-	sql := fmt.Sprintf(`SELECT id, code, created_by, contact_email, contact_phone, initial_type, resolved_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, assignee_id, created_at, updated_at, closed_at
-	        FROM tickets WHERE %s ORDER BY created_at DESC OFFSET $%d LIMIT $%d`, where, arg, arg+1)
+	sql := fmt.Sprintf(`SELECT 
+		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
+		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
+	FROM tickets t WHERE %s ORDER BY t.created_at DESC OFFSET $%d LIMIT $%d`, where, arg, arg+1)
 	args = append(args, offset, limit)
 
 	rows, err := r.pool.Query(ctx, sql, args...)
@@ -69,9 +71,11 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 	for rows.Next() {
 		var t models.Ticket
 		var details []byte
-		err := rows.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt)
+		var latestComment *string
+		err := rows.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment)
 		if err != nil { return nil, 0, err }
 		json.Unmarshal(details, &t.Details)
+		t.LatestComment = latestComment
 		items = append(items, t)
 	}
 
@@ -92,24 +96,34 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 func (r *TicketRepo) GetByID(ctx context.Context, id string) (models.Ticket, error) {
 	var t models.Ticket
 	var details []byte
-	row := r.pool.QueryRow(ctx, `SELECT id, code, created_by, contact_email, contact_phone, initial_type, resolved_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, assignee_id, created_at, updated_at, closed_at FROM tickets WHERE id=$1`, id)
-	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt); err != nil {
+	var latestComment *string
+	row := r.pool.QueryRow(ctx, `SELECT 
+		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
+		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
+	FROM tickets t WHERE t.id=$1`, id)
+	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return t, ErrNotFound }
 		return t, err
 	}
 	json.Unmarshal(details, &t.Details)
+	t.LatestComment = latestComment
 	return t, nil
 }
 
 func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ticket, []models.Comment, []models.Attachment, error) {
 	var t models.Ticket
 	var details []byte
-	row := r.pool.QueryRow(ctx, `SELECT id, code, created_by, contact_email, contact_phone, initial_type, resolved_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, assignee_id, created_at, updated_at, closed_at FROM tickets WHERE id=$1`, id)
-	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt); err != nil {
+	var latestComment *string
+	row := r.pool.QueryRow(ctx, `SELECT 
+		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
+		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
+	FROM tickets t WHERE t.id=$1`, id)
+	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return t, nil, nil, ErrNotFound }
 		return t, nil, nil, err
 	}
 	json.Unmarshal(details, &t.Details)
+	t.LatestComment = latestComment
 
 	comments := []models.Comment{}
 	rows, err := r.pool.Query(ctx, `
@@ -122,6 +136,11 @@ func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ti
 		for rows.Next() {
 			var c models.Comment
 			rows.Scan(&c.ID, &c.TicketID, &c.AuthorID, &c.AuthorName, &c.AuthorRole, &c.Body, &c.CreatedAt)
+			
+			// Get comment attachments
+			commentAttachments, _ := r.GetCommentAttachments(ctx, c.ID)
+			c.Attachments = commentAttachments
+			
 			comments = append(comments, c)
 		}
 		rows.Close()
@@ -255,9 +274,64 @@ func (r *TicketRepo) AddComment(ctx context.Context, id string, authorID *string
 	return err
 }
 
+func (r *TicketRepo) AddCommentWithID(ctx context.Context, id string, authorID *string, body string) (string, error) {
+	var commentID string
+	err := r.pool.QueryRow(ctx, `INSERT INTO comments (ticket_id, author_id, body) VALUES ($1,$2,$3) RETURNING id`, id, authorID, body).Scan(&commentID)
+	return commentID, err
+}
+
 func (r *TicketRepo) AddAttachment(ctx context.Context, id, filename, mime string, size int64, path string) error {
 	_, err := r.pool.Exec(ctx, `INSERT INTO attachments (ticket_id, filename, mime, size, path) VALUES ($1,$2,$3,$4,$5)`, id, filename, mime, size, path)
 	return err
+}
+
+func (r *TicketRepo) AddCommentAttachment(ctx context.Context, commentID, filename, mime string, size int64, path string) error {
+	_, err := r.pool.Exec(ctx, `INSERT INTO comment_attachments (comment_id, filename, mime, size, path) VALUES ($1,$2,$3,$4,$5)`, commentID, filename, mime, size, path)
+	return err
+}
+
+func (r *TicketRepo) GetCommentAttachments(ctx context.Context, commentID string) ([]models.CommentAttachment, error) {
+	rows, err := r.pool.Query(ctx, `SELECT id, comment_id, filename, mime, size, path, created_at FROM comment_attachments WHERE comment_id=$1 ORDER BY created_at`, commentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var attachments []models.CommentAttachment
+	for rows.Next() {
+		var a models.CommentAttachment
+		if err := rows.Scan(&a.ID, &a.CommentID, &a.Filename, &a.MIME, &a.Size, &a.Path, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, a)
+	}
+	return attachments, rows.Err()
+}
+
+func (r *TicketRepo) GetAttachmentByID(ctx context.Context, attachmentID string) (models.Attachment, error) {
+	var attachment models.Attachment
+	row := r.pool.QueryRow(ctx, `SELECT id, ticket_id, filename, mime, size, path, created_at FROM attachments WHERE id=$1`, attachmentID)
+	err := row.Scan(&attachment.ID, &attachment.TicketID, &attachment.Filename, &attachment.MIME, &attachment.Size, &attachment.Path, &attachment.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return attachment, ErrNotFound
+		}
+		return attachment, err
+	}
+	return attachment, nil
+}
+
+func (r *TicketRepo) GetCommentAttachmentByID(ctx context.Context, attachmentID string) (models.CommentAttachment, error) {
+	var attachment models.CommentAttachment
+	row := r.pool.QueryRow(ctx, `SELECT id, comment_id, filename, mime, size, path, created_at FROM comment_attachments WHERE id=$1`, attachmentID)
+	err := row.Scan(&attachment.ID, &attachment.CommentID, &attachment.Filename, &attachment.MIME, &attachment.Size, &attachment.Path, &attachment.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return attachment, ErrNotFound
+		}
+		return attachment, err
+	}
+	return attachment, nil
 }
 
 func (r *TicketRepo) Classify(ctx context.Context, id string, resolved models.TicketResolvedType) error {

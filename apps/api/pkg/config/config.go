@@ -15,6 +15,7 @@ type Config struct {
 	CORSAllowedOrigins string
 	UploadDir          string
 	SecureCookies      bool
+	WebAppURL          string
 }
 
 func Load() Config {
@@ -28,6 +29,7 @@ func Load() Config {
 		CORSAllowedOrigins: get("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
 		UploadDir:          get("UPLOAD_DIR", "uploads"),
 		SecureCookies:      secure,
+		WebAppURL:          get("WEB_APP_URL", "http://localhost:3000"),
 	}
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
@@ -10,6 +11,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 export function Navigation() {
   const { user, isLoading, signOut, hasAnyRole } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -36,11 +38,34 @@ export function Navigation() {
     };
   }, [isMobileMenuOpen]);
 
+  // Handle window resize to close menus when switching between mobile/desktop
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768; // md breakpoint
+      if (isMobile) {
+        // Switching to mobile view - close dropdown
+        setIsDropdownOpen(false);
+      } else {
+        // Switching to desktop view - close mobile menu
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (isLoading) {
     return (
       <nav className="container flex items-center justify-between py-4">
-        <Link href="/" className="text-2xl font-bold gradient-text">
-          IT‑TMS
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logo.svg"
+            alt="IT-TMS Logo"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+          />
         </Link>
         <div className="flex items-center gap-6">
           <div className="animate-pulse bg-white/20 h-8 w-24 rounded"></div>
@@ -51,8 +76,14 @@ export function Navigation() {
 
   return (
     <nav className="container relative flex items-center justify-between py-6">
-      <Link href="/" className="text-2xl font-bold gradient-text">
-        IT‑TMS
+      <Link href="/" className="flex items-center">
+        <Image
+          src="/logo.svg"
+          alt="IT-TMS Logo"
+          width={32}
+          height={32}
+          className="h-8 w-8"
+        />
       </Link>
       
       {/* Desktop Navigation */}
@@ -89,7 +120,7 @@ export function Navigation() {
 
         {/* Authentication section */}
         {user ? (
-          <Dropdown>
+          <Dropdown isOpen={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownTrigger>
               <Button 
                 variant="ghost" 
@@ -116,7 +147,7 @@ export function Navigation() {
                 </div>
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
+            <DropdownMenu className="glass rounded-xl">
               <DropdownItem key="profile" className="text-white/90" onPress={() => window.location.href = '/profile'}>
                 Profile
               </DropdownItem>

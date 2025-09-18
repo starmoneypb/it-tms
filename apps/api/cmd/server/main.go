@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -77,6 +79,7 @@ func main() {
 	// Auth routes
 	auth := v1.Group("/auth")
 	auth.Post("/sign-in", h.SignIn)
+	auth.Post("/sign-out", h.SignOut)
 	auth.Post("/sign-up", h.SignUp)
 
 	// Optional auth routes (for anonymous access)
@@ -84,6 +87,7 @@ func main() {
 	v1.Post("/tickets", middleware.AuthOptional(cfg.JWTSecret), h.TicketsCreate)
 	v1.Get("/tickets", middleware.AuthOptional(cfg.JWTSecret), h.TicketsList)
 	v1.Get("/tickets/:id", middleware.AuthOptional(cfg.JWTSecret), h.TicketsDetail)
+	v1.Post("/tickets/:id/attachments", middleware.AuthOptional(cfg.JWTSecret), h.TicketsUploadAttachments)
 	v1.Get("/metrics/summary", h.MetricsSummary)
 	v1.Post("/priority/compute", h.PriorityCompute)
 
@@ -98,14 +102,32 @@ func main() {
 	protected.Delete("/tickets/:id/assign", h.TicketsUnassign)
 	protected.Post("/tickets/:id/status", h.TicketsStatus)
 	protected.Post("/tickets/:id/comments", h.TicketsAddComment)
-	protected.Post("/tickets/:id/attachments", h.TicketsUploadAttachments)
+	protected.Post("/tickets/:id/comments/:commentId/attachments", h.CommentsUploadAttachments)
+	
+	// Download routes (require auth with redirect for browser requests)
+	signInURL := cfg.WebAppURL + "/sign-in"
+	v1.Get("/attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadAttachment)
+	v1.Get("/comment-attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadCommentAttachment)
 
 	// Admin routes (require Supervisor or Manager roles)
 	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
 	admin.Post("/tickets/:id/classify", h.TicketsClassify)
 
-	// Static file serving
-	app.Static("/uploads", cfg.UploadDir)
+	// Static file serving - protected with authentication
+	app.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {
+		// Extract the file path after /uploads/
+		filePath := c.Params("*")
+		fullPath := filepath.Join(cfg.UploadDir, filePath)
+		
+		// Security check: ensure the path is within the upload directory
+		uploadDir, _ := filepath.Abs(cfg.UploadDir)
+		requestedPath, _ := filepath.Abs(fullPath)
+		if !strings.HasPrefix(requestedPath, uploadDir) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "access denied"}})
+		}
+		
+		return c.SendFile(fullPath)
+	})
 	
 	// Swagger UI
 	app.Static("/swagger", "./public")

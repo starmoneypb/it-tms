@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input, Button, Card, CardBody, CardHeader } from "@heroui/react";
 import { Crown, Settings, User } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 const schema = z.object({
   email: z.string().email(),
@@ -15,6 +16,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function SignIn() {
   const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<Form>({ resolver: zodResolver(schema) });
+  const searchParams = useSearchParams();
 
   async function onSubmit(values: Form) {
     const res = await fetch(`${API}/api/v1/auth/sign-in`, {
@@ -27,7 +29,10 @@ export default function SignIn() {
       setError("password", { message: "Invalid credentials" });
       return;
     }
-    window.location.href = "/tickets";
+    
+    // Redirect to the originally requested page or default to dashboard
+    const redirectTo = searchParams.get('redirect') || '/dashboard';
+    window.location.href = redirectTo;
   }
 
   return (

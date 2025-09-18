@@ -12,7 +12,8 @@ import {
   MessageSquare, 
   RotateCcw, 
   Users, 
-  Flag 
+  Flag,
+  Settings
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -37,6 +38,7 @@ export default function TicketDetails() {
   const { user, canEditTicket, canCancelTicket, canAssignTicket, canModifyTicketFields, canEditTicketContent } = useAuth();
   const [data, setData] = useState<any>(null);
   const [comment, setComment] = useState("");
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -201,12 +203,53 @@ export default function TicketDetails() {
 
   async function postComment() {
     if (!comment.trim()) return;
-    await fetch(`${API}/api/v1/tickets/${id}/comments`, {
-      method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: comment }),
-    });
-    setComment(""); load();
+    
+    try {
+      // Create comment first
+      const res = await fetch(`${API}/api/v1/tickets/${id}/comments`, {
+        method: "POST", 
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: comment }),
+      });
+      
+      if (!res.ok) {
+        alert("Failed to post comment");
+        return;
+      }
+      
+      // Always consume the response to get the comment ID
+      const response = await res.json();
+      
+      // Upload files if any
+      if (commentFiles.length > 0) {
+        const commentId = response.data.commentId;
+        
+        const formData = new FormData();
+        commentFiles.forEach(file => {
+          formData.append('files', file);
+        });
+        
+        const uploadRes = await fetch(`${API}/api/v1/tickets/${id}/comments/${commentId}/attachments`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.text();
+          console.error("Failed to upload comment attachments:", errorData);
+          alert("Comment posted successfully, but some attachments failed to upload. Please try adding them again.");
+        }
+      }
+      
+      setComment("");
+      setCommentFiles([]);
+      load();
+    } catch (error) {
+      console.error("Error posting comment:", error);
+      alert("Failed to post comment");
+    }
   }
 
   async function changeStatus() {
@@ -339,7 +382,7 @@ export default function TicketDetails() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 glass">
+        <Card className="lg:col-span-2 glass p-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between w-full">
               <h2 className="text-xl font-semibold">Details</h2>
@@ -378,6 +421,40 @@ export default function TicketDetails() {
                 />
               )}
             </div>
+
+            {/* Ticket Attachments */}
+            {data.attachments && data.attachments.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Paperclip size={18} className="text-primary-400" />
+                  Attachments
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {data.attachments.map((att: any) => (
+                    <a
+                      key={att.id}
+                      href={`${API}/api/v1/attachments/${att.id}/download`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
+                    >
+                      <div className="flex-shrink-0">
+                        <Paperclip size={20} className="text-primary-400 group-hover:text-primary-300" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white/90 truncate">{att.filename}</p>
+                        <p className="text-xs text-white/60">
+                          {(att.size / 1024 / 1024).toFixed(2)} MB • {att.mime}
+                          {att.mime === 'application/pdf' && (
+                            <span className="ml-2 px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs">PDF</span>
+                          )}
+                        </p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Divider />
 
@@ -527,6 +604,26 @@ export default function TicketDetails() {
                           __html: DOMPurify.sanitize(c.body) 
                         }}
                       />
+                      {c.attachments && c.attachments.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <h4 className="text-xs font-medium text-white/60">Attachments:</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {c.attachments.map((att: any) => (
+                              <a
+                                key={att.id}
+                                href={`${API}/api/v1/comment-attachments/${att.id}/download`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors"
+                              >
+                                <Paperclip size={14} />
+                                <span>{att.filename}</span>
+                                <span className="text-white/60">({(att.size / 1024 / 1024).toFixed(2)} MB)</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -553,6 +650,31 @@ export default function TicketDetails() {
                   placeholder="Write your comment..."
                   minHeight="120px"
                 />
+                <div>
+                  <label className="text-sm font-medium text-white/80 mb-2 block">Attachments</label>
+                  <input 
+                    type="file" 
+                    multiple 
+                    onChange={(e) => setCommentFiles(Array.from(e.target.files || []))}
+                    className="w-full p-2 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
+                  />
+                  {commentFiles.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {commentFiles.map((file, index) => (
+                        <div key={index} className="text-sm text-white/70 flex items-center justify-between bg-white/5 p-2 rounded">
+                          <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                          <button 
+                            type="button"
+                            onClick={() => setCommentFiles(commentFiles.filter((_, i) => i !== index))}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Button 
                   color="primary" 
                   onPress={postComment}
@@ -719,14 +841,14 @@ export default function TicketDetails() {
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  ⚙️ Edit Ticket Fields
+                  <Settings size={18} className="text-primary-400" />
+                  Edit Ticket Fields
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
                 {!isEditing ? (
                   <Button 
                     color="primary" 
-                    variant="bordered"
                     onPress={() => setIsEditing(true)}
                     className="w-full"
                   >

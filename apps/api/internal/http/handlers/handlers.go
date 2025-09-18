@@ -124,6 +124,20 @@ func (h *Handlers) SignUp(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(fiber.Map{"token": tok}))
 }
 
+func (h *Handlers) SignOut(c *fiber.Ctx) error {
+	// Clear the auth cookie by setting it to expire immediately
+	c.Cookie(&fiber.Cookie{
+		Name:     "token",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   h.cfg.SecureCookies,
+		Path:     "/",
+		SameSite: "Lax",
+		MaxAge:   -1, // Expire immediately
+	})
+	return c.JSON(h.envelope(fiber.Map{"message": "signed out successfully"}))
+}
+
 func (h *Handlers) Me(c *fiber.Ctx) error {
 	claims, _ := c.Locals("user").(jwt.MapClaims)
 	if claims == nil {
@@ -694,11 +708,12 @@ func (h *Handlers) TicketsAddComment(c *fiber.Ctx) error {
 		if sid, ok := userClaims["sub"].(string); ok { userID = &sid }
 	}
 	ctx := context.Background()
-	if err := h.repo.Tickets.AddComment(ctx, id, userID, body.Body); err != nil {
+	commentID, err := h.repo.Tickets.AddCommentWithID(ctx, id, userID, body.Body)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"add comment failed"}})
 	}
 	h.repo.Audits.Insert(ctx, id, userID, "add_comment", nil, body.Body)
-	return c.Status(fiber.StatusCreated).JSON(h.envelope(fiber.Map{"ok": true}))
+	return c.Status(fiber.StatusCreated).JSON(h.envelope(fiber.Map{"commentId": commentID}))
 }
 
 // -------------------- Attachments --------------------
@@ -727,8 +742,9 @@ func (h *Handlers) TicketsUploadAttachments(c *fiber.Ctx) error {
 		}
 		// Rely on client-provided content-type, better to sniff in prod
 		mime := fh.Header.Get("Content-Type")
-		if _, ok := allowedMimes[mime]; !ok {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"mime not allowed"}})
+		// Allow all file types as requested - no restrictions
+		if mime == "" {
+			mime = "application/octet-stream" // Default for unknown types
 		}
 		path, err := h.saveUpload(fh)
 		if err != nil {
@@ -740,6 +756,79 @@ func (h *Handlers) TicketsUploadAttachments(c *fiber.Ctx) error {
 		res = append(res, fiber.Map{"filename": fh.Filename})
 	}
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(res))
+}
+
+func (h *Handlers) CommentsUploadAttachments(c *fiber.Ctx) error {
+	commentID := c.Params("commentId")
+	
+	form, err := c.MultipartForm()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid form"}})
+	}
+	files := form.File["files"]
+	if len(files) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"no files"}})
+	}
+	
+	ctx := context.Background()
+	res := []any{}
+	for _, fh := range files {
+		if fh.Size > maxUploadSize {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"file too large"}})
+		}
+		mime := fh.Header.Get("Content-Type")
+		if mime == "" {
+			mime = "application/octet-stream"
+		}
+		
+		path, err := h.saveUpload(fh)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"save failed"}})
+		}
+		if err := h.repo.Tickets.AddCommentAttachment(ctx, commentID, fh.Filename, mime, fh.Size, path); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"db failed"}})
+		}
+		res = append(res, fiber.Map{"filename": fh.Filename})
+	}
+	return c.Status(fiber.StatusCreated).JSON(h.envelope(res))
+}
+
+func (h *Handlers) DownloadAttachment(c *fiber.Ctx) error {
+	attachmentID := c.Params("attachmentId")
+	
+	ctx := context.Background()
+	attachment, err := h.repo.Tickets.GetAttachmentByID(ctx, attachmentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"attachment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get attachment"}})
+	}
+	
+	// Set appropriate headers for download
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
+	c.Set("Content-Type", attachment.MIME)
+	
+	return c.SendFile(attachment.Path)
+}
+
+func (h *Handlers) DownloadCommentAttachment(c *fiber.Ctx) error {
+	attachmentID := c.Params("attachmentId")
+	
+	ctx := context.Background()
+	attachment, err := h.repo.Tickets.GetCommentAttachmentByID(ctx, attachmentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"attachment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get attachment"}})
+	}
+	
+	// Set appropriate headers for download
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
+	c.Set("Content-Type", attachment.MIME)
+	
+	return c.SendFile(attachment.Path)
 }
 
 func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {

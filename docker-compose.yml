@@ -53,6 +53,8 @@ services:
         psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0003_add_profile_picture.up.sql;
         echo 'Applying 0004_multiple_assignees.up.sql...';
         psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0004_multiple_assignees.up.sql;
+        echo 'Applying 0005_comment_attachments.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0005_comment_attachments.up.sql;
         echo 'Migrations applied successfully!';
         echo 'Seeding database...';
         cd apps/api;
