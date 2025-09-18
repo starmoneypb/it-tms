@@ -1,13 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export function Navigation() {
   const { user, isLoading, signOut, hasAnyRole } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Handle click outside to close mobile menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        mobileMenuRef.current && 
+        !mobileMenuRef.current.contains(target) &&
+        mobileButtonRef.current &&
+        !mobileButtonRef.current.contains(target)
+      ) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
 
   if (isLoading) {
     return (
@@ -23,7 +50,7 @@ export function Navigation() {
   }
 
   return (
-    <nav className="container flex items-center justify-between py-4">
+    <nav className="container relative flex items-center justify-between py-4">
       <Link href="/" className="text-2xl font-bold gradient-text">
         IT‑TMS
       </Link>
@@ -67,9 +94,13 @@ export function Navigation() {
               <Button variant="ghost" className="text-white/80 hover:text-white flex items-center gap-2">
                 {user.profilePicture ? (
                   <img 
-                    src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${user.profilePicture}`} 
+                    src={`${API}${user.profilePicture}`} 
                     alt={user.name}
                     className="w-6 h-6 rounded-full"
+                    onError={(e) => {
+                      // Hide image if it fails to load
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
@@ -100,6 +131,7 @@ export function Navigation() {
 
       {/* Mobile Menu Button */}
       <button
+        ref={mobileButtonRef}
         className="md:hidden flex flex-col items-center justify-center w-8 h-8 space-y-1"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         aria-label="Toggle mobile menu"
@@ -109,40 +141,47 @@ export function Navigation() {
         <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
       </button>
 
-      {/* Mobile Navigation Menu */}
-      <div className={`md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out ${
-        isMobileMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-4'
-      }`}>
-        <div className="px-6 py-6 space-y-1">
+     {/* Mobile Navigation Menu */}
+      <div
+        ref={mobileMenuRef}
+        className={`md:hidden absolute top-full left-0 right-0 mobile-glass border-b border-white/10 shadow-lg transition-opacity duration-300 ease-in-out ${
+          isMobileMenuOpen
+            ? 'opacity-100 visible pointer-events-auto'
+            : 'opacity-0 invisible pointer-events-none'
+        }`}
+      >
+        {/* ย้ายแอนิเมชันการเลื่อนมาไว้ที่ชั้นใน ไม่ใช่ที่ .mobile-glass */}
+        <div className={`px-6 py-6 space-y-1 transition-transform duration-300 ${
+          isMobileMenuOpen ? 'translate-y-0' : '-translate-y-2'
+        }`}>
           {/* Navigation Links */}
           <div className="space-y-1">
             <Link 
               href="/dashboard" 
-              className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Dashboard
             </Link>
             <Link 
               href="/tickets" 
-              className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Tickets
             </Link>
             <Link 
               href="/tickets/new" 
-              className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Open Ticket
             </Link>
 
-            {/* Role-based links */}
             {hasAnyRole(["Supervisor", "Manager"]) && (
               <Link 
                 href="/admin/classify" 
-                className="flex items-center px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Admin
@@ -151,15 +190,16 @@ export function Navigation() {
           </div>
 
           {/* Authentication section */}
-          <div className="pt-4 mt-4 border-t border-gray-200">
+          <div className="pt-4 mt-4 border-t border-white/10">
             {user ? (
               <div className="space-y-2">
-                <div className="px-4 py-2 text-sm text-gray-500 bg-gray-50 rounded-lg flex items-center gap-2">
+                <div className="px-4 py-2 text-sm text-white/60 bg-white/5 rounded-lg flex items-center gap-2">
                   {user.profilePicture ? (
                     <img 
-                      src={user.profilePicture} 
+                      src={`${API}${user.profilePicture}`} 
                       alt={user.name}
                       className="w-5 h-5 rounded-full"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
                     <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
@@ -173,7 +213,7 @@ export function Navigation() {
                     signOut();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center w-full px-4 py-3 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
+                  className="flex items-center w-full px-4 py-3 text-base font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all duration-200"
                 >
                   Sign Out
                 </button>
@@ -190,6 +230,7 @@ export function Navigation() {
           </div>
         </div>
       </div>
+
     </nav>
   );
 }

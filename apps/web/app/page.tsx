@@ -37,7 +37,7 @@ export default function Landing() {
     <div className="container">
       {/* Hero Section */}
       <section className="text-center py-16">
-        <h1 className="text-5xl font-bold mb-6 gradient-text">
+        <h1 className="text-5xl font-bold mb-6 gradient-text pb-6">
           IT Ticket Management System
         </h1>
         <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">

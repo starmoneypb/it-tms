@@ -4,8 +4,25 @@ import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+type AssigneeSummary = {
+  id: string;
+  name: string;
+  profilePicture?: string | null;
+};
+
 type Ticket = {
-  id: string; code: number; title: string; status: string; priority: string; initialType: string; createdAt: string;
+  id: string; 
+  code: number; 
+  title: string; 
+  status: string; 
+  priority: string; 
+  initialType: string; 
+  createdAt: string;
+  assigneeId?: string | null;    // Deprecated: for backward compatibility
+  assigneeName?: string | null;  // Deprecated: for backward compatibility
+  assignees?: AssigneeSummary[]; // New: detailed assignee info
+  updatedAt: string;
+  latestComment?: string | null;
 };
 
 const statusColors = {
@@ -21,6 +38,44 @@ const priorityColors = {
   P2: "primary",
   P3: "default"
 } as const;
+
+// Utility function to format time since
+function formatTimeSince(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffDays > 0) {
+    return `${diffDays}d ago`;
+  } else if (diffHours > 0) {
+    return `${diffHours}h ago`;
+  } else {
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return `${diffMinutes}m ago`;
+  }
+}
+
+// Priority color mapping
+function getPriorityColor(priority: string): string {
+  switch (priority.toLowerCase()) {
+    case 'p0':
+    case 'critical':
+      return 'text-red-400 bg-red-400/10';
+    case 'p1':
+    case 'high':
+      return 'text-orange-400 bg-orange-400/10';
+    case 'p2':
+    case 'medium':
+      return 'text-yellow-400 bg-yellow-400/10';
+    case 'p3':
+    case 'low':
+      return 'text-green-400 bg-green-400/10';
+    default:
+      return 'text-gray-400 bg-gray-400/10';
+  }
+}
 
 export default function TicketsPage() {
   const [q, setQ] = useState("");
@@ -121,50 +176,107 @@ export default function TicketsPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {data?.data?.map((t) => (
-            <Card 
-              key={t.id} 
-              className="glass hover:scale-[1.02] transition-all duration-200 cursor-pointer group h-full"
-              isPressable
-              onPress={() => window.location.href = `/tickets/${t.id}`}
+          {data?.data?.map((ticket) => (
+            <div 
+              key={ticket.id} 
+              className="glass rounded-lg p-4 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col h-[240px]"
+              onClick={() => window.location.href = `/tickets/${ticket.id}`}
             >
-              <CardBody className="p-6 flex flex-col h-full">
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-semibold group-hover:text-primary-500 transition-colors mb-2 line-clamp-2">
-                      #{t.code} — {t.title}
-                    </h3>
-                    <div className="text-sm text-white/60 ml-4 flex-shrink-0">
-                      {new Date(t.createdAt).toLocaleDateString()}
+              {/* Header with Title and Priority */}
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="text-base font-semibold group-hover:text-primary-400 transition-colors line-clamp-2 flex-1 mr-2">
+                  #{ticket.code} — {ticket.title}
+                </h3>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                  {ticket.priority}
+                </span>
+              </div>
+
+              {/* Time in Progress */}
+              <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
+                <span className="text-blue-400">⏱️</span>
+                <span>Updated {formatTimeSince(ticket.updatedAt || ticket.createdAt)}</span>
+              </div>
+
+              {/* Latest Comment */}
+              <div className="flex-1 min-h-0 mb-3">
+                {ticket.latestComment ? (
+                  <>
+                    <div className="text-xs text-white/50 mb-1">Latest comment:</div>
+                    <div className="h-[60px] bg-white/5 rounded-lg p-2 overflow-hidden relative">
+                      <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
+                        {(() => {
+                          const cleanText = ticket.latestComment
+                            .replace(/<br\s*\/?>/gi, ' ')
+                            .replace(/<\/p>\s*<p>/gi, ' ')
+                            .replace(/<[^>]*>/g, '')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                          
+                          // Manually truncate to fit in 3 lines (approximately 120 characters)
+                          return cleanText.length > 120 ? cleanText.substring(0, 120) + '...' : cleanText;
+                        })()}
+                      </div>
                     </div>
+                  </>
+                ) : (
+                  <div className="h-[60px] flex items-center justify-center text-white/40 text-sm">
+                    No recent activity
                   </div>
-                  
-                  <div className="flex items-center gap-2 flex-wrap mb-4">
-                    <Chip 
-                      size="sm" 
-                      color={statusColors[t.status as keyof typeof statusColors] || "default"}
-                      variant="flat"
-                    >
-                      {t.status.replace('_', ' ')}
-                    </Chip>
-                    <Chip 
-                      size="sm" 
-                      color={priorityColors[t.priority as keyof typeof priorityColors] || "default"}
-                      variant="flat"
-                    >
-                      {t.priority}
-                    </Chip>
-                    <Chip size="sm" variant="flat" className="bg-white/10">
-                      {t.initialType.replace(/_/g, ' ')}
-                    </Chip>
-                  </div>
+                )}
+              </div>
+
+              {/* Assignees */}
+              <div className="flex items-center justify-between mt-auto">
+                <div className="flex items-center gap-2">
+                  {ticket.assignees && ticket.assignees.length > 0 ? (
+                    <div className="flex items-center gap-1">
+                      <div className="flex -space-x-1 overflow-hidden">
+                        {ticket.assignees.slice(0, 4).map((assignee: any, index: number) => (
+                          <div
+                            key={assignee.id}
+                            className="relative w-6 h-6 rounded-full border-2 border-gray-800 bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium overflow-hidden"
+                            style={{ zIndex: 10 - index }}
+                            title={assignee.name}
+                          >
+                            {assignee.profilePicture ? (
+                              <img
+                                src={`${API}${assignee.profilePicture}`}
+                                alt={assignee.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              assignee.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                        ))}
+                        {ticket.assignees.length > 4 && (
+                          <div className="relative w-6 h-6 rounded-full border-2 border-gray-800 bg-gray-600 flex items-center justify-center text-white text-xs font-medium">
+                            +{ticket.assignees.length - 4}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm text-white/70 ml-1">
+                        {ticket.assignees.length === 1 
+                          ? ticket.assignees[0].name 
+                          : `${ticket.assignees.length} assignees`
+                        }
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white text-xs font-medium">
+                        ?
+                      </div>
+                      <div className="text-sm text-white/70">Unassigned</div>
+                    </>
+                  )}
                 </div>
-                
-                <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors mt-auto">
-                  Click to view details →
+                <div className="text-sm text-primary-400 font-medium group-hover:text-primary-300 transition-colors">
+                  View →
                 </div>
-              </CardBody>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
 

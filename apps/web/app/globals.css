@@ -74,7 +74,39 @@ a {
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile menu specific glass effect using ::before pseudo-element */
+.mobile-glass {
+  position: absolute;
+  z-index: 60;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Ensure proper stacking context */
+  transform: translate3d(0, 0, 0);
+  isolation: auto;
+}
+
+.mobile-glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  z-index: -1;
+  /* Ensure backdrop-filter works properly */
+  backface-visibility: hidden;
+}
+
+/* Ensure content inside mobile menu is above the backdrop layer */
+.mobile-glass > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Gradient text */
@@ -436,4 +468,68 @@ svg path {
 .recharts-wrapper * {
   opacity: 1 !important;
   visibility: visible !important;
+}
+
+
+/* ===== Backdrop blur fixes (drop-in) ===== */
+
+/* 1) ย้าย gradient ออกจาก body (เลี่ยง background-attachment: fixed) */
+body {
+  /* ตัด gradient ตรง body ทิ้ง แล้วค่อยวางใหม่ด้วย ::before */
+  background-image: none !important;
+  background-attachment: scroll !important;
+}
+
+/* เอา gradient เดิมมาวางเป็นเลเยอร์คงที่ด้านหลังทั้งหน้า */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--color-background-gradient);
+}
+
+/* 2) ทำให้แผ่นเมนูมือถือเบลอได้จริง:
+   - อย่าใส่ transform บนกล่องที่เบลอ
+   - ให้ ::before อยู่ "ใต้คอนเทนต์" แต่ "เหนือฉากหลัง" */
+.mobile-glass {
+  /* ห้ามบังคับ GPU/stacking context ที่นี่ */
+  transform: none !important;
+  isolation: isolate; /* แยกสแต็กกิง เพื่อจัดเลเยอร์ภายในได้ชัด */
+  background: transparent !important;
+  overflow: hidden; /* กันขอบเบลอไหลออก */
+}
+
+/* เลเยอร์เบลอ */
+.mobile-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;               /* ใต้คอนเทนต์ของ mobile-glass */
+  pointer-events: none;
+  /* สำคัญ: ให้โปร่งแสง เพื่อมองเห็นผลเบลอ */
+  background: rgba(17, 25, 40, 0.9); /* ปรับ alpha ได้ตามชอบ */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* ให้คอนเทนต์อยู่เหนือเลเยอร์เบลอ */
+.mobile-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 3) ทำให้ Popover ของ HeroUI เบลอเห็นผล (อย่าใช้สีทึบ) */
+:root {
+  /* สีผิวยกสูงแบบโปร่งแสง (แทน #1a2332 ทึบ) */
+  --surface-elevated-a: rgba(26, 35, 50, 0.60);
+}
+
+[data-slot="popover"],
+[data-slot="popover-content"] {
+  background: var(--surface-elevated-a) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  /* ที่เหลือของคุณคงไว้ได้ เช่น border/radius/shadow */
 }
