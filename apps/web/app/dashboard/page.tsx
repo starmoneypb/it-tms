@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Card, CardBody, CardHeader, Avatar } from "@heroui/react";
 import DOMPurify from "isomorphic-dompurify";
 import dynamic from "next/dynamic";
 import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award } from "lucide-react";
@@ -49,6 +49,7 @@ type UserRanking = {
   name: string;
   email: string;
   role: string;
+  profilePicture?: string | null;
   totalPoints: number;
   ticketsCompleted: number;
   rank: number;
@@ -359,36 +360,59 @@ export default function Dashboard() {
                 {rankings.slice(0, 10).map((user, index) => (
                   <div
                     key={user.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${
+                    className={`flex items-center gap-4 p-4 rounded-lg transition-all duration-200 ${
                       index === 0 
                         ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30' 
                         : index === 1 
-                        ? 'bg-gradient-to-r from-gray-400/20 to-slate-500/20 border border-gray-400/30'
+                        ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30'
                         : index === 2
                         ? 'bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-600/30'
                         : 'bg-white/5 hover:bg-white/10 border border-white/10'
                     }`}
                   >
-                    <div className="flex-shrink-0">
-                      {index === 0 && <Trophy size={20} className="text-yellow-400" />}
-                      {index === 1 && <Award size={20} className="text-gray-400" />}
-                      {index === 2 && <Star size={20} className="text-amber-600" />}
-                      {index > 2 && (
-                        <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium">
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <div className="relative">
+                        <Avatar
+                          src={user.profilePicture || undefined}
+                          name={user.name}
+                          size="md"
+                          className="w-10 h-10"
+                          classNames={{
+                            base: "bg-gradient-to-br from-primary-400 to-primary-600",
+                            name: "text-white font-medium"
+                          }}
+                        />
+                        {/* Rank badge overlay */}
+                        <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                          index === 0 ? 'bg-yellow-500 text-black' :
+                          index === 1 ? 'bg-blue-500 text-white' :
+                          index === 2 ? 'bg-amber-600 text-white' :
+                          'bg-gray-600 text-white'
+                        }`}>
                           {user.rank}
                         </div>
-                      )}
+                      </div>
+                      {index === 0 && <Trophy size={20} className="text-yellow-400" />}
+                      {index === 1 && <Award size={20} className="text-blue-400" />}
+                      {index === 2 && <Star size={20} className="text-amber-600" />}
                     </div>
                     
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-white truncate">{user.name}</p>
-                          <p className="text-xs text-white/50 truncate">{user.role}</p>
+                          <p className="font-semibold text-white truncate text-base">{user.name}</p>
+                          <p className="text-sm text-white/60 truncate">{user.role}</p>
                         </div>
-                        <div className="text-right flex-shrink-0 ml-2">
-                          <p className="font-semibold text-primary-400">{user.totalPoints.toFixed(1)}</p>
-                          <p className="text-xs text-white/50">{user.ticketsCompleted} tickets</p>
+                        <div className="text-right flex-shrink-0 ml-4">
+                          <p className={`font-bold text-lg leading-tight ${
+                            index === 0 ? 'text-yellow-400' :
+                            index === 1 ? 'text-blue-400' :
+                            index === 2 ? 'text-amber-500' :
+                            'text-green-400'
+                          }`}>
+                            {user.totalPoints.toFixed(1)}
+                          </p>
+                          <p className="text-xs text-white/50 mt-1">{user.ticketsCompleted} tickets</p>
                         </div>
                       </div>
                     </div>

@@ -1244,6 +1244,15 @@ func (h *Handlers) GetUserRankings(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get rankings"}})
 	}
 	
+	// Convert profile picture paths to URLs
+	for i := range rankings {
+		if rankings[i].ProfilePicture != nil && *rankings[i].ProfilePicture != "" {
+			filename := filepath.Base(*rankings[i].ProfilePicture)
+			url := fmt.Sprintf("/uploads/%s", filename)
+			rankings[i].ProfilePicture = &url
+		}
+	}
+	
 	return c.JSON(h.envelope(rankings))
 }
 

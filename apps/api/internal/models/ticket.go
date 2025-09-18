@@ -65,6 +65,7 @@ type UserRanking struct {
 	Name             string  `json:"name"`
 	Email            string  `json:"email"`
 	Role             string  `json:"role"`
+	ProfilePicture   *string `json:"profilePicture"`
 	TotalPoints      float64 `json:"totalPoints"`
 	TicketsCompleted int     `json:"ticketsCompleted"`
 	Rank             int     `json:"rank"`

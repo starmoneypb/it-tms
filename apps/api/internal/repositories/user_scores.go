@@ -39,9 +39,10 @@ func (r *UserScoresRepo) RemoveAllPointsForTicket(ctx context.Context, ticketID 
 // GetUserRankings returns top N users by total points
 func (r *UserScoresRepo) GetUserRankings(ctx context.Context, limit int) ([]models.UserRanking, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, name, email, role, total_points, tickets_completed, rank
-		FROM user_rankings 
-		ORDER BY total_points DESC, name ASC
+		SELECT ur.id, ur.name, ur.email, ur.role, u.profile_picture, ur.total_points, ur.tickets_completed, ur.rank
+		FROM user_rankings ur
+		LEFT JOIN users u ON ur.id = u.id
+		ORDER BY ur.total_points DESC, ur.name ASC
 		LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
@@ -51,14 +52,16 @@ func (r *UserScoresRepo) GetUserRankings(ctx context.Context, limit int) ([]mode
 	var rankings []models.UserRanking
 	for rows.Next() {
 		var r models.UserRanking
+		var profilePicture *string
 		var totalPoints sql.NullFloat64
 		var ticketsCompleted sql.NullInt32
 		var rank sql.NullInt32
 
-		if err := rows.Scan(&r.ID, &r.Name, &r.Email, &r.Role, &totalPoints, &ticketsCompleted, &rank); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Email, &r.Role, &profilePicture, &totalPoints, &ticketsCompleted, &rank); err != nil {
 			return nil, err
 		}
 
+		r.ProfilePicture = profilePicture
 		r.TotalPoints = totalPoints.Float64
 		r.TicketsCompleted = int(ticketsCompleted.Int32)
 		r.Rank = int(rank.Int32)

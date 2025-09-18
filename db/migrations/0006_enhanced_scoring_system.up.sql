@@ -27,11 +27,11 @@ SELECT
   u.role,
   COALESCE(SUM(us.points), 0) as total_points,
   COUNT(us.ticket_id) as tickets_completed,
-  RANK() OVER (ORDER BY COALESCE(SUM(us.points), 0) DESC) as rank
+  ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(us.points), 0) DESC, u.name ASC) as rank
 FROM users u
 LEFT JOIN user_scores us ON u.id = us.user_id
 GROUP BY u.id, u.name, u.email, u.role
-ORDER BY total_points DESC;
+ORDER BY total_points DESC, u.name ASC;
 
 -- Add comment to track field changes
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_system_generated BOOLEAN DEFAULT FALSE;
