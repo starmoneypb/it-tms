@@ -27,7 +27,6 @@ WORKDIR /app
 # Copy all necessary files in one layer
 COPY --from=builder /out/api /app/api
 COPY --from=builder /app/openapi.yaml /app/openapi.yaml
-COPY --from=builder /app/public /app/public
 
 # Set secure permissions
 RUN chown -R app:app /app && \

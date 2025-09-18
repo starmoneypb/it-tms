@@ -398,7 +398,7 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(changes) > 0 {
-		commentBody := fmt.Sprintf("🔧 Ticket updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
+		commentBody := fmt.Sprintf("Ticket updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 	}
 	
@@ -459,7 +459,7 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	}
 	if body.RedFlag != nil && *body.RedFlag != ticket.RedFlag {
 		if *body.RedFlag {
-			changes = append(changes, "🚨 Red Flag was set")
+			changes = append(changes, "Red Flag was set")
 		} else {
 			changes = append(changes, "Red Flag was cleared")
 		}
@@ -559,7 +559,7 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(assignmentChanges) > 0 {
-		commentBody := fmt.Sprintf("👤 Assignment updated by %s:\n\n%s", role, strings.Join(assignmentChanges, "\n"))
+		commentBody := fmt.Sprintf("Assignment updated by %s:\n\n%s", role, strings.Join(assignmentChanges, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 	}
 	
@@ -619,7 +619,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(unassignmentChanges) > 0 {
-		commentBody := fmt.Sprintf("👤 Assignment updated by %s:\n\n%s", role, strings.Join(unassignmentChanges, "\n"))
+		commentBody := fmt.Sprintf("Assignment updated by %s:\n\n%s", role, strings.Join(unassignmentChanges, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 	}
 	
@@ -662,7 +662,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 	// Track status change for automatic comment generation
 	var statusChangeComment string
 	if body.Status != ticket.Status {
-		statusChangeComment = fmt.Sprintf("🔄 Status changed from \"%s\" to \"%s\" by %s", ticket.Status, body.Status, role)
+		statusChangeComment = fmt.Sprintf("Status changed from \"%s\" to \"%s\" by %s", ticket.Status, body.Status, role)
 	}
 	
 	if err := h.repo.Tickets.ChangeStatus(ctx, id, body.Status); err != nil {

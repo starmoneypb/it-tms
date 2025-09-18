@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Doughnut } from 'react-chartjs-2';
+import { BarChart3 } from 'lucide-react';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -77,7 +78,10 @@ export default function ChartJsPieChart({ data, title }: ChartJsPieChartProps) {
     return (
       <div className="flex items-center justify-center h-80">
         <div className="text-center">
-          <div className="text-4xl mb-2">📊</div>
+          <div className="text-lg mb-2 text-gray-400 font-semibold flex items-center justify-center gap-2">
+            <BarChart3 size={20} />
+            No Data
+          </div>
           <p className="text-white/50">No data available</p>
           <p className="text-white/30 text-sm mt-1">Charts will appear when tickets are created</p>
         </div>

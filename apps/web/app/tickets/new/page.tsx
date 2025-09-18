@@ -4,6 +4,19 @@ import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox, Progress
 import { computePriority, PriorityInput } from "@/lib/priority";
 import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
+import { 
+  AlertTriangle, 
+  Plus, 
+  Bug, 
+  Settings, 
+  RotateCcw, 
+  Edit3, 
+  Database, 
+  HelpCircle, 
+  FileText, 
+  Zap, 
+  ClipboardList 
+} from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -81,7 +94,7 @@ export default function NewTicket() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 glass">
+        <Card className="lg:col-span-2 glass p-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between w-full">
               <h2 className="text-xl font-semibold">Ticket Creation Wizard</h2>
@@ -100,7 +113,6 @@ export default function NewTicket() {
             {draft.step === 1 && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl mb-4">🔍</div>
                   <h3 className="text-xl font-semibold mb-2">What type of issue are you experiencing?</h3>
                   <p className="text-white/70 mb-6">This helps us route your ticket to the right team</p>
                 </div>
@@ -109,10 +121,10 @@ export default function NewTicket() {
                     color={draft.isAbnormal === true ? "primary" : "default"} 
                     variant={draft.isAbnormal === true ? "solid" : "flat"}
                     size="lg"
-                    className="h-28 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-105"
+                    className="h-28 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-105"
                     onPress={() => setDraft({ ...draft, isAbnormal: true, step: 2, type: "ISSUE_REPORT" })}
                   >
-                    <div className="text-2xl mb-1 leading-none">⚠️</div>
+                    <AlertTriangle size={24} className="text-red-400 mb-1" />
                     <div className="font-semibold text-sm mb-1">System Issue</div>
                     <div className="text-xs opacity-70 text-center px-2">Something is broken</div>
                   </Button>
@@ -120,10 +132,10 @@ export default function NewTicket() {
                     color={draft.isAbnormal === false ? "primary" : "default"} 
                     variant={draft.isAbnormal === false ? "solid" : "flat"}
                     size="lg"
-                    className="h-28 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-105"
+                    className="h-28 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-105"
                     onPress={() => setDraft({ ...draft, isAbnormal: false, step: 2 })}
                   >
-                    <div className="text-2xl mb-1 leading-none">📋</div>
+                    <Plus size={24} className="text-blue-400 mb-1" />
                     <div className="font-semibold text-sm mb-1">Service Request</div>
                     <div className="text-xs opacity-70 text-center px-2">Need assistance</div>
                   </Button>
@@ -134,7 +146,6 @@ export default function NewTicket() {
             {draft.step === 2 && draft.isAbnormal === true && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl mb-4">🐛</div>
                   <h3 className="text-xl font-semibold mb-2">Issue Report Details</h3>
                   <p className="text-white/70 mb-6">Please provide detailed information about the problem</p>
                 </div>
@@ -186,7 +197,6 @@ export default function NewTicket() {
             {draft.step === 2 && draft.isAbnormal === false && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl mb-4">🛠️</div>
                   <h3 className="text-xl font-semibold mb-2">What type of service do you need?</h3>
                   <p className="text-white/70 mb-6">Select the most appropriate category</p>
                 </div>
@@ -196,9 +206,9 @@ export default function NewTicket() {
                       onPress={()=>setDraft({...draft, type: "CHANGE_REQUEST_NORMAL", step: 3})}
                       variant="flat"
                       size="lg"
-                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
+                      className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-2xl mb-1 leading-none">🔄</div>
+                      <RotateCcw size={24} className="text-yellow-400 mb-1" />
                       <div className="font-semibold text-sm mb-1">Normal Change</div>
                       <div className="text-xs opacity-70 text-center px-2">System modifications</div>
                     </Button>
@@ -208,9 +218,9 @@ export default function NewTicket() {
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_CORRECTION", step: 3})}
                       variant="flat"
                       size="lg"
-                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
+                      className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-2xl mb-1 leading-none">✏️</div>
+                      <Edit3 size={24} className="text-green-400 mb-1" />
                       <div className="font-semibold text-sm mb-1">Data Correction</div>
                       <div className="text-xs opacity-70 text-center px-2">Fix incorrect data</div>
                     </Button>
@@ -220,9 +230,9 @@ export default function NewTicket() {
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_DATA_EXTRACTION", step: 3})}
                       variant="flat"
                       size="lg"
-                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
+                      className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-2xl mb-1 leading-none">📊</div>
+                      <Database size={24} className="text-blue-400 mb-1" />
                       <div className="font-semibold text-sm mb-1">Data Extraction</div>
                       <div className="text-xs opacity-70 text-center px-2">Export or retrieve data</div>
                     </Button>
@@ -232,9 +242,9 @@ export default function NewTicket() {
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_ADVISORY", step: 3})}
                       variant="flat"
                       size="lg"
-                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02]"
+                      className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02]"
                     >
-                      <div className="text-2xl mb-1 leading-none">💡</div>
+                      <HelpCircle size={24} className="text-orange-400 mb-1" />
                       <div className="font-semibold text-sm mb-1">Advisory</div>
                       <div className="text-xs opacity-70 text-center px-2">Expert consultation</div>
                     </Button>
@@ -244,9 +254,9 @@ export default function NewTicket() {
                       onPress={()=>setDraft({...draft, type: "SERVICE_REQUEST_GENERAL", step: 3})}
                       variant="flat"
                       size="lg"
-                      className="h-24 flex flex-col items-center justify-center p-3 transition-all duration-200 hover:scale-[1.02] md:col-span-2"
+                      className="h-32 flex flex-col items-center justify-center p-2 transition-all duration-200 hover:scale-[1.02] md:col-span-2"
                     >
-                      <div className="text-2xl mb-1 leading-none">📝</div>
+                      <Settings size={24} className="text-gray-400 mb-1" />
                       <div className="font-semibold text-sm mb-1">General Request</div>
                       <div className="text-xs opacity-70 text-center px-2">Other support needs</div>
                     </Button>
@@ -261,7 +271,6 @@ export default function NewTicket() {
             {draft.step === 3 && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl mb-4">📝</div>
                   <h3 className="text-xl font-semibold mb-2">Additional Information</h3>
                   <p className="text-white/70 mb-6">Provide a title and detailed description</p>
                 </div>
@@ -285,7 +294,7 @@ export default function NewTicket() {
                     <input 
                       type="file" 
                       multiple 
-                      className="w-full p-3 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
+                      className="w-full p-2 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
                     />
                   </div>
                 </div>
@@ -303,7 +312,6 @@ export default function NewTicket() {
             {draft.step === 4 && (
               <section className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl mb-4">⚡</div>
                   <h3 className="text-xl font-semibold mb-2">Priority Assessment</h3>
                   <p className="text-white/70 mb-6">Help us prioritize your ticket</p>
                 </div>
@@ -406,7 +414,7 @@ export default function NewTicket() {
                     </div>
                   </div>
 
-                  <div className="p-4 glass rounded-lg border border-primary-500/20">
+                  <div className="p-6 glass rounded-lg border border-primary-500/20">
                     <h4 className="text-lg font-semibold mb-2">Priority Calculation</h4>
                     <div className="text-sm space-y-1">
                       <div>Impact: {pr.impact} • Urgency: {pr.urgency} • Final: {pr.final}</div>
@@ -440,10 +448,11 @@ export default function NewTicket() {
           </CardBody>
         </Card>
 
-        <Card className="glass">
+        <Card className="glass p-2">
           <CardHeader className="pb-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              📋 Progress
+              <ClipboardList size={18} className="text-primary-400" />
+              Progress
             </h3>
           </CardHeader>
           <CardBody>
@@ -451,7 +460,7 @@ export default function NewTicket() {
               {steps.map((step) => (
                 <div 
                   key={step.number} 
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
                     draft.step === step.number 
                       ? "bg-primary-500/20 border border-primary-500/30" 
                       : draft.step > step.number 

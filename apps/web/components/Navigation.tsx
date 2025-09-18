@@ -50,13 +50,13 @@ export function Navigation() {
   }
 
   return (
-    <nav className="container relative flex items-center justify-between py-4">
+    <nav className="container relative flex items-center justify-between py-6">
       <Link href="/" className="text-2xl font-bold gradient-text">
         IT‑TMS
       </Link>
       
       {/* Desktop Navigation */}
-      <div className="hidden md:flex items-center gap-6">
+      <div className="hidden md:flex items-center gap-6 py-1">
         {/* Always visible links */}
         <Link 
           href="/dashboard" 
@@ -91,27 +91,33 @@ export function Navigation() {
         {user ? (
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="ghost" className="text-white/80 hover:text-white flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                className="glass text-white/90 hover:text-white hover:bg-white/10 px-2 rounded-xl border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:shadow-xl hover:border-white/30 flex items-center gap-3"
+              >
                 {user.profilePicture ? (
                   <img 
                     src={`${API}${user.profilePicture}`} 
                     alt={user.name}
-                    className="w-6 h-6 rounded-full"
+                    className="w-8 h-8 rounded-full ring-2 ring-white/20"
                     onError={(e) => {
                       // Hide image if it fails to load
                       e.currentTarget.style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                {user.name} ({user.role})
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-white/60">{user.role}</span>
+                </div>
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem key="profile" className="text-gray-700" onPress={() => window.location.href = '/profile'}>
+              <DropdownItem key="profile" className="text-white/90" onPress={() => window.location.href = '/profile'}>
                 Profile
               </DropdownItem>
               <DropdownItem key="signout" className="text-danger" onPress={signOut}>
@@ -193,21 +199,31 @@ export function Navigation() {
           <div className="pt-4 mt-4 border-t border-white/10">
             {user ? (
               <div className="space-y-2">
-                <div className="px-4 py-2 text-sm text-white/60 bg-white/5 rounded-lg flex items-center gap-2">
+                <div className="glass px-4 py-3 text-sm text-white/90 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 backdrop-blur-md">
                   {user.profilePicture ? (
                     <img 
                       src={`${API}${user.profilePicture}`} 
                       alt={user.name}
-                      className="w-5 h-5 rounded-full"
+                      className="w-8 h-8 rounded-full ring-2 ring-white/20"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20">
                       {user.name.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  {user.name} ({user.role})
+                  <div className="flex flex-col">
+                    <span className="font-medium text-white">{user.name}</span>
+                    <span className="text-xs text-white/60">{user.role}</span>
+                  </div>
                 </div>
+                <Link
+                  href="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center w-full px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
+                >
+                  Profile
+                </Link>
                 <button
                   onClick={() => {
                     signOut();

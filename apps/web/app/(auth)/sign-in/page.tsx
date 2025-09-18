@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input, Button, Card, CardBody, CardHeader } from "@heroui/react";
+import { Crown, Settings, User } from "lucide-react";
 
 const schema = z.object({
   email: z.string().email(),
@@ -75,9 +76,18 @@ export default function SignIn() {
             <div className="pt-4 border-t border-white/10">
               <p className="text-xs text-white/60 text-center mb-2">Demo Credentials</p>
               <div className="space-y-1 text-xs text-white/50">
-                <div>👨‍💼 <strong>Manager:</strong> manager@ / Password!1</div>
-                <div>👨‍💻 <strong>Supervisor:</strong> supervisor@ / Password!1</div>
-                <div>👤 <strong>User:</strong> user@ / Password!1</div>
+                <div className="flex items-center gap-2">
+                  <Crown size={12} className="text-yellow-400" />
+                  <strong>Manager:</strong> manager@ / Password!1
+                </div>
+                <div className="flex items-center gap-2">
+                  <Settings size={12} className="text-blue-400" />
+                  <strong>Supervisor:</strong> supervisor@ / Password!1
+                </div>
+                <div className="flex items-center gap-2">
+                  <User size={12} className="text-gray-400" />
+                  <strong>User:</strong> user@ / Password!1
+                </div>
               </div>
             </div>
           </CardBody>

@@ -6,6 +6,14 @@ import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import DOMPurify from "isomorphic-dompurify";
+import { 
+  AlertTriangle, 
+  Paperclip, 
+  MessageSquare, 
+  RotateCcw, 
+  Users, 
+  Flag 
+} from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -248,7 +256,10 @@ export default function TicketDetails() {
       <div className="container">
         <Card className="glass border-red-500/20">
           <CardBody className="text-center py-8">
-            <div className="text-red-400 text-lg mb-2">⚠️ Error Loading Ticket</div>
+            <div className="text-red-400 text-lg mb-2 flex items-center justify-center gap-2">
+              <AlertTriangle size={20} />
+              Error Loading Ticket
+            </div>
             <p className="text-white/70">Unable to load ticket details</p>
           </CardBody>
         </Card>
@@ -321,7 +332,8 @@ export default function TicketDetails() {
         </div>
         {contentEditError && (
           <div className="text-red-400 text-sm p-2 bg-red-500/10 rounded-lg mt-2">
-            ⚠️ {contentEditError}
+            <AlertTriangle size={14} className="inline mr-1" />
+            {contentEditError}
           </div>
         )}
       </div>
@@ -394,7 +406,7 @@ export default function TicketDetails() {
                     <span className="text-white/60">Assigned to:</span>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {t.assignees.map((assignee: any) => (
-                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1">
+                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
                           <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
                             {assignee.name.charAt(0).toUpperCase()}
                           </div>
@@ -421,7 +433,7 @@ export default function TicketDetails() {
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Steps to Reproduce</h3>
                   <div 
-                    className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none bg-white/5 p-4 rounded-lg"
+                    className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none bg-white/5 p-6 rounded-lg"
                     dangerouslySetInnerHTML={{ 
                       __html: DOMPurify.sanitize(t.details.steps) 
                     }}
@@ -454,7 +466,8 @@ export default function TicketDetails() {
                 {t.redFlag && (
                   <div className="md:col-span-2">
                     <Chip color="danger" variant="flat" size="sm">
-                      🚨 Red Flag
+                      <Flag size={14} className="mr-1" />
+                      Red Flag
                     </Chip>
                   </div>
                 )}
@@ -468,8 +481,8 @@ export default function TicketDetails() {
               {data.attachments && data.attachments.length > 0 ? (
                 <div className="space-y-2">
                   {data.attachments.map((a: any) => (
-                    <div key={a.id} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
-                      <span className="text-sm">📎</span>
+                    <div key={a.id} className="flex items-center gap-2 p-3 bg-white/5 rounded-lg">
+                      <Paperclip size={14} className="text-gray-400" />
                       <span className="text-sm">{a.filename}</span>
                     </div>
                   ))}
@@ -486,7 +499,7 @@ export default function TicketDetails() {
               {data.comments && data.comments.length > 0 ? (
                 <div className="space-y-3">
                   {data.comments.map((c: any) => (
-                    <div key={c.id} className="p-3 bg-white/5 rounded-lg">
+                    <div key={c.id} className="p-4 bg-white/5 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         {c.authorName && (
                           <div className="flex items-center gap-2">
@@ -529,7 +542,8 @@ export default function TicketDetails() {
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  💬 Add Comment
+                  <MessageSquare size={18} className="text-primary-400" />
+                  Add Comment
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
@@ -555,7 +569,8 @@ export default function TicketDetails() {
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  🔄 Change Status
+                  <RotateCcw size={18} className="text-primary-400" />
+                  Change Status
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
@@ -576,8 +591,9 @@ export default function TicketDetails() {
                 </Select>
                 
                 {statusError && (
-                  <div className="text-red-400 text-sm p-2 bg-red-500/10 rounded-lg">
-                    ⚠️ {statusError}
+                      <div className="text-red-400 text-sm p-3 bg-red-500/10 rounded-lg">
+                    <AlertTriangle size={14} className="inline mr-1" />
+                    {statusError}
                   </div>
                 )}
                 
@@ -598,7 +614,8 @@ export default function TicketDetails() {
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  👤 Manage Assignments
+                  <Users size={18} className="text-primary-400" />
+                  Manage Assignments
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
@@ -608,7 +625,7 @@ export default function TicketDetails() {
                     <h4 className="text-sm font-medium text-white/80 mb-2">Current Assignees:</h4>
                     <div className="flex flex-wrap gap-2">
                       {data.ticket.assignees.map((assignee: any) => (
-                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
                           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
                             {assignee.name.charAt(0).toUpperCase()}
                           </div>
@@ -812,8 +829,9 @@ export default function TicketDetails() {
                     </div>
 
                     {editError && (
-                      <div className="text-red-400 text-sm p-2 bg-red-500/10 rounded-lg">
-                        ⚠️ {editError}
+                      <div className="text-red-400 text-sm p-3 bg-red-500/10 rounded-lg">
+                        <AlertTriangle size={14} className="inline mr-1" />
+                        {editError}
                       </div>
                     )}
 

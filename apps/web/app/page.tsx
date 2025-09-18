@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
+import { Ticket, BarChart3, Clipboard, LogIn } from "lucide-react";
 
 export default function Landing() {
   const cards = [
@@ -7,28 +8,28 @@ export default function Landing() {
       href: "/tickets/new", 
       title: "Open Ticket", 
       desc: "Start a new request or report an issue.",
-      icon: "🎫",
+      icon: <Ticket size={24} />,
       color: "from-blue-500 to-purple-600"
     },
     { 
       href: "/dashboard", 
       title: "Dashboard", 
       desc: "Monitor progress and status.",
-      icon: "📊",
+      icon: <BarChart3 size={24} />,
       color: "from-green-500 to-teal-600"
     },
     { 
       href: "/tickets", 
       title: "My Tickets", 
       desc: "Search, filter and manage your tickets.",
-      icon: "📋",
+      icon: <Clipboard size={24} />,
       color: "from-orange-500 to-red-600"
     },
     { 
       href: "/(auth)/sign-in", 
       title: "Sign In", 
       desc: "Access more features and manage tickets.",
-      icon: "🔐",
+      icon: <LogIn size={24} />,
       color: "from-purple-500 to-pink-600"
     }
   ];
@@ -73,13 +74,13 @@ export default function Landing() {
           {cards.map((c) => (
             <Card 
               key={c.href} 
-              className="glass hover:scale-105 transition-all duration-300 group cursor-pointer"
+              className="glass hover:scale-105 transition-all duration-300 group cursor-pointer p-2"
               isPressable
               as={Link}
               href={c.href as any}
             >
               <CardHeader className="flex flex-col items-center text-center pb-2">
-                <div className={`text-4xl mb-3 bg-gradient-to-r ${c.color} bg-clip-text text-transparent`}>
+                <div className={`mb-3 bg-gradient-to-r ${c.color} bg-clip-text`}>
                   {c.icon}
                 </div>
                 <h3 className="text-xl font-semibold group-hover:text-primary-500 transition-colors">

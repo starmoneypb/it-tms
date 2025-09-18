@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@heroui/react";
 import DOMPurify from "isomorphic-dompurify";
 import dynamic from "next/dynamic";
+import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap } from "lucide-react";
 
 // Import the Chart.js pie chart component with SSR disabled
 const ChartJsPieChart = dynamic(() => import("../../components/ChartJsPieChart"), {
@@ -137,7 +138,10 @@ export default function Dashboard() {
     <div className="container">
       <Card className="glass border-red-500/20">
         <CardBody className="text-center py-8">
-          <div className="text-red-400 text-lg mb-2">⚠️ Error Loading Dashboard</div>
+          <div className="text-red-400 text-lg mb-2 flex items-center justify-center gap-2">
+            <AlertTriangle size={20} />
+            Error Loading Dashboard
+          </div>
           <p className="text-white/70">{error}</p>
         </CardBody>
       </Card>
@@ -174,24 +178,28 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-3 glass">
+        <Card className="lg:col-span-3 glass p-2">
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              📋 Active Tickets Today
+              <Clipboard size={20} className="text-primary-400" />
+              Active Tickets Today
             </h2>
           </CardHeader>
           <CardBody>
             <div className="flex overflow-x-auto gap-4 pb-2 overflow-y-visible">
               {data.inProgressToday.length === 0 && (
                 <div className="w-full text-center py-8">
-                  <div className="text-4xl mb-2">🎉</div>
+                  <div className="text-lg mb-2 text-green-400 font-semibold flex items-center justify-center gap-2">
+                    <PartyPopper size={20} />
+                    Great!
+                  </div>
                   <p className="text-white/70">No tickets in progress today!</p>
                 </div>
               )}
               {data.inProgressToday.map((ticket) => (
                 <div 
                   key={ticket.id} 
-                  className="w-[320px] h-[240px] flex-shrink-0 glass rounded-lg p-4 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col"
+                  className="w-[320px] h-[240px] flex-shrink-0 glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col"
                   onClick={() => window.location.href = `/tickets/${ticket.id}`}
                 >
                   {/* Header with Title and Priority */}
@@ -206,7 +214,7 @@ export default function Dashboard() {
 
                   {/* Time in Progress */}
                   <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
-                    <span className="text-blue-400">⏱️</span>
+                    <Clock size={14} className="text-blue-400" />
                     <span>In progress for {formatTimeSince(ticket.updatedAt)}</span>
                   </div>
 
@@ -215,7 +223,7 @@ export default function Dashboard() {
                     {ticket.latestComment ? (
                       <>
                         <div className="text-xs text-white/50 mb-1">Latest comment:</div>
-                        <div className="h-[60px] bg-white/5 rounded-lg p-2 overflow-hidden relative">
+                        <div className="h-[60px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                           <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
                             {(() => {
                               const cleanText = ticket.latestComment
@@ -294,23 +302,24 @@ export default function Dashboard() {
           </CardBody>
         </Card>
 
-        <ChartCard title="Status Distribution" data={toPie(data.statusCounts)} icon="📊" />
-        <ChartCard title="Category Breakdown" data={toPie(data.categoryCounts)} icon="📁" />
-        <ChartCard title="Priority Levels" data={toPie(data.priorityCounts)} icon="⚡" />
+        <ChartCard title="Status Distribution" data={toPie(data.statusCounts)} icon={<BarChart3 size={18} className="text-primary-400" />} />
+        <ChartCard title="Category Breakdown" data={toPie(data.categoryCounts)} icon={<FolderOpen size={18} className="text-primary-400" />} />
+        <ChartCard title="Priority Levels" data={toPie(data.priorityCounts)} icon={<Zap size={18} className="text-primary-400" />} />
       </div>
     </div>
   );
 }
 
-function ChartCard({ title, data, icon }: { title: string; data: { name: string; value: number }[]; icon: string }) {
+function ChartCard({ title, data, icon }: { title: string; data: { name: string; value: number }[]; icon: React.ReactNode }) {
   return (
-    <Card className="glass">
+    <Card className="glass p-2">
       <CardHeader className="pb-3">
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          {icon} {title}
+          {icon}
+          {title}
         </h3>
       </CardHeader>
-      <CardBody className="p-4">
+      <CardBody className="p-6">
         <ChartJsPieChart data={data} title={title} />
       </CardBody>
     </Card>

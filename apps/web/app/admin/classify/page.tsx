@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip } from "@heroui/react";
+import { Tags, CheckCircle, Info } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -67,11 +68,12 @@ export default function ClassifyPage() {
       </div>
 
       <div className="space-y-6">
-        <Card className="glass">
+        <Card className="glass p-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between w-full">
               <h2 className="text-xl font-semibold flex items-center gap-2">
-                🏷️ Issue Classification
+                <Tags size={20} className="text-primary-400" />
+                Issue Classification
               </h2>
               <Chip color="primary" variant="flat">
                 {items.length} pending
@@ -81,7 +83,10 @@ export default function ClassifyPage() {
           <CardBody className="space-y-4">
             {items.length === 0 && (
               <div className="text-center py-16">
-                <div className="text-4xl mb-4">✅</div>
+                <div className="text-lg mb-4 text-green-400 font-semibold flex items-center justify-center gap-2">
+                  <CheckCircle size={20} />
+                  Complete!
+                </div>
                 <h3 className="text-lg font-semibold mb-2">All Caught Up!</h3>
                 <p className="text-white/70">No Issue Reports awaiting classification.</p>
               </div>
@@ -92,7 +97,7 @@ export default function ClassifyPage() {
                 key={t.id} 
                 className="glass border-white/10 hover:border-primary-500/30 transition-colors"
               >
-                <CardBody className="p-6">
+                <CardBody className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-2">{t.title}</h3>
@@ -115,10 +120,10 @@ export default function ClassifyPage() {
                           className="min-w-[200px]"
                         >
                           <SelectItem key="EMERGENCY_CHANGE">
-                            🚨 Emergency Change
+                            Emergency Change
                           </SelectItem>
                           <SelectItem key="DATA_CORRECTION">
-                            ✏️ Data Correction
+                            Data Correction
                           </SelectItem>
                         </Select>
                       </div>
@@ -141,9 +146,9 @@ export default function ClassifyPage() {
 
         {items.length > 0 && (
           <Card className="glass border-blue-500/20">
-            <CardBody className="p-4">
+            <CardBody className="p-6">
               <div className="flex items-center gap-3">
-                <div className="text-blue-400 text-lg">💡</div>
+                <Info size={20} className="text-blue-400" />
                 <div>
                   <h4 className="font-semibold text-blue-300">Classification Guidelines</h4>
                   <p className="text-sm text-white/70">

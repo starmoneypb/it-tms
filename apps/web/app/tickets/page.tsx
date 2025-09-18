@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
+import { Search, Clock, Inbox } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -125,10 +126,11 @@ export default function TicketsPage() {
       </div>
 
       <div className="space-y-6">
-        <Card className="glass">
+        <Card className="glass p-2">
           <CardHeader className="pb-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              🔍 Search & Filter
+              <Search size={18} className="text-primary-400" />
+              Search & Filter
             </h2>
           </CardHeader>
           <CardBody className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -179,7 +181,7 @@ export default function TicketsPage() {
           {data?.data?.map((ticket) => (
             <div 
               key={ticket.id} 
-              className="glass rounded-lg p-4 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col h-[240px]"
+              className="glass rounded-lg p-6 hover:bg-white/10 transition-all duration-200 cursor-pointer group relative border border-white/5 flex flex-col h-[240px]"
               onClick={() => window.location.href = `/tickets/${ticket.id}`}
             >
               {/* Header with Title and Priority */}
@@ -194,7 +196,7 @@ export default function TicketsPage() {
 
               {/* Time in Progress */}
               <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
-                <span className="text-blue-400">⏱️</span>
+                <Clock size={14} className="text-blue-400" />
                 <span>Updated {formatTimeSince(ticket.updatedAt || ticket.createdAt)}</span>
               </div>
 
@@ -203,7 +205,7 @@ export default function TicketsPage() {
                 {ticket.latestComment ? (
                   <>
                     <div className="text-xs text-white/50 mb-1">Latest comment:</div>
-                    <div className="h-[60px] bg-white/5 rounded-lg p-2 overflow-hidden relative">
+                    <div className="h-[60px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                       <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
                         {(() => {
                           const cleanText = ticket.latestComment
@@ -298,7 +300,10 @@ export default function TicketsPage() {
         {data && data.data.length === 0 && (
           <Card className="glass">
             <CardBody className="text-center py-16">
-              <div className="text-4xl mb-4">📭</div>
+              <div className="text-lg mb-4 text-gray-400 font-semibold flex items-center justify-center gap-2">
+                <Inbox size={20} />
+                No Results
+              </div>
               <h3 className="text-lg font-semibold mb-2">No tickets found</h3>
               <p className="text-white/70 mb-4">
                 {q || status || priority 

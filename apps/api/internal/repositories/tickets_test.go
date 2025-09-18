@@ -126,23 +126,23 @@ func TestCommentGeneration_ChangeTracking(t *testing.T) {
 			name:     "Title and description changes",
 			changes:  []string{"Title changed from \"Old Title\" to \"New Title\"", "Description was updated"},
 			role:     "Supervisor",
-			expected: "🔧 Ticket updated by Supervisor:\n\nTitle changed from \"Old Title\" to \"New Title\"\nDescription was updated",
+			expected: "Ticket updated by Supervisor:\n\nTitle changed from \"Old Title\" to \"New Title\"\nDescription was updated",
 		},
 		{
 			name:     "Red flag changes",
-			changes:  []string{"🚨 Red Flag was set"},
+			changes:  []string{"Red Flag was set"},
 			role:     "Manager",
-			expected: "⚙️ Ticket fields updated by Manager:\n\n🚨 Red Flag was set",
+			expected: "Ticket fields updated by Manager:\n\nRed Flag was set",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var commentBody string
-			if strings.Contains(tt.expected, "⚙️") {
-				commentBody = fmt.Sprintf("⚙️ Ticket fields updated by %s:\n\n%s", tt.role, strings.Join(tt.changes, "\n"))
+			if strings.Contains(tt.expected, "fields updated") {
+				commentBody = fmt.Sprintf("Ticket fields updated by %s:\n\n%s", tt.role, strings.Join(tt.changes, "\n"))
 			} else {
-				commentBody = fmt.Sprintf("🔧 Ticket updated by %s:\n\n%s", tt.role, strings.Join(tt.changes, "\n"))
+				commentBody = fmt.Sprintf("Ticket updated by %s:\n\n%s", tt.role, strings.Join(tt.changes, "\n"))
 			}
 			
 			assert.Equal(t, tt.expected, commentBody)
