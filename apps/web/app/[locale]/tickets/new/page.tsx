@@ -491,34 +491,127 @@ export default function NewTicket() {
 
                   {/* Priority Assessment - Urgency */}
                   <div>
-                    <h4 className="text-lg font-semibold mb-3">{t('urgency0to4')}</h4>
-                    <p className="text-sm text-white/70 mb-3">{t('singleSelectionOnly')}</p>
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 mb-3">
+                      <h4 className="text-lg font-semibold text-white/90">{t('urgency0to4')}</h4>
+                      <div className="h-px bg-gradient-to-r from-white/20 to-transparent flex-1"></div>
+                    </div>
+                    <p className="text-sm text-white/60 mb-4 bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                      ⚡ {t('singleSelectionOnly')}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                       {[
-                        { value: "<=48h", label: t('deadline48h'), score: 4 },
-                        { value: "3-7d", label: t('deadline3to7d'), score: 3 },
-                        { value: "8-30d", label: t('deadline8to30d'), score: 2 },
-                        { value: ">=31d", label: t('deadline31dPlus'), score: 1 },
-                        { value: "none", label: t('noDeadline'), score: 0 }
-                      ].map((u) => (
-                        <Button 
-                          key={u.value} 
-                          onPress={()=>setDraft({...draft, priority:{...draft.priority, urgency: u.value as any}})} 
-                          color="default"
-                          variant="bordered"
-                          size="md"
-                          className={`transition-all duration-200 ${
-                            draft.priority.urgency === u.value 
-                              ? "!bg-primary-600 !text-white border-primary-500 shadow-lg scale-105 font-semibold hover:!bg-primary-700 focus:!bg-primary-600" 
-                              : "hover:scale-102 hover:bg-default-100"
-                          }`}
-                        >
-                          <div className="flex flex-col items-center">
-                            <span>{u.label.replace(/\s*\(\d+\)/, '')}</span>
-                            <span className="text-xs opacity-70">{u.score} pts</span>
+                        { 
+                          value: "<=48h", 
+                          label: t('deadline48h'), 
+                          score: 4,
+                          icon: "🔥",
+                          colorScheme: "red",
+                          bgColor: "from-red-500/20 to-red-600/10",
+                          borderColor: "border-red-500/30",
+                          textColor: "text-red-300",
+                          selectedBg: "bg-red-500/90",
+                          selectedBorder: "border-red-400"
+                        },
+                        { 
+                          value: "3-7d", 
+                          label: t('deadline3to7d'), 
+                          score: 3,
+                          icon: "⚡",
+                          colorScheme: "orange", 
+                          bgColor: "from-orange-500/20 to-orange-600/10",
+                          borderColor: "border-orange-500/30",
+                          textColor: "text-orange-300",
+                          selectedBg: "bg-orange-500/90",
+                          selectedBorder: "border-orange-400"
+                        },
+                        { 
+                          value: "8-30d", 
+                          label: t('deadline8to30d'), 
+                          score: 2,
+                          icon: "⏰",
+                          colorScheme: "yellow",
+                          bgColor: "from-yellow-500/20 to-yellow-600/10", 
+                          borderColor: "border-yellow-500/30",
+                          textColor: "text-yellow-300",
+                          selectedBg: "bg-yellow-500/90",
+                          selectedBorder: "border-yellow-400"
+                        },
+                        { 
+                          value: ">=31d", 
+                          label: t('deadline31dPlus'), 
+                          score: 1,
+                          icon: "📅",
+                          colorScheme: "blue",
+                          bgColor: "from-blue-500/20 to-blue-600/10",
+                          borderColor: "border-blue-500/30", 
+                          textColor: "text-blue-300",
+                          selectedBg: "bg-blue-500/90",
+                          selectedBorder: "border-blue-400"
+                        },
+                        { 
+                          value: "none", 
+                          label: t('noDeadline'), 
+                          score: 0,
+                          icon: "⭕",
+                          colorScheme: "gray",
+                          bgColor: "from-gray-500/20 to-gray-600/10",
+                          borderColor: "border-gray-500/30",
+                          textColor: "text-gray-300", 
+                          selectedBg: "bg-gray-500/90",
+                          selectedBorder: "border-gray-400"
+                        }
+                      ].map((u) => {
+                        const isSelected = draft.priority.urgency === u.value;
+                        return (
+                          <div
+                            key={u.value}
+                            onClick={() => setDraft({...draft, priority:{...draft.priority, urgency: u.value as any}})}
+                            className={`
+                              relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-300 
+                              bg-gradient-to-br ${u.bgColor} backdrop-blur-sm
+                              ${isSelected 
+                                ? `${u.selectedBg} ${u.selectedBorder} shadow-xl shadow-${u.colorScheme}-500/25 scale-105 ring-2 ring-${u.colorScheme}-400/50` 
+                                : `${u.borderColor} hover:scale-102 hover:shadow-lg hover:shadow-${u.colorScheme}-500/10 hover:border-${u.colorScheme}-400/50`
+                              }
+                              group
+                            `}
+                          >
+                            {/* Selection indicator */}
+                            {isSelected && (
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                              </div>
+                            )}
+                            
+                            {/* Content */}
+                            <div className="flex flex-col items-center text-center space-y-2">
+                              {/* Icon */}
+                              <div className="text-2xl mb-1 group-hover:scale-110 transition-transform duration-200">
+                                {u.icon}
+                              </div>
+                              
+                              {/* Label */}
+                              <div className={`font-medium text-sm leading-tight ${isSelected ? 'text-white' : u.textColor}`}>
+                                {u.label.replace(/\s*\(\d+\)/, '')}
+                              </div>
+                              
+                              {/* Score badge */}
+                              <div className={`
+                                px-2 py-1 rounded-full text-xs font-semibold
+                                ${isSelected 
+                                  ? 'bg-white/20 text-white' 
+                                  : `bg-${u.colorScheme}-500/20 ${u.textColor}`
+                                }
+                              `}>
+                                {u.score} pts
+                              </div>
+                            </div>
+                            
+                            {/* Hover effect overlay */}
+                            <div className="absolute inset-0 rounded-xl bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
                           </div>
-                        </Button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 

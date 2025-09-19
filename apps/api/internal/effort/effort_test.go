@@ -27,8 +27,8 @@ func TestComputeBaseAndCollaboration(t *testing.T) {
     }
 
     // Collaboration tiers
-    if CollaborationExtraPerPerson(1) != 2 { t.Fatalf("tier 1-2") }
-    if CollaborationExtraPerPerson(2) != 2 { t.Fatalf("tier 1-2") }
+    if CollaborationExtraPerPerson(1) != 0 { t.Fatalf("tier 1 (no collaboration)") }
+    if CollaborationExtraPerPerson(2) != 2 { t.Fatalf("tier 2") }
     if CollaborationExtraPerPerson(3) != 4 { t.Fatalf("tier 3-4") }
     if CollaborationExtraPerPerson(4) != 4 { t.Fatalf("tier 3-4") }
     if CollaborationExtraPerPerson(5) != 6 { t.Fatalf("tier 5-6") }
@@ -38,6 +38,12 @@ func TestComputeBaseAndCollaboration(t *testing.T) {
     total := TotalPointsForDistribution(in, 2)
     if int(total) != 16 {
         t.Fatalf("expected total 16, got %v", total)
+    }
+
+    // Total points for distribution for 1 assignee: base 12 + (0*1)=12 total; single person gets full base score
+    totalSingle := TotalPointsForDistribution(in, 1)
+    if int(totalSingle) != 12 {
+        t.Fatalf("expected total 12 for single assignee, got %v", totalSingle)
     }
 }
 

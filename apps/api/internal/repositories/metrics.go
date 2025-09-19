@@ -57,7 +57,17 @@ func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
 		FROM tickets t
 		LEFT JOIN users u ON t.assignee_id = u.id
 		WHERE t.status='in_progress'
-		ORDER BY t.updated_at DESC LIMIT 20`)
+		ORDER BY 
+			CASE t.priority 
+				WHEN 'P0' THEN 0 
+				WHEN 'P1' THEN 1 
+				WHEN 'P2' THEN 2 
+				WHEN 'P3' THEN 3 
+				ELSE 4 
+			END ASC, 
+			t.updated_at DESC, 
+			t.effort_score ASC 
+		LIMIT 20`)
 	if err != nil {
 		// Log error but continue with empty slice
 		return res, err
@@ -115,7 +125,7 @@ func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
 	// Status counts
 	r.countInto(ctx, `SELECT status, COUNT(*) FROM tickets GROUP BY status`, res.StatusCounts)
 	// Category (by resolved_type if available, otherwise initial_type)
-	r.countInto(ctx, `SELECT COALESCE(resolved_type, initial_type), COUNT(*) FROM tickets GROUP BY COALESCE(resolved_type, initial_type)`, res.CategoryCounts)
+	r.countInto(ctx, `SELECT COALESCE(resolved_type::text, initial_type::text), COUNT(*) FROM tickets GROUP BY COALESCE(resolved_type::text, initial_type::text)`, res.CategoryCounts)
 	// Priority counts
 	r.countInto(ctx, `SELECT priority, COUNT(*) FROM tickets GROUP BY priority`, res.PriorityCounts)
 

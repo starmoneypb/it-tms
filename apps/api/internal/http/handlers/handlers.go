@@ -365,6 +365,14 @@ func (h *Handlers) TicketsList(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to list"}})
 	}
+	
+	// Convert profile picture paths to URLs for all assignees
+	for i := range items {
+		for j := range items[i].Assignees {
+			items[i].Assignees[j].ProfilePicture = h.convertProfilePictureToURL(items[i].Assignees[j].ProfilePicture)
+		}
+	}
+	
 	return c.JSON(fiber.Map{
 		"data": items,
 		"page": page,
@@ -381,6 +389,12 @@ func (h *Handlers) TicketsDetail(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
 	}
+	
+	// Convert profile picture paths to URLs for all assignees
+	for i := range t.Assignees {
+		t.Assignees[i].ProfilePicture = h.convertProfilePictureToURL(t.Assignees[i].ProfilePicture)
+	}
+	
 	return c.JSON(h.envelope(fiber.Map{
 		"ticket": t,
 		"comments": comments,
@@ -428,10 +442,26 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
 	}
 	
-	// Check ownership: Users can only edit their own tickets, Supervisors/Managers can edit any
+	// Check ownership: Users can edit their own tickets or assigned tickets, Supervisors/Managers can edit any
 	if role == "User" {
-		if ticket.CreatedBy == nil || *ticket.CreatedBy != userID {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only edit your own tickets"}})
+		canEdit := false
+		
+		// Check if user created the ticket
+		if ticket.CreatedBy != nil && *ticket.CreatedBy == userID {
+			canEdit = true
+		}
+		
+		// Check if user is assigned to the ticket
+		if !canEdit {
+			isAssigned, err := h.repo.Tickets.IsUserAssignedToTicket(ctx, id, userID)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to check assignment"}})
+			}
+			canEdit = isAssigned
+		}
+		
+		if !canEdit {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only edit your own tickets or assigned tickets"}})
 		}
 	}
 	
@@ -475,17 +505,36 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	
 	userID, role, _ := middleware.GetUserFromContext(c)
 	
-	// Only Supervisor and Manager can update ticket fields
-	if role != "Supervisor" && role != "Manager" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors and managers can update ticket fields"}})
-	}
-	
 	ctx := context.Background()
 	
-	// Get current ticket for comparison
+	// Get current ticket for permission check and field comparison
 	ticket, err := h.repo.Tickets.GetByID(ctx, id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+	}
+	
+	// Supervisors, Managers, and assigned users can update ticket fields
+	canEditFields := false
+	if role == "Supervisor" || role == "Manager" {
+		canEditFields = true
+	} else if role == "User" {
+		// Check if user created the ticket
+		if ticket.CreatedBy != nil && *ticket.CreatedBy == userID {
+			canEditFields = true
+		}
+		
+		// Check if user is assigned to the ticket
+		if !canEditFields {
+			isAssigned, err := h.repo.Tickets.IsUserAssignedToTicket(ctx, id, userID)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to check assignment"}})
+			}
+			canEditFields = isAssigned
+		}
+	}
+	
+	if !canEditFields {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors, managers, and assigned users can update ticket fields"}})
 	}
 	
 	// Track changes for automatic comment generation
@@ -1385,11 +1434,7 @@ func (h *Handlers) GetUserRankings(c *fiber.Ctx) error {
 	
 	// Convert profile picture paths to URLs
 	for i := range rankings {
-		if rankings[i].ProfilePicture != nil && *rankings[i].ProfilePicture != "" {
-			filename := filepath.Base(*rankings[i].ProfilePicture)
-			url := fmt.Sprintf("/uploads/%s", filename)
-			rankings[i].ProfilePicture = &url
-		}
+		rankings[i].ProfilePicture = h.convertProfilePictureToURL(rankings[i].ProfilePicture)
 	}
 	
 	return c.JSON(h.envelope(rankings))
@@ -1397,12 +1442,30 @@ func (h *Handlers) GetUserRankings(c *fiber.Ctx) error {
 
 // -------------------- Metrics --------------------
 
+// Helper function to convert profile picture path to URL
+func (h *Handlers) convertProfilePictureToURL(profilePicture *string) *string {
+	if profilePicture == nil || *profilePicture == "" {
+		return nil
+	}
+	filename := filepath.Base(*profilePicture)
+	url := fmt.Sprintf("/uploads/%s", filename)
+	return &url
+}
+
 func (h *Handlers) MetricsSummary(c *fiber.Ctx) error {
 	ctx := context.Background()
 	data, err := h.repo.Metrics.Summary(ctx)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"metrics failed"}})
 	}
+	
+	// Convert profile picture paths to URLs for all assignees
+	for i := range data.InProgressToday {
+		for j := range data.InProgressToday[i].Assignees {
+			data.InProgressToday[i].Assignees[j].ProfilePicture = h.convertProfilePictureToURL(data.InProgressToday[i].Assignees[j].ProfilePicture)
+		}
+	}
+	
 	return c.JSON(h.envelope(data))
 }
 

@@ -54,7 +54,10 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages} locale={locale}>
       <HeroUIProvider>
         <AuthProvider>
-          <div className={locale === 'th' ? ibmPlexSansThai.className : undefined}>
+          <div 
+            className={locale === 'th' ? ibmPlexSansThai.className : undefined}
+            lang={locale}
+          >
             <header className="sticky top-0 z-50 glass border-b border-white/10">
               <Navigation />
             </header>

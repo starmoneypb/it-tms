@@ -109,12 +109,31 @@ a {
   z-index: 1;
 }
 
-/* Gradient text */
+/* Gradient text - Fixed for Thai diacritics */
 .gradient-text {
+  /* Primary approach: Use background-clip for English */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Fallback color for unsupported browsers */
+  color: #667eea;
+}
+
+/* Specific handling for Thai language to ensure diacritics are always visible and readable */
+:lang(th) .gradient-text,
+[lang="th"] .gradient-text {
+  /* Reset all gradient properties */
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  
+  /* Use a solid, readable color that matches the gradient theme */
+  color: #8b9cf7 !important; /* Lighter shade of the gradient for better readability */
+  
+  /* Add subtle text shadow for better visibility against dark background */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* HeroUI customizations */

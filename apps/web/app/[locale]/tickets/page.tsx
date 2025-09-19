@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
-import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle } from "lucide-react";
+import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle, Plus } from "lucide-react";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuth } from "@/lib/auth";
@@ -379,24 +379,44 @@ export default function TicketsPage() {
 
         {data && data.data.length === 0 && (
           <Card className="glass">
-            <CardBody className="text-center py-16">
-              <div className="text-lg mb-4 text-gray-400 font-semibold flex items-center justify-center gap-2">
-                <Inbox size={20} />
-                {tCommon('noResults')}
+            <CardBody className="text-center py-20">
+              <div className="mb-8">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary-500/20 to-primary-600/20 flex items-center justify-center border border-primary-500/30">
+                  <Inbox size={32} className="text-primary-400" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3 gradient-text">{t('noTicketsFound')}</h3>
+                <p className="text-white/70 text-lg max-w-md mx-auto leading-relaxed">
+                  {q || status || priority || assigneeIds.length > 0
+                    ? tCommon('tryAdjusting')
+                    : tCommon('getStartedFirst')
+                  }
+                </p>
               </div>
-              <h3 className="text-lg font-semibold mb-2">{t('noTicketsFound')}</h3>
-              <p className="text-white/70 mb-4">
-                {q || status || priority || assigneeIds.length > 0
-                  ? tCommon('tryAdjusting')
-                  : tCommon('getStartedFirst')
-                }
-              </p>
-              <a 
-                href={`/${locale}/tickets/new`}
-                className="inline-flex items-center justify-center px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-              >
-                {tCommon('createTicket')}
-              </a>
+              
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                <a 
+                  href={`/${locale}/tickets/new`}
+                  className="group relative inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/25 border border-primary-400/20 min-w-[200px]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <Plus size={20} className="mr-2 transition-transform duration-300 group-hover:rotate-90" />
+                  <span className="relative z-10">{tCommon('createTicket')}</span>
+                </a>
+                
+                {(q || status || priority || assigneeIds.length > 0) && (
+                  <button
+                    onClick={() => {
+                      setQ("");
+                      setStatus("");
+                      setPriority("");
+                      setAssigneeIds([]);
+                    }}
+                    className="inline-flex items-center justify-center px-8 py-4 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-xl transition-all duration-300 hover:bg-white/5 min-w-[200px] font-semibold"
+                  >
+                    {tCommon('clearFilters')}
+                  </button>
+                )}
+              </div>
             </CardBody>
           </Card>
         )}

@@ -4,7 +4,17 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 RETURNING *;
 
 -- name: ListTickets :many
-SELECT * FROM tickets ORDER BY created_at DESC LIMIT $1 OFFSET $2;
+SELECT * FROM tickets ORDER BY 
+	CASE priority 
+		WHEN 'P0' THEN 0 
+		WHEN 'P1' THEN 1 
+		WHEN 'P2' THEN 2 
+		WHEN 'P3' THEN 3 
+		ELSE 4 
+	END ASC, 
+	updated_at DESC, 
+	effort_score ASC 
+LIMIT $1 OFFSET $2;
 
 -- name: GetTicket :one
 SELECT * FROM tickets WHERE id=$1;

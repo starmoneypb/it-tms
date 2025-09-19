@@ -6,6 +6,7 @@ import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
+import EffortAssessmentExplanation from "@/components/EffortAssessmentExplanation";
 import DOMPurify from "isomorphic-dompurify";
 import { useTranslations, useLocale } from 'next-intl';
 import { 
@@ -60,12 +61,41 @@ export default function TicketDetails() {
   const [editForm, setEditForm] = useState({
     initialType: "",
     resolvedType: "",
-    priorityInput: { redFlags: {}, impact: {}, urgency: "none" } as PriorityInput,
+    priorityInput: { 
+      redFlags: {
+        outage: false,
+        paymentsFailing: false,
+        securityBreach: false,
+        nonCompliance: false
+      }, 
+      impact: {
+        lostRevenue: false,
+        coreProcesses: false,
+        dataLoss: false
+      }, 
+      urgency: "none" 
+    } as PriorityInput,
     effort: {
-      development: {},
-      security: {},
-      data: {},
-      operations: {},
+      development: {
+        versionControl: false,
+        externalService: false,
+        internalIntegration: false
+      },
+      security: {
+        legalCompliance: false,
+        accessControl: false,
+        personalData: false
+      },
+      data: {
+        migration: false,
+        dataPreparation: false,
+        encryption: false
+      },
+      operations: {
+        offHours: false,
+        training: false,
+        uat: false
+      }
     } as any
   });
   
@@ -80,6 +110,17 @@ export default function TicketDetails() {
     title: "",
     description: ""
   });
+  
+  // Original data for display when editing
+  const [originalData, setOriginalData] = useState({
+    title: "",
+    description: "",
+    initialType: "",
+    resolvedType: "",
+    priority: "",
+    priorityInput: null as PriorityInput | null,
+    effort: null as any
+  });
 
   function load() {
     setLoading(true);
@@ -90,32 +131,122 @@ export default function TicketDetails() {
         setStatus(j.data.ticket.status);
         // Initialize edit form with current ticket data
         const ticket = j.data.ticket;
+        console.log('Raw ticket data from API:', ticket);
+        console.log('Assessment data:', {
+          redFlagsData: ticket.redFlagsData,
+          impactAssessmentData: ticket.impactAssessmentData,
+          urgencyTimelineData: ticket.urgencyTimelineData,
+          effortData: ticket.effortData
+        });
         
         // Reconstruct priority input from stored data (if available) or use defaults
+        const hasRedFlags = ticket.redFlagsData && ticket.redFlagsData.criticalIssues && 
+          Object.values(ticket.redFlagsData.criticalIssues).some(v => v === true);
+        const hasImpact = ticket.impactAssessmentData && ticket.impactAssessmentData.impacts && 
+          Object.values(ticket.impactAssessmentData.impacts).some(v => v === true);
+        
         const priorityInput: PriorityInput = {
-          redFlags: ticket.priorityInput?.redFlags || {},
-          impact: ticket.priorityInput?.impact || {},
-          urgency: ticket.priorityInput?.urgency || "none"
+          redFlags: hasRedFlags ? ticket.redFlagsData.criticalIssues : {
+            outage: false,
+            paymentsFailing: false,
+            securityBreach: false,
+            nonCompliance: false
+          },
+          impact: hasImpact ? ticket.impactAssessmentData.impacts : {
+            lostRevenue: false,
+            coreProcesses: false,
+            dataLoss: false
+          },
+          urgency: (ticket.urgencyTimelineData && ticket.urgencyTimelineData.timeline) ? ticket.urgencyTimelineData.timeline : "none"
         };
         
-        setEditForm({
+        const newEditForm = {
           initialType: ticket.initialType || "",
           resolvedType: ticket.resolvedType || "",
           priorityInput,
-          effort: ticket.effortData || { development: {}, security: {}, data: {}, operations: {} }
-        });
+          effort: (ticket.effortData && ticket.effortData !== null && 
+            typeof ticket.effortData === 'object' && Object.keys(ticket.effortData).length > 0 && 
+            Object.values(ticket.effortData).some(section => 
+              typeof section === 'object' && section !== null && 
+              Object.values(section).some(v => v === true)
+            )) ? ticket.effortData : { 
+            development: {
+              versionControl: false,
+              externalService: false,
+              internalIntegration: false
+            }, 
+            security: {
+              legalCompliance: false,
+              accessControl: false,
+              personalData: false
+            }, 
+            data: {
+              migration: false,
+              dataPreparation: false,
+              encryption: false
+            }, 
+            operations: {
+              offHours: false,
+              training: false,
+              uat: false
+            }
+          }
+        };
+        console.log('Setting editForm with processed data:', newEditForm);
+        setEditForm(newEditForm);
         // Initialize content edit form
         setContentEditForm({
           title: ticket.title || "",
           description: ticket.description || ""
         });
+        
+        // Store original data for display when editing
+        setOriginalData({
+          title: ticket.title || "",
+          description: ticket.description || "",
+          initialType: ticket.initialType || "",
+          resolvedType: ticket.resolvedType || "",
+          priority: ticket.priority || "",
+          priorityInput: priorityInput,
+          effort: (ticket.effortData && ticket.effortData !== null && 
+            typeof ticket.effortData === 'object' && Object.keys(ticket.effortData).length > 0 && 
+            Object.values(ticket.effortData).some(section => 
+              typeof section === 'object' && section !== null && 
+              Object.values(section).some(v => v === true)
+            )) ? ticket.effortData : { 
+            development: {
+              versionControl: false,
+              externalService: false,
+              internalIntegration: false
+            }, 
+            security: {
+              legalCompliance: false,
+              accessControl: false,
+              personalData: false
+            }, 
+            data: {
+              migration: false,
+              dataPreparation: false,
+              encryption: false
+            }, 
+            operations: {
+              offHours: false,
+              training: false,
+              uat: false
+            }
+          }
+        });
       })
       .finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, [id]);
+  
+  useEffect(() => {
+    console.log('EditForm state changed:', editForm);
+  }, [editForm]);
 
   async function updateTicketFields() {
-    if (!canModifyTicketFields()) return;
+    if (!canModifyTicketFields(data.ticket.createdBy, data.ticket.assignees)) return;
     
     setEditLoading(true);
     setEditError("");
@@ -183,7 +314,7 @@ export default function TicketDetails() {
   }
 
   async function updateTicketContent() {
-    if (!canEditTicketContent(data.ticket.createdBy)) return;
+    if (!canEditTicketContent(data.ticket.createdBy, data.ticket.assignees)) return;
     
     setContentEditLoading(true);
     setContentEditError("");
@@ -355,7 +486,7 @@ export default function TicketDetails() {
               />
             )}
           </div>
-          {canEditTicketContent(ticket.createdBy) && (
+          {canEditTicketContent(ticket.createdBy, ticket.assignees) && (
             <div className="flex gap-2">
               {!isEditingContent ? (
                 <Button
@@ -367,32 +498,35 @@ export default function TicketDetails() {
                   {t('editContent')}
                 </Button>
               ) : (
-                <div className="flex gap-2">
-                  <Button
-                    color="primary"
-                    size="sm"
-                    onPress={updateTicketContent}
-                    isLoading={contentEditLoading}
-                    isDisabled={contentEditLoading}
-                  >
-                    {t('save')}
-                  </Button>
-                  <Button
-                    color="default"
-                    variant="bordered"
-                    size="sm"
-                    onPress={() => {
-                      setIsEditingContent(false);
-                      setContentEditError("");
-                      // Reset form to original values
-                      setContentEditForm({
-                        title: ticket.title,
-                        description: ticket.description
-                      });
-                    }}
-                  >
-                    {t('cancel')}
-                  </Button>
+                <div className="space-y-3">
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onPress={updateTicketContent}
+                      isLoading={contentEditLoading}
+                      isDisabled={contentEditLoading}
+                    >
+                      {t('save')}
+                    </Button>
+                    <Button
+                      color="default"
+                      variant="bordered"
+                      size="sm"
+                      onPress={() => {
+                        setIsEditingContent(false);
+                        setContentEditError("");
+                        // Reset form to original values
+                        setContentEditForm({
+                          title: ticket.title,
+                          description: ticket.description
+                        });
+                      }}
+                    >
+                      {t('cancel')}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -416,7 +550,7 @@ export default function TicketDetails() {
                   color={statusColors[ticket.status as keyof typeof statusColors] || "default"}
                   variant="flat"
                 >
-                  {ticket.status.replace('_', ' ')}
+                  {tStatus(ticket.status as keyof typeof statusColors)}
                 </Chip>
                 <Chip 
                   color={priorityColors[ticket.priority as keyof typeof priorityColors] || "default"}
@@ -784,7 +918,7 @@ export default function TicketDetails() {
                           }`}>
                             {assignee.role}
                           </span>
-                          {(canModifyTicketFields() || user?.id === assignee.id) && (
+                          {(canModifyTicketFields(data.ticket.createdBy, data.ticket.assignees) || user?.id === assignee.id) && (
                             <Button
                               size="sm"
                               color="danger"
@@ -828,7 +962,7 @@ export default function TicketDetails() {
                 </Button>
 
                 {/* Multi-User Assignment (Supervisors/Managers only) */}
-                {canModifyTicketFields() && (
+                {canModifyTicketFields(data.ticket.createdBy, data.ticket.assignees) && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-white/80">{t('assignMultipleUsers')}:</h4>
                     <UserSearchSelect
@@ -862,7 +996,14 @@ export default function TicketDetails() {
             </Card>
           )}
 
-          {canModifyTicketFields() && (
+          {/* Effort Assessment Explanation */}
+          <EffortAssessmentExplanation 
+            effortData={data.ticket.effortData}
+            assignees={data.ticket.assignees || []} 
+            className="mb-6"
+          />
+
+          {canModifyTicketFields(data.ticket.createdBy, data.ticket.assignees) && (
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -876,12 +1017,15 @@ export default function TicketDetails() {
                     color="primary" 
                     onPress={() => setIsEditing(true)}
                     className="w-full"
+                    isDisabled={loading}
+                    isLoading={loading}
                   >
                     {t('editFields')}
                   </Button>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
+              ) : (
+                <div className="space-y-4">
+                  
+                  <div className="grid grid-cols-1 gap-3">
                       <Select 
                         label={t('initialType')} 
                         placeholder={t('selectType')}
@@ -926,14 +1070,18 @@ export default function TicketDetails() {
                           <p className="text-xs text-white/60 mb-2">{t('multipleSelectionsAllowed')}</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.redFlags?.outage} 
-                              onValueChange={(v) => setEditForm(prev => ({
-                                ...prev, 
-                                priorityInput: {
-                                  ...prev.priorityInput, 
-                                  redFlags: {...prev.priorityInput.redFlags, outage: v}
-                                }
-                              }))}
+                              key={`outage-${editForm.priorityInput.redFlags.outage}`}
+                              isSelected={editForm.priorityInput.redFlags.outage === true}
+                              onValueChange={(isSelected) => {
+                                console.log('Checkbox changed:', 'outage', 'new value:', isSelected, 'current state:', editForm.priorityInput.redFlags.outage);
+                                setEditForm(prev => ({
+                                  ...prev, 
+                                  priorityInput: {
+                                    ...prev.priorityInput, 
+                                    redFlags: {...prev.priorityInput.redFlags, outage: isSelected}
+                                  }
+                                }));
+                              }}
                               className="text-white"
                               size="sm"
                             >
@@ -943,7 +1091,7 @@ export default function TicketDetails() {
                               </div>
                             </Checkbox>
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.redFlags?.paymentsFailing} 
+                              isSelected={editForm.priorityInput.redFlags.paymentsFailing === true} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
@@ -960,7 +1108,7 @@ export default function TicketDetails() {
                               </div>
                             </Checkbox>
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.redFlags?.securityBreach} 
+                              isSelected={editForm.priorityInput.redFlags.securityBreach === true} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
@@ -977,7 +1125,7 @@ export default function TicketDetails() {
                               </div>
                             </Checkbox>
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.redFlags?.nonCompliance} 
+                              isSelected={editForm.priorityInput.redFlags.nonCompliance === true} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
@@ -1002,7 +1150,7 @@ export default function TicketDetails() {
                           <p className="text-xs text-white/60 mb-2">{t('multipleSelectionsAllowedImpact')}</p>
                           <div className="grid grid-cols-1 gap-2">
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.lostRevenue} 
+                              isSelected={editForm.priorityInput.impact.lostRevenue === true} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
@@ -1019,7 +1167,7 @@ export default function TicketDetails() {
                               </div>
                             </Checkbox>
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.coreProcesses} 
+                              isSelected={editForm.priorityInput.impact.coreProcesses === true} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
@@ -1036,7 +1184,7 @@ export default function TicketDetails() {
                               </div>
                             </Checkbox>
                             <Checkbox 
-                              isSelected={!!editForm.priorityInput.impact?.dataLoss} 
+                              isSelected={editForm.priorityInput.impact.dataLoss === true} 
                               onValueChange={(v) => setEditForm(prev => ({
                                 ...prev, 
                                 priorityInput: {
@@ -1057,40 +1205,133 @@ export default function TicketDetails() {
 
                         {/* Urgency Timeline */}
                         <div>
-                          <h5 className="text-sm font-medium text-white/80 mb-2">{t('urgency0to4')}</h5>
-                          <p className="text-xs text-white/60 mb-2">{t('singleSelectionOnly')}</p>
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 mb-3">
+                            <h5 className="text-base font-semibold text-white/90">{t('urgency0to4')}</h5>
+                            <div className="h-px bg-gradient-to-r from-white/20 to-transparent flex-1"></div>
+                          </div>
+                          <p className="text-sm text-white/60 mb-4 bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                            ⚡ {t('singleSelectionOnly')}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                             {[
-                              { value: "<=48h", label: t('deadline48h'), score: 4 },
-                              { value: "3-7d", label: t('deadline3to7d'), score: 3 },
-                              { value: "8-30d", label: t('deadline8to30d'), score: 2 },
-                              { value: ">=31d", label: t('deadline31dPlus'), score: 1 },
-                              { value: "none", label: t('noDeadline'), score: 0 }
-                            ].map((u) => (
-                              <Button 
-                                key={u.value} 
-                                onPress={() => setEditForm(prev => ({
-                                  ...prev, 
-                                  priorityInput: {
-                                    ...prev.priorityInput, 
-                                    urgency: u.value as any
-                                  }
-                                }))} 
-                                color="default"
-                                variant="bordered"
-                                size="sm"
-                                className={`transition-all duration-200 ${
-                                  editForm.priorityInput.urgency === u.value 
-                                    ? "!bg-primary-600 !text-white border-primary-500 shadow-lg scale-105 font-semibold hover:!bg-primary-700 focus:!bg-primary-600" 
-                                    : "hover:scale-102 hover:bg-default-100"
-                                }`}
-                              >
-                                <div className="flex flex-col items-center">
-                                  <span>{u.label.replace(/\s*\(\d+\)/, '')}</span>
-                                  <span className="text-xs opacity-70">{u.score} pts</span>
+                              { 
+                                value: "<=48h", 
+                                label: t('deadline48h'), 
+                                score: 4,
+                                icon: "🔥",
+                                colorScheme: "red",
+                                bgColor: "from-red-500/20 to-red-600/10",
+                                borderColor: "border-red-500/30",
+                                textColor: "text-red-300",
+                                selectedBg: "bg-red-500/90",
+                                selectedBorder: "border-red-400"
+                              },
+                              { 
+                                value: "3-7d", 
+                                label: t('deadline3to7d'), 
+                                score: 3,
+                                icon: "⚡",
+                                colorScheme: "orange", 
+                                bgColor: "from-orange-500/20 to-orange-600/10",
+                                borderColor: "border-orange-500/30",
+                                textColor: "text-orange-300",
+                                selectedBg: "bg-orange-500/90",
+                                selectedBorder: "border-orange-400"
+                              },
+                              { 
+                                value: "8-30d", 
+                                label: t('deadline8to30d'), 
+                                score: 2,
+                                icon: "⏰",
+                                colorScheme: "yellow",
+                                bgColor: "from-yellow-500/20 to-yellow-600/10", 
+                                borderColor: "border-yellow-500/30",
+                                textColor: "text-yellow-300",
+                                selectedBg: "bg-yellow-500/90",
+                                selectedBorder: "border-yellow-400"
+                              },
+                              { 
+                                value: ">=31d", 
+                                label: t('deadline31dPlus'), 
+                                score: 1,
+                                icon: "📅",
+                                colorScheme: "blue",
+                                bgColor: "from-blue-500/20 to-blue-600/10",
+                                borderColor: "border-blue-500/30", 
+                                textColor: "text-blue-300",
+                                selectedBg: "bg-blue-500/90",
+                                selectedBorder: "border-blue-400"
+                              },
+                              { 
+                                value: "none", 
+                                label: t('noDeadline'), 
+                                score: 0,
+                                icon: "⭕",
+                                colorScheme: "gray",
+                                bgColor: "from-gray-500/20 to-gray-600/10",
+                                borderColor: "border-gray-500/30",
+                                textColor: "text-gray-300", 
+                                selectedBg: "bg-gray-500/90",
+                                selectedBorder: "border-gray-400"
+                              }
+                            ].map((u) => {
+                              const isSelected = editForm.priorityInput.urgency === u.value;
+                              return (
+                                <div
+                                  key={u.value}
+                                  onClick={() => setEditForm(prev => ({
+                                    ...prev, 
+                                    priorityInput: {
+                                      ...prev.priorityInput, 
+                                      urgency: u.value as any
+                                    }
+                                  }))}
+                                  className={`
+                                    relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-300 
+                                    bg-gradient-to-br ${u.bgColor} backdrop-blur-sm
+                                    ${isSelected 
+                                      ? `${u.selectedBg} ${u.selectedBorder} shadow-xl shadow-${u.colorScheme}-500/25 scale-105 ring-2 ring-${u.colorScheme}-400/50` 
+                                      : `${u.borderColor} hover:scale-102 hover:shadow-lg hover:shadow-${u.colorScheme}-500/10 hover:border-${u.colorScheme}-400/50`
+                                    }
+                                    group
+                                  `}
+                                >
+                                  {/* Selection indicator */}
+                                  {isSelected && (
+                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+                                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Content */}
+                                  <div className="flex flex-col items-center text-center space-y-2">
+                                    {/* Icon */}
+                                    <div className="text-2xl mb-1 group-hover:scale-110 transition-transform duration-200">
+                                      {u.icon}
+                                    </div>
+                                    
+                                    {/* Label */}
+                                    <div className={`font-medium text-sm leading-tight ${isSelected ? 'text-white' : u.textColor}`}>
+                                      {u.label.replace(/\s*\(\d+\)/, '')}
+                                    </div>
+                                    
+                                    {/* Score badge */}
+                                    <div className={`
+                                      px-2 py-1 rounded-full text-xs font-semibold
+                                      ${isSelected 
+                                        ? 'bg-white/20 text-white' 
+                                        : `bg-${u.colorScheme}-500/20 ${u.textColor}`
+                                      }
+                                    `}>
+                                      {u.score} pts
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Hover effect overlay */}
+                                  <div className="absolute inset-0 rounded-xl bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"></div>
                                 </div>
-                              </Button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -1143,19 +1384,19 @@ export default function TicketDetails() {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              <Checkbox isSelected={!!editForm.effort.development.versionControl} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, versionControl: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.development.versionControl === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, versionControl: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortDevVersionControl')}</span>
                                   <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.development.externalService} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, externalService: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.development.externalService === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, externalService: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortDevExternalService')}</span>
                                   <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.development.internalIntegration} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, internalIntegration: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.development.internalIntegration === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, internalIntegration: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortDevInternalIntegration')}</span>
                                   <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
@@ -1171,19 +1412,19 @@ export default function TicketDetails() {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              <Checkbox isSelected={!!editForm.effort.security.legalCompliance} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, legalCompliance: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.security.legalCompliance === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, legalCompliance: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortSecLegalCompliance')}</span>
                                   <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.security.accessControl} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, accessControl: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.security.accessControl === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, accessControl: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortSecAccessControl')}</span>
                                   <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.security.personalData} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, personalData: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.security.personalData === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, personalData: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortSecPersonalData')}</span>
                                   <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
@@ -1199,19 +1440,19 @@ export default function TicketDetails() {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              <Checkbox isSelected={!!editForm.effort.data.migration} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, migration: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.data.migration === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, migration: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortDataMigration')}</span>
                                   <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.data.dataPreparation} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, dataPreparation: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.data.dataPreparation === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, dataPreparation: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortDataPreparation')}</span>
                                   <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.data.encryption} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, encryption: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.data.encryption === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, encryption: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortDataEncryption')}</span>
                                   <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
@@ -1227,19 +1468,19 @@ export default function TicketDetails() {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              <Checkbox isSelected={!!editForm.effort.operations.offHours} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, offHours: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.operations.offHours === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, offHours: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortOpsOffHours')}</span>
                                   <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.operations.training} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, training: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.operations.training === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, training: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortOpsTraining')}</span>
                                   <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
                                 </div>
                               </Checkbox>
-                              <Checkbox isSelected={!!editForm.effort.operations.uat} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, uat: v}}}))} size="sm" className="text-white">
+                              <Checkbox isSelected={editForm.effort.operations.uat === true} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, uat: v}}}))} size="sm" className="text-white">
                                 <div className="flex justify-between items-center w-full">
                                   <span className="text-sm">{t('effortOpsUAT')}</span>
                                   <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>

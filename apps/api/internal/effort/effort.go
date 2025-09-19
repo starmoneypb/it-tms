@@ -43,9 +43,10 @@ func ComputeBase(in Input) int {
 }
 
 // CollaborationExtraPerPerson returns the collaboration bonus per person based on number of assignees.
-// 1-2 -> 2, 3-4 -> 4, 5-6 -> 6, 7+ -> 8
+// Single assignee (1) -> 0 (no collaboration), 2 -> 2, 3-4 -> 4, 5-6 -> 6, 7+ -> 8
 func CollaborationExtraPerPerson(assigneeCount int) int {
     if assigneeCount <= 0 { return 0 }
+    if assigneeCount == 1 { return 0 } // No collaboration bonus for single assignees
     if assigneeCount <= 2 { return 2 }
     if assigneeCount <= 4 { return 4 }
     if assigneeCount <= 6 { return 6 }
@@ -54,6 +55,7 @@ func CollaborationExtraPerPerson(assigneeCount int) int {
 
 // TotalPointsForDistribution calculates the total points to pass into the distribution
 // function so that each assignee receives: (base/assignees) + collaborationExtraPerPerson.
+// For single assignees, returns only the base score without collaboration bonus.
 // Passing base + collaborationExtraPerPerson*assignees and dividing evenly in the repository
 // yields the correct per-person score without changing the repository API.
 func TotalPointsForDistribution(in Input, assigneeCount int) float64 {

@@ -23,12 +23,12 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   hasRole: (role: UserRole) => boolean;
   hasAnyRole: (roles: UserRole[]) => boolean;
-  canEditTicket: (ticketCreatedBy?: string) => boolean;
-  canCancelTicket: (ticketCreatedBy?: string) => boolean;
+  canEditTicket: (ticketCreatedBy?: string, assignees?: Array<{id: string}>) => boolean;
+  canCancelTicket: (ticketCreatedBy?: string, assignees?: Array<{id: string}>) => boolean;
   canAssignTicket: (selfOnly?: boolean) => boolean;
   canCreateTicketType: (ticketType: string) => boolean;
-  canModifyTicketFields: () => boolean;
-  canEditTicketContent: (ticketCreatedBy?: string) => boolean;
+  canModifyTicketFields: (ticketCreatedBy?: string, assignees?: Array<{id: string}>) => boolean;
+  canEditTicketContent: (ticketCreatedBy?: string, assignees?: Array<{id: string}>) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,17 +127,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user ? roles.includes(user.role) : false;
   };
 
-  const canEditTicket = (ticketCreatedBy?: string): boolean => {
+  const canEditTicket = (ticketCreatedBy?: string, assignees?: Array<{id: string}>): boolean => {
     if (!user) return false;
     if (user.role === "Supervisor" || user.role === "Manager") return true;
-    if (user.role === "User") return ticketCreatedBy === user.id;
+    if (user.role === "User") {
+      // Check if user created the ticket
+      if (ticketCreatedBy === user.id) return true;
+      // Check if user is assigned to the ticket
+      if (assignees?.some(assignee => assignee.id === user.id)) return true;
+    }
     return false;
   };
 
-  const canCancelTicket = (ticketCreatedBy?: string): boolean => {
+  const canCancelTicket = (ticketCreatedBy?: string, assignees?: Array<{id: string}>): boolean => {
     if (!user) return false;
     if (user.role === "Supervisor" || user.role === "Manager") return true;
-    if (user.role === "User") return ticketCreatedBy === user.id;
+    if (user.role === "User") {
+      // Check if user created the ticket
+      if (ticketCreatedBy === user.id) return true;
+      // Check if user is assigned to the ticket
+      if (assignees?.some(assignee => assignee.id === user.id)) return true;
+    }
     return false;
   };
 
@@ -166,15 +176,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const canModifyTicketFields = (): boolean => {
-    if (!user) return false;
-    return user.role === "Supervisor" || user.role === "Manager";
-  };
-
-  const canEditTicketContent = (ticketCreatedBy?: string): boolean => {
+  const canModifyTicketFields = (ticketCreatedBy?: string, assignees?: Array<{id: string}>): boolean => {
     if (!user) return false;
     if (user.role === "Supervisor" || user.role === "Manager") return true;
-    if (user.role === "User") return ticketCreatedBy === user.id;
+    if (user.role === "User") {
+      // Check if user created the ticket
+      if (ticketCreatedBy === user.id) return true;
+      // Check if user is assigned to the ticket
+      if (assignees?.some(assignee => assignee.id === user.id)) return true;
+    }
+    return false;
+  };
+
+  const canEditTicketContent = (ticketCreatedBy?: string, assignees?: Array<{id: string}>): boolean => {
+    if (!user) return false;
+    if (user.role === "Supervisor" || user.role === "Manager") return true;
+    if (user.role === "User") {
+      // Check if user created the ticket
+      if (ticketCreatedBy === user.id) return true;
+      // Check if user is assigned to the ticket
+      if (assignees?.some(assignee => assignee.id === user.id)) return true;
+    }
     return false;
   };
 
