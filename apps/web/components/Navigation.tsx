@@ -8,7 +8,10 @@ import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@
 import { useTranslations, useLocale } from 'next-intl';
 import { LanguageToggle } from './LanguageToggle';
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 export function Navigation() {
   const { user, isLoading, signOut, hasAnyRole } = useAuth();
@@ -19,12 +22,10 @@ export function Navigation() {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileButtonRef = useRef<HTMLButtonElement>(null);
 
-  console.log('Navigation component - Current locale:', locale);
 
   // Helper function to create locale-aware URLs
   const createLocalizedUrl = (path: string) => {
     const url = `/${locale}${path}`;
-    console.log('Creating localized URL:', { path, locale, url });
     return url as any;
   };
 
@@ -70,7 +71,7 @@ export function Navigation() {
 
   if (isLoading) {
     return (
-      <nav className="container flex items-center justify-between py-4">
+      <nav className="container flex items-center justify-between py-4 min-h-[80px]">
         <Link href={createLocalizedUrl("/")} className="flex items-center">
           <Image
             src="/logo.svg"
@@ -88,7 +89,7 @@ export function Navigation() {
   }
 
   return (
-    <nav className="container relative flex items-center justify-between py-6">
+    <nav className="container relative flex items-center justify-between py-6 min-h-[80px]">
       <Link href={createLocalizedUrl("/")} className="flex items-center">
         <Image
           src="/logo.svg"
@@ -175,7 +176,7 @@ export function Navigation() {
         ) : (
           <Link 
             href={createLocalizedUrl("/sign-in")} 
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors"
+            className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border border-primary-400/20 backdrop-blur-sm"
           >
             {t('signIn')}
           </Link>
@@ -289,7 +290,7 @@ export function Navigation() {
             ) : (
               <Link 
                 href={createLocalizedUrl("/sign-in")} 
-                className="flex items-center justify-center w-full px-4 py-3 text-base font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-all duration-200"
+                className="flex items-center justify-center w-full px-6 py-4 text-base font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border border-primary-400/20 backdrop-blur-sm"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {t('signIn')}

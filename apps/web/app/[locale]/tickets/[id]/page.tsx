@@ -19,7 +19,10 @@ import {
   Settings
 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 const statusColors = {
   pending: "warning",
@@ -131,13 +134,6 @@ export default function TicketDetails() {
         setStatus(j.data.ticket.status);
         // Initialize edit form with current ticket data
         const ticket = j.data.ticket;
-        console.log('Raw ticket data from API:', ticket);
-        console.log('Assessment data:', {
-          redFlagsData: ticket.redFlagsData,
-          impactAssessmentData: ticket.impactAssessmentData,
-          urgencyTimelineData: ticket.urgencyTimelineData,
-          effortData: ticket.effortData
-        });
         
         // Reconstruct priority input from stored data (if available) or use defaults
         const hasRedFlags = ticket.redFlagsData && ticket.redFlagsData.criticalIssues && 
@@ -192,7 +188,6 @@ export default function TicketDetails() {
             }
           }
         };
-        console.log('Setting editForm with processed data:', newEditForm);
         setEditForm(newEditForm);
         // Initialize content edit form
         setContentEditForm({
@@ -241,9 +236,6 @@ export default function TicketDetails() {
   }
   useEffect(() => { load(); }, [id]);
   
-  useEffect(() => {
-    console.log('EditForm state changed:', editForm);
-  }, [editForm]);
 
   async function updateTicketFields() {
     if (!canModifyTicketFields(data.ticket.createdBy, data.ticket.assignees)) return;
@@ -394,7 +386,6 @@ export default function TicketDetails() {
         
         if (!uploadRes.ok) {
           const errorData = await uploadRes.text();
-          console.error("Failed to upload comment attachments:", errorData);
           alert("Comment posted successfully, but some attachments failed to upload. Please try adding them again.");
         }
       }
@@ -403,7 +394,6 @@ export default function TicketDetails() {
       setCommentFiles([]);
       load();
     } catch (error) {
-      console.error("Error posting comment:", error);
       alert("Failed to post comment");
     }
   }
@@ -1073,7 +1063,6 @@ export default function TicketDetails() {
                               key={`outage-${editForm.priorityInput.redFlags.outage}`}
                               isSelected={editForm.priorityInput.redFlags.outage === true}
                               onValueChange={(isSelected) => {
-                                console.log('Checkbox changed:', 'outage', 'new value:', isSelected, 'current state:', editForm.priorityInput.redFlags.outage);
                                 setEditForm(prev => ({
                                   ...prev, 
                                   priorityInput: {

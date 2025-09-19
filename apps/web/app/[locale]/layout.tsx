@@ -27,7 +27,6 @@ export default async function LocaleLayout({
   // Await params before accessing its properties
   const { locale } = await params;
   
-  console.log('LocaleLayout - Locale:', locale);
   
   // Load messages explicitly for the correct locale
   let messages;
@@ -37,18 +36,10 @@ export default async function LocaleLayout({
     } else {
       messages = (await import('../../messages/en.json')).default;
     }
-    console.log('LocaleLayout - Directly loaded messages for locale:', locale, 'Sample:', messages.common?.loading);
   } catch (error) {
-    console.error('LocaleLayout - Error loading messages:', error);
     messages = (await import('../../messages/en.json')).default;
   }
   
-  console.log('LocaleLayout - Messages sample:', {
-    locale,
-    commonLoading: messages.common?.loading,
-    landingTitle: messages.landing?.title,
-    navigationDashboard: messages.navigation?.dashboard
-  });
 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>

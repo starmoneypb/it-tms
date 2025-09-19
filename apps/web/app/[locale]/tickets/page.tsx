@@ -6,7 +6,10 @@ import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuth } from "@/lib/auth";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 type AssigneeSummary = {
   id: string;

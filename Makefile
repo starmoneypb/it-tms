@@ -35,3 +35,19 @@ setup-db-local:
 	@echo "Setting up database locally..."
 	cd apps/api && make setup-db
 
+# Production-like environment
+prod-like:
+	@echo "Starting production-like environment..."
+	docker-compose -f docker-compose.prod-like.yml --env-file env.prod-like up --build
+
+# Stop production-like environment
+prod-like-down:
+	@echo "Stopping production-like environment..."
+	docker-compose -f docker-compose.prod-like.yml down
+
+# Clean production-like environment (remove volumes)
+prod-like-clean:
+	@echo "Cleaning production-like environment..."
+	docker-compose -f docker-compose.prod-like.yml down -v
+	docker system prune -f
+

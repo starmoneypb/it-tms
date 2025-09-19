@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Select, SelectItem, Avatar, Chip } from "@heroui/react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 // Debounce utility function
 function debounce<T extends (...args: any[]) => any>(

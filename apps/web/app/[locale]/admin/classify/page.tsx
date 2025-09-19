@@ -4,7 +4,10 @@ import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, Mo
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 type Ticket = { 
   id: string; 
@@ -40,21 +43,15 @@ export default function ClassifyPage() {
   // Debug function to log selection changes
   const handleSelectionChange = (ticketId: string, keys: any) => {
     const selectedKey = Array.from(keys)[0] as string;
-    console.log('Selection changed for ticket:', ticketId, 'selected:', selectedKey);
-    console.log('Current sel state:', sel);
     if (selectedKey) {
-      setSel(prev => {
-        const newSel = {...prev, [ticketId]: selectedKey};
-        console.log('New sel state:', newSel);
-        return newSel;
-      });
+      setSel(prev => ({
+        ...prev,
+        [ticketId]: selectedKey
+      }));
     }
   };
 
   const handleViewDetails = (ticket: Ticket) => {
-    console.log('Selected ticket data:', ticket);
-    console.log('Effort data:', ticket.effortData);
-    console.log('Effort score:', ticket.effortScore);
     setSelectedTicket(ticket);
     onOpen();
   };

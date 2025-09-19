@@ -14,7 +14,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ui/package.json ./packages/ui/
 
-# Install dependencies
+# Install workspace dependencies (including dev dependencies needed for build)
 RUN pnpm install --frozen-lockfile
 
 # Copy source files
@@ -23,15 +23,17 @@ COPY packages ./packages
 
 # Build the web app
 WORKDIR /app/apps/web
+# Ensure all dependencies are available for build
 RUN pnpm install --frozen-lockfile
+# Build with environment variables
 RUN pnpm run build
 
 # Run stage
 FROM node:20-alpine
 WORKDIR /app
 
-# Install security updates, dumb-init, and pnpm
-RUN apk --no-cache add dumb-init && \
+# Install security updates, dumb-init, wget, and pnpm
+RUN apk --no-cache add dumb-init wget && \
     npm install -g pnpm@9.12.0
 
 # Create non-root user
@@ -45,8 +47,9 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ui/package.json ./packages/ui/
 
-# Copy built files
+# Copy built files and static assets
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 # Install only production dependencies
 RUN pnpm install --frozen-lockfile --prod
@@ -60,7 +63,7 @@ USER nextjs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/healthz || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 EXPOSE 3000
 

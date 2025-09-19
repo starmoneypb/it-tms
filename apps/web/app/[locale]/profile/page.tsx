@@ -8,7 +8,10 @@ import { useAuth } from "@/lib/auth";
 import { AlertTriangle, Camera, User, BarChart3, TrendingUp } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),

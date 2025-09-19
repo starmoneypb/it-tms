@@ -519,7 +519,7 @@
   },
   "auth": {
     "welcomeBack": "ยินดีต้อนรับกลับ",
-    "signInToAccount": "เข้าสู่ระบบบัญชี IT-TMS ของคุณ",
+    "signInToAccount": "เข้าสู่ระบบด้วยบัญชีของคุณ",
     "signIn": "เข้าสู่ระบบ",
     "email": "อีเมล",
     "enterEmail": "ใส่อีเมลของคุณ",
@@ -527,9 +527,5 @@
     "enterPassword": "ใส่รหัสผ่านของคุณ",
     "signingIn": "กำลังเข้าสู่ระบบ...",
     "invalidCredentials": "ข้อมูลประจำตัวไม่ถูกต้อง",
-    "demoCredentials": "ข้อมูลประจำตัวตัวอย่าง",
-    "manager": "ผู้จัดการ",
-    "supervisor": "หัวหน้างาน",
-    "user": "ผู้ใช้"
   }
 }

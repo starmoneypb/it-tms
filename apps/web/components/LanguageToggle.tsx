@@ -12,10 +12,8 @@ export function LanguageToggle() {
   const router = useRouter();
   const pathname = usePathname();
 
-  console.log('LanguageToggle render - Current locale:', locale, 'Pathname:', pathname);
 
   const switchLocale = (newLocale: string) => {
-    console.log('Before switch - Current locale:', locale, 'Pathname:', pathname);
     
     // Parse the current URL to extract the path without locale
     const segments = pathname.split('/').filter(Boolean);
@@ -38,14 +36,6 @@ export function LanguageToggle() {
     // Construct the new URL with the new locale
     const newPath = `/${newLocale}${pathWithoutLocale === '/' ? '' : pathWithoutLocale}`;
     
-    console.log('Switching to:', {
-      currentLocale: locale,
-      newLocale,
-      originalPath: pathname,
-      pathWithoutLocale,
-      newPath,
-      segments
-    });
     
     // Use window.location.href for more reliable navigation
     window.location.href = newPath;

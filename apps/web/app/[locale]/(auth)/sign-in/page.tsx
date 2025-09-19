@@ -3,9 +3,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input, Button, Card, CardBody, CardHeader } from "@heroui/react";
-import { Crown, Settings, User } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
+import { Suspense, useState } from 'react';
 
 const schema = z.object({
   email: z.string().email(),
@@ -13,12 +14,16 @@ const schema = z.object({
 });
 
 type Form = z.infer<typeof schema>;
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use current hostname with port 8000 for production-like environment
+const API = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
-export default function SignIn() {
+function SignInForm() {
   const t = useTranslations('auth');
   const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<Form>({ resolver: zodResolver(schema) });
   const searchParams = useSearchParams();
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   async function onSubmit(values: Form) {
     const res = await fetch(`${API}/api/v1/auth/sign-in`, {
@@ -62,12 +67,26 @@ export default function SignIn() {
               />
               <Input 
                 label={t('password')} 
-                type="password" 
+                type={isPasswordVisible ? "text" : "password"}
                 variant="bordered"
                 placeholder={t('enterPassword')}
                 {...register("password")} 
                 isInvalid={!!errors.password} 
                 errorMessage={errors.password?.message}
+                endContent={
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+                    className="focus:outline-none"
+                    aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                  >
+                    {isPasswordVisible ? (
+                      <EyeOff className="text-2xl text-default-400 pointer-events-none" />
+                    ) : (
+                      <Eye className="text-2xl text-default-400 pointer-events-none" />
+                    )}
+                  </button>
+                }
               />
               <Button 
                 type="submit" 
@@ -79,27 +98,17 @@ export default function SignIn() {
                 {isSubmitting ? t('signingIn') : t('signIn')}
               </Button>
             </form>
-            
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-xs text-white/60 text-center mb-2">{t('demoCredentials')}</p>
-              <div className="space-y-1 text-xs text-white/50">
-                <div className="flex items-center gap-2">
-                  <Crown size={12} className="text-yellow-400" />
-                  <strong>{t('manager')}:</strong> manager@ / Password!1
-                </div>
-                <div className="flex items-center gap-2">
-                  <Settings size={12} className="text-blue-400" />
-                  <strong>{t('supervisor')}:</strong> supervisor@ / Password!1
-                </div>
-                <div className="flex items-center gap-2">
-                  <User size={12} className="text-gray-400" />
-                  <strong>{t('user')}:</strong> user@ / Password!1
-                </div>
-              </div>
-            </div>
           </CardBody>
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={<div className="container flex items-center justify-center min-h-[80vh]">Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

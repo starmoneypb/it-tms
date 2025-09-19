@@ -520,7 +520,7 @@
   },
   "auth": {
     "welcomeBack": "Welcome Back",
-    "signInToAccount": "Sign in to your IT-TMS account",
+    "signInToAccount": "Sign in to your account",
     "signIn": "Sign In",
     "email": "Email",
     "enterEmail": "Enter your email",
@@ -528,9 +528,5 @@
     "enterPassword": "Enter your password",
     "signingIn": "Signing In...",
     "invalidCredentials": "Invalid credentials",
-    "demoCredentials": "Demo Credentials",
-    "manager": "Manager",
-    "supervisor": "Supervisor",
-    "user": "User"
   }
 }

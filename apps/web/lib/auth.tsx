@@ -2,7 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use relative URLs for production-like environment behind reverse proxy
+const API = typeof window !== 'undefined' && window.location.port === '8000'
+  ? '' // Use relative URLs when accessed through port 8000 (production-like)
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 export type UserRole = "Anonymous" | "User" | "Supervisor" | "Manager";
 

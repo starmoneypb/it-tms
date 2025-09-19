@@ -19,10 +19,8 @@ func main() {
 	if err != nil { panic(err) }
 	defer pool.Close()
 
-	fmt.Println("Clearing existing users...")
 	_, _ = pool.Exec(ctx, `DELETE FROM users`)
 	
-	fmt.Println("Seeding users...")
 	users := []struct{
 		Name, Email, Role, Password string
 	}{
@@ -44,7 +42,6 @@ func main() {
 	}
 
 	// Clear existing tickets and related data
-	fmt.Println("Clearing existing tickets...")
 	_, _ = pool.Exec(ctx, `DELETE FROM user_scores`)
 	_, _ = pool.Exec(ctx, `DELETE FROM audit_logs`)
 	_, _ = pool.Exec(ctx, `DELETE FROM comment_attachments`)
@@ -53,7 +50,6 @@ func main() {
 	_, _ = pool.Exec(ctx, `DELETE FROM attachments`)
 	_, _ = pool.Exec(ctx, `DELETE FROM tickets`)
 	
-	fmt.Println("Ticket seeding disabled - starting with zero tickets for testing")
 	// Note: All ticket creation logic has been disabled per user request
 	// Only users will be seeded, no tickets will be created
 }

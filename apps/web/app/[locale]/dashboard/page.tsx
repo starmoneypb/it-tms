@@ -19,7 +19,10 @@ const ChartJsPieChart = dynamic(() => import("@/components/ChartJsPieChart"), {
   )
 });
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use relative URLs for production-like environment behind reverse proxy
+const API = typeof window !== 'undefined' && window.location.port === '8000'
+  ? '' // Use relative URLs when accessed through port 8000 (production-like)
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 type AssigneeSummary = {
   id: string;
@@ -112,7 +115,6 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching metrics from:', `${API}/api/v1/metrics/summary`);
         const [metricsResponse, rankingsResponse] = await Promise.all([
           fetch(`${API}/api/v1/metrics/summary`, {
             credentials: "include",
@@ -127,11 +129,9 @@ export default function Dashboard() {
         }
         
         const metricsResult = await metricsResponse.json();
-        console.log('API Response:', metricsResult);
         
         // Handle both direct data and wrapped data formats
         const metricsData = metricsResult.data || metricsResult;
-        console.log('Processed metrics data:', metricsData);
         
         setData(metricsData);
         
@@ -144,7 +144,6 @@ export default function Dashboard() {
         
         setError(null);
       } catch (e) {
-        console.error('Error fetching metrics:', e);
         setError(String(e));
         
         // Set fallback demo data for development/testing
@@ -161,7 +160,6 @@ export default function Dashboard() {
           { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'User', totalPoints: 87.5, ticketsCompleted: 10, rank: 3 }
         ];
         
-        console.log('Using fallback data:', fallbackData);
         setData(fallbackData);
         setRankings(fallbackRankings);
       } finally {
