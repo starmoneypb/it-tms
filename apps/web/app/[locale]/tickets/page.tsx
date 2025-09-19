@@ -4,6 +4,7 @@ import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip
 import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle } from "lucide-react";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
+import { useAuth } from "@/lib/auth";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -134,6 +135,7 @@ export default function TicketsPage() {
   const t = useTranslations('tickets');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+  const { user, isLoading: authLoading } = useAuth();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
@@ -170,6 +172,14 @@ export default function TicketsPage() {
   useEffect(() => {
     setPage(1);
   }, [status, priority, assigneeIds.join(',')]);
+
+  // Set default assignee to current user when auth loads
+  useEffect(() => {
+    if (!authLoading && user && assigneeIds.length === 0) {
+      // Only set default if no assignee is already selected
+      setAssigneeIds([user.id]);
+    }
+  }, [authLoading, user, assigneeIds.length]);
 
   // Load data when any parameter changes
   useEffect(() => { 

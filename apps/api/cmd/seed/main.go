@@ -203,13 +203,11 @@ func createRealisticTickets() []TicketTemplate {
 					SecurityBreach  bool `json:"securityBreach"`
 					NonCompliance   bool `json:"nonCompliance"`
 				}{Outage: true, PaymentsFailing: true},
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{PaymentAbnormal: true, LostRevenue: true, NoWorkaround: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true, CoreProcesses: true},
 				Urgency: "<=48h",
 			},
 			RedFlagsData: `{"criticalIssues": {"outage": true, "paymentsFailing": true}, "description": "Critical system outage affecting payment processing"}`,
@@ -228,13 +226,11 @@ func createRealisticTickets() []TicketTemplate {
 					SecurityBreach  bool `json:"securityBreach"`
 					NonCompliance   bool `json:"nonCompliance"`
 				}{SecurityBreach: true, NonCompliance: true},
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LawNonCompliance: true, SevereSecurity: true, NoWorkaround: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{CoreProcesses: true, DataLoss: true},
 				Urgency: "<=48h",
 			},
 			RedFlagsData: `{"criticalIssues": {"securityBreach": true, "nonCompliance": true}, "description": "Data breach with potential GDPR implications"}`,
@@ -249,13 +245,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialIssueReport,
 			Status: models.StatusCompleted,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LostRevenue: true, NoWorkaround: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true, CoreProcesses: true},
 				Urgency: "<=48h",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "No immediate red flags, but customer impact"}`,
@@ -268,13 +262,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialIssueReport,
 			Status: models.StatusInProgress,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LostRevenue: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true},
 				Urgency: "3-7d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Performance issue requiring optimization"}`,
@@ -289,13 +281,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialIssueReport,
 			Status: models.StatusPending,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LostRevenue: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true},
 				Urgency: "8-30d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "UI bug with workaround available"}`,
@@ -308,13 +298,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialIssueReport,
 			Status: models.StatusInProgress,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{NoWorkaround: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{CoreProcesses: true},
 				Urgency: "8-30d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Platform-specific notification issue"}`,
@@ -355,13 +343,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialChangeRequestNormal,
 			Status: models.StatusInProgress,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LostRevenue: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true},
 				Urgency: "8-30d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Planned infrastructure migration"}`,
@@ -374,13 +360,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialChangeRequestNormal,
 			Status: models.StatusCompleted,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{SevereSecurity: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{DataLoss: true},
 				Urgency: "3-7d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Security enhancement for compliance"}`,
@@ -395,13 +379,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialIssueReport,
 			Status: models.StatusPending,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LostRevenue: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true},
 				Urgency: "3-7d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Third-party API integration issue"}`,
@@ -426,13 +408,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialChangeRequestNormal,
 			Status: models.StatusInProgress,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LostRevenue: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{LostRevenue: true},
 				Urgency: "8-30d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Performance optimization initiative"}`,
@@ -445,13 +425,11 @@ func createRealisticTickets() []TicketTemplate {
 			InitialType: models.InitialServiceAdvisory,
 			Status: models.StatusPending,
 			PriorityInput: priority.PriorityInput{
-				Impact: struct {
-					LawNonCompliance bool `json:"lawNonCompliance"`
-					SevereSecurity   bool `json:"severeSecurity"`
-					PaymentAbnormal  bool `json:"paymentAbnormal"`
-					LostRevenue      bool `json:"lostRevenue"`
-					NoWorkaround     bool `json:"noWorkaround"`
-				}{LawNonCompliance: true},
+            Impact: struct {
+                LostRevenue   bool `json:"lostRevenue"`
+                CoreProcesses bool `json:"coreProcesses"`
+                DataLoss      bool `json:"dataLoss"`
+            }{DataLoss: true},
 				Urgency: "8-30d",
 			},
 			RedFlagsData: `{"criticalIssues": {}, "description": "Legal compliance advisory"}`,

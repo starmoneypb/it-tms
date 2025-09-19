@@ -13,3 +13,7 @@ FROM users u
 LEFT JOIN user_scores us ON u.id = us.user_id
 GROUP BY u.id, u.name, u.email, u.role
 ORDER BY total_points DESC, u.name ASC;
+
+-- Effort fields on tickets
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS effort_data JSONB DEFAULT '{}';
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS effort_score SMALLINT NOT NULL DEFAULT 0;

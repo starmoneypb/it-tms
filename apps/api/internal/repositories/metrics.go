@@ -114,8 +114,8 @@ func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
 
 	// Status counts
 	r.countInto(ctx, `SELECT status, COUNT(*) FROM tickets GROUP BY status`, res.StatusCounts)
-	// Category (by initial_type)
-	r.countInto(ctx, `SELECT initial_type, COUNT(*) FROM tickets GROUP BY initial_type`, res.CategoryCounts)
+	// Category (by resolved_type if available, otherwise initial_type)
+	r.countInto(ctx, `SELECT COALESCE(resolved_type, initial_type), COUNT(*) FROM tickets GROUP BY COALESCE(resolved_type, initial_type)`, res.CategoryCounts)
 	// Priority counts
 	r.countInto(ctx, `SELECT priority, COUNT(*) FROM tickets GROUP BY priority`, res.PriorityCounts)
 
@@ -132,4 +132,109 @@ func (r *MetricsRepo) countInto(ctx context.Context, sql string, target map[stri
 		target[key] = cnt
 	}
 	rows.Close()
+}
+
+type UserPerformanceStats struct {
+	InProgressCount     int     `json:"inProgressCount"`
+	CompletedCount      int     `json:"completedCount"`
+	TotalSystemInProgress int   `json:"totalSystemInProgress"`
+	TotalSystemCompleted  int   `json:"totalSystemCompleted"`
+	ParticipationRateInProgress float64 `json:"participationRateInProgress"`
+	ParticipationRateCompleted  float64 `json:"participationRateCompleted"`
+	EffortScoreCurrentMonth   int     `json:"effortScoreCurrentMonth"`
+	EffortScorePreviousMonth  int     `json:"effortScorePreviousMonth"`
+	EffortScoreGrowthRate     float64 `json:"effortScoreGrowthRate"`
+}
+
+func (r *MetricsRepo) GetUserPerformanceStats(ctx context.Context, userID string) (UserPerformanceStats, error) {
+	var stats UserPerformanceStats
+	
+	// Get user's in progress tickets count
+	err := r.pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT t.id)
+		FROM tickets t
+		JOIN ticket_assignments ta ON t.id = ta.ticket_id
+		WHERE ta.assignee_id = $1 AND t.status = 'in_progress'
+	`, userID).Scan(&stats.InProgressCount)
+	if err != nil {
+		return stats, err
+	}
+	
+	// Get user's completed tickets count
+	err = r.pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT t.id)
+		FROM tickets t
+		JOIN ticket_assignments ta ON t.id = ta.ticket_id
+		WHERE ta.assignee_id = $1 AND t.status = 'completed'
+	`, userID).Scan(&stats.CompletedCount)
+	if err != nil {
+		return stats, err
+	}
+	
+	// Get total system in progress tickets count
+	err = r.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM tickets
+		WHERE status = 'in_progress'
+	`).Scan(&stats.TotalSystemInProgress)
+	if err != nil {
+		return stats, err
+	}
+	
+	// Get total system completed tickets count
+	err = r.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM tickets
+		WHERE status = 'completed'
+	`).Scan(&stats.TotalSystemCompleted)
+	if err != nil {
+		return stats, err
+	}
+	
+	// Calculate participation rates
+	if stats.TotalSystemInProgress > 0 {
+		stats.ParticipationRateInProgress = float64(stats.InProgressCount) / float64(stats.TotalSystemInProgress) * 100
+	}
+	if stats.TotalSystemCompleted > 0 {
+		stats.ParticipationRateCompleted = float64(stats.CompletedCount) / float64(stats.TotalSystemCompleted) * 100
+	}
+	
+	// Get current month effort score (completed tickets only)
+	err = r.pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(t.effort_score), 0)
+		FROM tickets t
+		JOIN ticket_assignments ta ON t.id = ta.ticket_id
+		WHERE ta.assignee_id = $1 
+		AND t.status = 'completed'
+		AND DATE_TRUNC('month', t.updated_at) = DATE_TRUNC('month', CURRENT_DATE)
+	`, userID).Scan(&stats.EffortScoreCurrentMonth)
+	if err != nil {
+		return stats, err
+	}
+	
+	// Get previous month effort score (completed tickets only)
+	err = r.pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(t.effort_score), 0)
+		FROM tickets t
+		JOIN ticket_assignments ta ON t.id = ta.ticket_id
+		WHERE ta.assignee_id = $1 
+		AND t.status = 'completed'
+		AND DATE_TRUNC('month', t.updated_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+	`, userID).Scan(&stats.EffortScorePreviousMonth)
+	if err != nil {
+		return stats, err
+	}
+	
+	// Calculate growth rate
+	if stats.EffortScorePreviousMonth > 0 {
+		stats.EffortScoreGrowthRate = (float64(stats.EffortScoreCurrentMonth - stats.EffortScorePreviousMonth) / float64(stats.EffortScorePreviousMonth)) * 100
+	} else if stats.EffortScoreCurrentMonth > 0 {
+		// If previous month was 0 but current month has score, it's 100% growth
+		stats.EffortScoreGrowthRate = 100.0
+	} else {
+		// Both months are 0, no growth
+		stats.EffortScoreGrowthRate = 0.0
+	}
+	
+	return stats, nil
 }

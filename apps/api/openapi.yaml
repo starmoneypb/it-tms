@@ -244,6 +244,25 @@ paths:
       responses:
         "200": { description: OK }
         "403": { description: Forbidden - Supervisor/Manager role required }
+  /tickets/{id}/effort:
+    post:
+      summary: Update Effort checklist and score (Supervisor/Manager only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                effortInput:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200": { description: OK }
   /tickets/{id}/classify:
     post:
       summary: Classify Issue Report

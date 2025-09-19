@@ -57,6 +57,10 @@ services:
         psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0005_comment_attachments.up.sql;
         echo 'Applying 0006_enhanced_scoring_system.up.sql...';
         psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0006_enhanced_scoring_system.up.sql;
+        echo 'Applying 0007_fix_ranking_numbers.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0007_fix_ranking_numbers.up.sql;
+        echo 'Applying 0008_effort_fields.up.sql...';
+        psql -h db -p 5432 -U postgres -d it_tms -f db/migrations/0008_effort_fields.up.sql;
         echo 'Migrations applied successfully!';
         echo 'Seeding database...';
         cd apps/api;

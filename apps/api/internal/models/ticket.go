@@ -25,6 +25,8 @@ type Ticket struct {
 	RedFlagsData           map[string]any     `json:"redFlagsData,omitempty"`
 	ImpactAssessmentData   map[string]any     `json:"impactAssessmentData,omitempty"`
 	UrgencyTimelineData    map[string]any     `json:"urgencyTimelineData,omitempty"`
+	EffortData             map[string]any     `json:"effortData,omitempty"`
+	EffortScore            int32              `json:"effortScore"`
 	CreatedAt              time.Time          `json:"createdAt"`
 	UpdatedAt              time.Time          `json:"updatedAt"`
 	ClosedAt               *time.Time         `json:"closedAt,omitempty"`

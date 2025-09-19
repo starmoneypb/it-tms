@@ -60,7 +60,13 @@ export default function TicketDetails() {
   const [editForm, setEditForm] = useState({
     initialType: "",
     resolvedType: "",
-    priorityInput: { redFlags: {}, impact: {}, urgency: "none" } as PriorityInput
+    priorityInput: { redFlags: {}, impact: {}, urgency: "none" } as PriorityInput,
+    effort: {
+      development: {},
+      security: {},
+      data: {},
+      operations: {},
+    } as any
   });
   
   // Title and description editing state
@@ -95,7 +101,8 @@ export default function TicketDetails() {
         setEditForm({
           initialType: ticket.initialType || "",
           resolvedType: ticket.resolvedType || "",
-          priorityInput
+          priorityInput,
+          effort: ticket.effortData || { development: {}, security: {}, data: {}, operations: {} }
         });
         // Initialize content edit form
         setContentEditForm({
@@ -134,6 +141,24 @@ export default function TicketDetails() {
       payload.urgencyScore = pr.urgency;
       payload.finalScore = pr.final;
       payload.redFlag = pr.redFlag;
+      // Include Effort
+      payload.effortData = editForm.effort;
+      // effortScore base = sum of selected across categories (0..12); server recomputes, but we pass hint
+      const effortBase = [
+        editForm.effort?.development?.versionControl,
+        editForm.effort?.development?.externalService,
+        editForm.effort?.development?.internalIntegration,
+        editForm.effort?.security?.legalCompliance,
+        editForm.effort?.security?.accessControl,
+        editForm.effort?.security?.personalData,
+        editForm.effort?.data?.migration,
+        editForm.effort?.data?.dataPreparation,
+        editForm.effort?.data?.encryption,
+        editForm.effort?.operations?.offHours,
+        editForm.effort?.operations?.training,
+        editForm.effort?.operations?.uat,
+      ].filter(Boolean).length;
+      payload.effortScore = effortBase;
       
       const response = await fetch(`${API}/api/v1/tickets/${id}/fields`, {
         method: "PATCH",
@@ -912,7 +937,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('systemOutage')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('systemOutage')}</span>
+                                <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded ml-2">10 pts</span>
+                              </div>
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.paymentsFailing} 
@@ -926,7 +954,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('paymentFailure')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('paymentFailure')}</span>
+                                <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded ml-2">10 pts</span>
+                              </div>
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.securityBreach} 
@@ -940,7 +971,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('securityBreach')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('securityBreach')}</span>
+                                <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded ml-2">10 pts</span>
+                              </div>
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.redFlags?.nonCompliance} 
@@ -954,7 +988,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('nonCompliance')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('nonCompliance')}</span>
+                                <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded ml-2">10 pts</span>
+                              </div>
                             </Checkbox>
                           </div>
                         </div>
@@ -976,7 +1013,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('lostRevenue')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('lostRevenue')}</span>
+                                <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded ml-2">2 pts</span>
+                              </div>
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.impact?.coreProcesses} 
@@ -990,7 +1030,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('coreProcesses')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('coreProcesses')}</span>
+                                <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded ml-2">2 pts</span>
+                              </div>
                             </Checkbox>
                             <Checkbox 
                               isSelected={!!editForm.priorityInput.impact?.dataLoss} 
@@ -1004,7 +1047,10 @@ export default function TicketDetails() {
                               className="text-white"
                               size="sm"
                             >
-                              {t('dataLoss')}
+                              <div className="flex justify-between items-center w-full">
+                                <span>{t('dataLoss')}</span>
+                                <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded ml-2">2 pts</span>
+                              </div>
                             </Checkbox>
                           </div>
                         </div>
@@ -1039,7 +1085,10 @@ export default function TicketDetails() {
                                     : "hover:scale-102 hover:bg-default-100"
                                 }`}
                               >
-                                {u.label}
+                                <div className="flex flex-col items-center">
+                                  <span>{u.label.replace(/\s*\(\d+\)/, '')}</span>
+                                  <span className="text-xs opacity-70">{u.score} pts</span>
+                                </div>
                               </Button>
                             ))}
                           </div>
@@ -1052,16 +1101,197 @@ export default function TicketDetails() {
                             const pr = computePriority(editForm.priorityInput);
                             return (
                               <div className="text-xs space-y-1">
-                                <div>Red Flags: {pr.redFlag ? 10 : 0}/10 • Impact: {pr.impact}/6 • Urgency: {pr.urgency}/4 • Final: {pr.final}/10</div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                                  <div className="text-center">
+                                    <div className="text-xs text-white/60">Red Flags</div>
+                                    <div className="text-lg font-bold text-red-400">{pr.redFlag ? 10 : 0}/10</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-xs text-white/60">Impact</div>
+                                    <div className="text-lg font-bold text-orange-400">{pr.impact}/6</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-xs text-white/60">Urgency</div>
+                                    <div className="text-lg font-bold text-blue-400">{pr.urgency}/4</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-xs text-white/60">Final Score</div>
+                                    <div className="text-lg font-bold text-primary-400">{pr.final}/10</div>
+                                  </div>
+                                </div>
                                 <div className="text-white/60">
                                   {t('newScoringSystem')}
                                 </div>
-                                <div className="font-semibold text-primary-400">
+                                <div className="font-semibold text-primary-400 text-center">
                                   {t('priority')}: {pr.priority} {pr.redFlag ? `(${t('redFlag')})` : ""}
                                 </div>
                               </div>
                             );
                           })()}
+                        </div>
+                      </div>
+
+                      {/* Effort Assessment Section */}
+                      <div className="space-y-4 p-4 border border-white/20 rounded-lg">
+                        <h4 className="text-lg font-semibold">{t('effortAssessment')}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="text-sm font-medium text-white/80">{t('effortDevelopmentTitle')}</h5>
+                              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                                {[editForm.effort.development.versionControl, editForm.effort.development.externalService, editForm.effort.development.internalIntegration].filter(Boolean).length}/3
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              <Checkbox isSelected={!!editForm.effort.development.versionControl} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, versionControl: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortDevVersionControl')}</span>
+                                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.development.externalService} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, externalService: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortDevExternalService')}</span>
+                                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.development.internalIntegration} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, development:{...prev.effort.development, internalIntegration: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortDevInternalIntegration')}</span>
+                                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="text-sm font-medium text-white/80">{t('effortSecurityTitle')}</h5>
+                              <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
+                                {[editForm.effort.security.legalCompliance, editForm.effort.security.accessControl, editForm.effort.security.personalData].filter(Boolean).length}/3
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              <Checkbox isSelected={!!editForm.effort.security.legalCompliance} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, legalCompliance: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortSecLegalCompliance')}</span>
+                                  <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.security.accessControl} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, accessControl: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortSecAccessControl')}</span>
+                                  <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.security.personalData} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, security:{...prev.effort.security, personalData: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortSecPersonalData')}</span>
+                                  <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="text-sm font-medium text-white/80">{t('effortDataTitle')}</h5>
+                              <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                                {[editForm.effort.data.migration, editForm.effort.data.dataPreparation, editForm.effort.data.encryption].filter(Boolean).length}/3
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              <Checkbox isSelected={!!editForm.effort.data.migration} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, migration: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortDataMigration')}</span>
+                                  <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.data.dataPreparation} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, dataPreparation: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortDataPreparation')}</span>
+                                  <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.data.encryption} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, data:{...prev.effort.data, encryption: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortDataEncryption')}</span>
+                                  <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="text-sm font-medium text-white/80">{t('effortOperationsTitle')}</h5>
+                              <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded">
+                                {[editForm.effort.operations.offHours, editForm.effort.operations.training, editForm.effort.operations.uat].filter(Boolean).length}/3
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              <Checkbox isSelected={!!editForm.effort.operations.offHours} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, offHours: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortOpsOffHours')}</span>
+                                  <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.operations.training} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, training: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortOpsTraining')}</span>
+                                  <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                              <Checkbox isSelected={!!editForm.effort.operations.uat} onValueChange={(v)=>setEditForm(prev=>({...prev, effort:{...prev.effort, operations:{...prev.effort.operations, uat: v}}}))} size="sm" className="text-white">
+                                <div className="flex justify-between items-center w-full">
+                                  <span className="text-sm">{t('effortOpsUAT')}</span>
+                                  <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
+                                </div>
+                              </Checkbox>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Effort Total Display */}
+                        <div className="mt-4 p-3 bg-white/5 rounded-lg border border-secondary-500/20">
+                          <h5 className="text-sm font-semibold mb-2">{t('effortScore')}</h5>
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
+                            <div className="text-center">
+                              <div className="text-xs text-white/60">Development</div>
+                              <div className="text-lg font-bold text-blue-400">
+                                {[editForm.effort.development.versionControl, editForm.effort.development.externalService, editForm.effort.development.internalIntegration].filter(Boolean).length}/3
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-white/60">Security</div>
+                              <div className="text-lg font-bold text-purple-400">
+                                {[editForm.effort.security.legalCompliance, editForm.effort.security.accessControl, editForm.effort.security.personalData].filter(Boolean).length}/3
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-white/60">Data</div>
+                              <div className="text-lg font-bold text-green-400">
+                                {[editForm.effort.data.migration, editForm.effort.data.dataPreparation, editForm.effort.data.encryption].filter(Boolean).length}/3
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-white/60">Operations</div>
+                              <div className="text-lg font-bold text-yellow-400">
+                                {[editForm.effort.operations.offHours, editForm.effort.operations.training, editForm.effort.operations.uat].filter(Boolean).length}/3
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-white/60">Total Effort</div>
+                              <div className="text-lg font-bold text-secondary-400">
+                                {[
+                                  editForm.effort.development.versionControl, editForm.effort.development.externalService, editForm.effort.development.internalIntegration,
+                                  editForm.effort.security.legalCompliance, editForm.effort.security.accessControl, editForm.effort.security.personalData,
+                                  editForm.effort.data.migration, editForm.effort.data.dataPreparation, editForm.effort.data.encryption,
+                                  editForm.effort.operations.offHours, editForm.effort.operations.training, editForm.effort.operations.uat
+                                ].filter(Boolean).length}/12
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-white/60 text-center">
+                            Each selected item adds 1 point to the effort score. Higher effort scores indicate more complex implementation requirements.
+                          </div>
                         </div>
                       </div>
                     </div>

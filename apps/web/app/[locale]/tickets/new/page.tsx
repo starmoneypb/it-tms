@@ -32,6 +32,12 @@ type Draft = {
   contactPhone?: string;
   files?: File[];
   priority: PriorityInput;
+  effort: {
+    development: { versionControl?: boolean; externalService?: boolean; internalIntegration?: boolean };
+    security: { legalCompliance?: boolean; accessControl?: boolean; personalData?: boolean };
+    data: { migration?: boolean; dataPreparation?: boolean; encryption?: boolean };
+    operations: { offHours?: boolean; training?: boolean; uat?: boolean };
+  };
   redFlagsData?: Record<string, any>;
   impactAssessmentData?: Record<string, any>;
   urgencyTimelineData?: Record<string, any>;
@@ -40,7 +46,13 @@ type Draft = {
 const initialDraft: Draft = {
   step: 1,
   isAbnormal: null,
-  priority: { redFlags: {}, impact: {}, urgency: "none" }
+  priority: { redFlags: {}, impact: {}, urgency: "none" },
+  effort: {
+    development: {},
+    security: {},
+    data: {},
+    operations: {},
+  }
 };
 
 // Steps will be defined inside the component to access translations
@@ -78,6 +90,7 @@ export default function NewTicket() {
         contactEmail: draft.contactEmail,
         contactPhone: draft.contactPhone,
         priorityInput: draft.priority,
+        effortInput: draft.effort,
         redFlagsData: {
           criticalIssues: draft.priority.redFlags,
           description: "Initial red flags assessment during ticket creation"
@@ -390,6 +403,7 @@ export default function NewTicket() {
                 </div>
                 
                 <div className="space-y-6">
+                  {/* Priority Assessment - Red Flags */}
                   <div>
                     <h4 className="text-lg font-semibold mb-3">{t('redFlagsCriticalIssues')}</h4>
                     <p className="text-sm text-white/70 mb-3">{t('multipleSelectionsAllowed')}</p>
@@ -399,32 +413,45 @@ export default function NewTicket() {
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, outage: v}}})}
                         className="text-white"
                       >
-                        {t('systemOutage')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('systemOutage')}</span>
+                          <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">10 pts</span>
+                        </div>
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.paymentsFailing} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, paymentsFailing: v}}})}
                         className="text-white"
                       >
-                        {t('paymentFailure')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('paymentFailure')}</span>
+                          <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">10 pts</span>
+                        </div>
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.securityBreach} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, securityBreach: v}}})}
                         className="text-white"
                       >
-                        {t('securityBreach')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('securityBreach')}</span>
+                          <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">10 pts</span>
+                        </div>
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.redFlags?.nonCompliance} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, redFlags: {...draft.priority.redFlags, nonCompliance: v}}})}
                         className="text-white"
                       >
-                        {t('nonCompliance')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('nonCompliance')}</span>
+                          <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">10 pts</span>
+                        </div>
                       </Checkbox>
                     </div>
                   </div>
 
+                  {/* Priority Assessment - Impact */}
                   <div>
                     <h4 className="text-lg font-semibold mb-3">{t('impact0to6')}</h4>
                     <p className="text-sm text-white/70 mb-3">{t('multipleSelectionsAllowedImpact')}</p>
@@ -434,25 +461,35 @@ export default function NewTicket() {
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, lostRevenue: v}}})}
                         className="text-white"
                       >
-                        {t('lostRevenue')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('lostRevenue')}</span>
+                          <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded">2 pts</span>
+                        </div>
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.coreProcesses} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, coreProcesses: v}}})}
                         className="text-white"
                       >
-                        {t('coreProcesses')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('coreProcesses')}</span>
+                          <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded">2 pts</span>
+                        </div>
                       </Checkbox>
                       <Checkbox 
                         isSelected={!!draft.priority.impact?.dataLoss} 
                         onValueChange={(v)=>setDraft({...draft, priority:{...draft.priority, impact:{...draft.priority.impact, dataLoss: v}}})}
                         className="text-white"
                       >
-                        {t('dataLoss')}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{t('dataLoss')}</span>
+                          <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded">2 pts</span>
+                        </div>
                       </Checkbox>
                     </div>
                   </div>
 
+                  {/* Priority Assessment - Urgency */}
                   <div>
                     <h4 className="text-lg font-semibold mb-3">{t('urgency0to4')}</h4>
                     <p className="text-sm text-white/70 mb-3">{t('singleSelectionOnly')}</p>
@@ -476,21 +513,261 @@ export default function NewTicket() {
                               : "hover:scale-102 hover:bg-default-100"
                           }`}
                         >
-                          {u.label}
+                          <div className="flex flex-col items-center">
+                            <span>{u.label.replace(/\s*\(\d+\)/, '')}</span>
+                            <span className="text-xs opacity-70">{u.score} pts</span>
+                          </div>
                         </Button>
                       ))}
                     </div>
                   </div>
 
+                  {/* Priority Calculation Display */}
                   <div className="p-6 glass rounded-lg border border-primary-500/20">
                     <h4 className="text-lg font-semibold mb-2">{t('priorityCalculation')}</h4>
                     <div className="text-sm space-y-1">
-                      <div>Red Flags: {pr.redFlag ? 10 : 0}/10 • Impact: {pr.impact}/6 • Urgency: {pr.urgency}/4 • Final: {pr.final}/10</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Red Flags</div>
+                          <div className="text-lg font-bold text-red-400">{pr.redFlag ? 10 : 0}/10</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Impact</div>
+                          <div className="text-lg font-bold text-orange-400">{pr.impact}/6</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Urgency</div>
+                          <div className="text-lg font-bold text-blue-400">{pr.urgency}/4</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Final Score</div>
+                          <div className="text-lg font-bold text-primary-400">{pr.final}/10</div>
+                        </div>
+                      </div>
                       <div className="text-xs text-white/60 mb-2">
                         {t('newScoringSystem')}
                       </div>
-                      <div className="font-semibold text-primary-400">
+                      <div className="font-semibold text-primary-400 text-center">
                         {t('priority')}: {pr.priority} {pr.redFlag ? "(Red Flag)" : ""}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Effort Assessment */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-3">{t('effortAssessment')}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Development */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="font-medium">{t('effortDevelopmentTitle')}</h5>
+                          <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
+                            {[draft.effort.development.versionControl, draft.effort.development.externalService, draft.effort.development.internalIntegration].filter(Boolean).length}/3
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Checkbox 
+                            isSelected={!!draft.effort.development.versionControl}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, development:{...draft.effort.development, versionControl: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortDevVersionControl')}</span>
+                              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.development.externalService}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, development:{...draft.effort.development, externalService: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortDevExternalService')}</span>
+                              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.development.internalIntegration}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, development:{...draft.effort.development, internalIntegration: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortDevInternalIntegration')}</span>
+                              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                        </div>
+                      </div>
+
+                      {/* Security & Compliance */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="font-medium">{t('effortSecurityTitle')}</h5>
+                          <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
+                            {[draft.effort.security.legalCompliance, draft.effort.security.accessControl, draft.effort.security.personalData].filter(Boolean).length}/3
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Checkbox 
+                            isSelected={!!draft.effort.security.legalCompliance}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, security:{...draft.effort.security, legalCompliance: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortSecLegalCompliance')}</span>
+                              <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.security.accessControl}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, security:{...draft.effort.security, accessControl: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortSecAccessControl')}</span>
+                              <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.security.personalData}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, security:{...draft.effort.security, personalData: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortSecPersonalData')}</span>
+                              <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                        </div>
+                      </div>
+
+                      {/* Data & Database */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="font-medium">{t('effortDataTitle')}</h5>
+                          <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                            {[draft.effort.data.migration, draft.effort.data.dataPreparation, draft.effort.data.encryption].filter(Boolean).length}/3
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Checkbox 
+                            isSelected={!!draft.effort.data.migration}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, data:{...draft.effort.data, migration: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortDataMigration')}</span>
+                              <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.data.dataPreparation}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, data:{...draft.effort.data, dataPreparation: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortDataPreparation')}</span>
+                              <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.data.encryption}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, data:{...draft.effort.data, encryption: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortDataEncryption')}</span>
+                              <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                        </div>
+                      </div>
+
+                      {/* Operations */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="font-medium">{t('effortOperationsTitle')}</h5>
+                          <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded">
+                            {[draft.effort.operations.offHours, draft.effort.operations.training, draft.effort.operations.uat].filter(Boolean).length}/3
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Checkbox 
+                            isSelected={!!draft.effort.operations.offHours}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, operations:{...draft.effort.operations, offHours: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortOpsOffHours')}</span>
+                              <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.operations.training}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, operations:{...draft.effort.operations, training: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortOpsTraining')}</span>
+                              <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                          <Checkbox 
+                            isSelected={!!draft.effort.operations.uat}
+                            onValueChange={(v)=>setDraft({...draft, effort:{...draft.effort, operations:{...draft.effort.operations, uat: v}}})}
+                            className="text-white"
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-sm">{t('effortOpsUAT')}</span>
+                              <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded ml-2">1 pt</span>
+                            </div>
+                          </Checkbox>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Effort Total Display */}
+                    <div className="mt-4 p-4 glass rounded-lg border border-secondary-500/20">
+                      <h5 className="text-md font-semibold mb-2">{t('effortScore')}</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-3">
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Development</div>
+                          <div className="text-lg font-bold text-blue-400">
+                            {[draft.effort.development.versionControl, draft.effort.development.externalService, draft.effort.development.internalIntegration].filter(Boolean).length}/3
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Security</div>
+                          <div className="text-lg font-bold text-purple-400">
+                            {[draft.effort.security.legalCompliance, draft.effort.security.accessControl, draft.effort.security.personalData].filter(Boolean).length}/3
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Data</div>
+                          <div className="text-lg font-bold text-green-400">
+                            {[draft.effort.data.migration, draft.effort.data.dataPreparation, draft.effort.data.encryption].filter(Boolean).length}/3
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Operations</div>
+                          <div className="text-lg font-bold text-yellow-400">
+                            {[draft.effort.operations.offHours, draft.effort.operations.training, draft.effort.operations.uat].filter(Boolean).length}/3
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-white/60">Total Effort</div>
+                          <div className="text-lg font-bold text-secondary-400">
+                            {[
+                              draft.effort.development.versionControl, draft.effort.development.externalService, draft.effort.development.internalIntegration,
+                              draft.effort.security.legalCompliance, draft.effort.security.accessControl, draft.effort.security.personalData,
+                              draft.effort.data.migration, draft.effort.data.dataPreparation, draft.effort.data.encryption,
+                              draft.effort.operations.offHours, draft.effort.operations.training, draft.effort.operations.uat
+                            ].filter(Boolean).length}/12
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-white/60 text-center">
+                        Each selected item adds 1 point to the effort score. Higher effort scores indicate more complex implementation requirements.
                       </div>
                     </div>
                   </div>

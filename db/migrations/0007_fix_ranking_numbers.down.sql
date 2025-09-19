@@ -12,3 +12,7 @@ FROM users u
 LEFT JOIN user_scores us ON u.id = us.user_id
 GROUP BY u.id, u.name, u.email, u.role
 ORDER BY total_points DESC;
+
+-- Revert effort fields
+ALTER TABLE tickets DROP COLUMN IF EXISTS effort_data;
+ALTER TABLE tickets DROP COLUMN IF EXISTS effort_score;

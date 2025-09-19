@@ -23,6 +23,7 @@ import (
 	"github.com/it-tms/apps/api/internal/http/middleware"
 	"github.com/it-tms/apps/api/internal/models"
 	"github.com/it-tms/apps/api/internal/priority"
+	"github.com/it-tms/apps/api/internal/effort"
 	"github.com/it-tms/apps/api/internal/repositories"
 	"github.com/it-tms/apps/api/pkg/config"
 )
@@ -234,6 +235,7 @@ type TicketCreateReq struct {
 	ContactEmail *string                `json:"contactEmail"`
 	ContactPhone *string                `json:"contactPhone"`
 	PriorityInput *priority.PriorityInput `json:"priorityInput"`
+	EffortInput   *effort.Input           `json:"effortInput"`
 }
 
 func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
@@ -286,6 +288,38 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 		prio = models.TicketPriority(p.Priority)
 	}
 
+	// Effort base calculation
+	effortScore := 0
+	var effortData map[string]any
+	if body.EffortInput != nil {
+		// store raw effort input as map for transparency
+		// Marshal-unmarshal is unnecessary here; build via fields
+		in := *body.EffortInput
+		effortScore = effort.ComputeBase(in)
+		effortData = map[string]any{
+			"development": map[string]bool{
+				"versionControl": in.Development.VersionControl,
+				"externalService": in.Development.ExternalService,
+				"internalIntegration": in.Development.InternalIntegration,
+			},
+			"security": map[string]bool{
+				"legalCompliance": in.Security.LegalCompliance,
+				"accessControl": in.Security.AccessControl,
+				"personalData": in.Security.PersonalData,
+			},
+			"data": map[string]bool{
+				"migration": in.Data.Migration,
+				"dataPreparation": in.Data.DataPreparation,
+				"encryption": in.Data.Encryption,
+			},
+			"operations": map[string]bool{
+				"offHours": in.Operations.OffHours,
+				"training": in.Operations.Training,
+				"uat": in.Operations.UAT,
+			},
+		}
+	}
+
 	t := models.Ticket{
 		CreatedBy: createdBy,
 		ContactEmail: body.ContactEmail,
@@ -300,6 +334,8 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 		FinalScore: int32(final),
 		RedFlag: red,
 		Priority: prio,
+		EffortData: effortData,
+		EffortScore: int32(effortScore),
 	}
 	ctx := context.Background()
 	if err := h.repo.Tickets.Create(ctx, &t); err != nil {
@@ -366,6 +402,8 @@ type TicketFieldsUpdateReq struct {
 	UrgencyScore  *int32                     `json:"urgencyScore"`
 	FinalScore    *int32                     `json:"finalScore"`
 	RedFlag       *bool                     `json:"redFlag"`
+	EffortData    map[string]any            `json:"effortData"`
+	EffortScore   *int32                    `json:"effortScore"`
 }
 
 func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
@@ -410,10 +448,13 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 	
-	// Add automatic comment if there were changes
+    // Add automatic comment if there were changes
 	if len(changes) > 0 {
 		commentBody := fmt.Sprintf("Ticket updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+        // If any ticket content changed, recompute priority on server side if we had inputs stored
+        // Note: Priority still uses existing fields (impact/urgency/red flags) which are updated via dedicated endpoints.
+        // We ensure user scores use Effort only, handled elsewhere.
 	}
 	
 	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket", nil, body)
@@ -479,17 +520,37 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 		}
 	}
 	
-	if err := h.repo.Tickets.UpdateTicketFields(ctx, id, body.InitialType, body.ResolvedType, body.Priority, body.ImpactScore, body.UrgencyScore, body.FinalScore, body.RedFlag); err != nil {
+    if err := h.repo.Tickets.UpdateTicketFields(ctx, id, body.InitialType, body.ResolvedType, body.Priority, body.ImpactScore, body.UrgencyScore, body.FinalScore, body.RedFlag); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
+
+    // Optional effort direct update (admin fields)
+    if body.EffortScore != nil || body.EffortData != nil {
+        // Re-read ticket to merge existing
+        current, _ := h.repo.Tickets.GetByID(ctx, id)
+        newData := current.EffortData
+        if newData == nil { newData = map[string]any{} }
+        if body.EffortData != nil {
+            newData = body.EffortData
+        }
+        newScore := current.EffortScore
+        if body.EffortScore != nil { newScore = *body.EffortScore }
+        // Get user name for comment
+        userClaims, _ := c.Locals("user").(jwt.MapClaims)
+        userName, _ := userClaims["name"].(string)
+        if userName == "" { _, role, _ := middleware.GetUserFromContext(c); userName = role }
+        if err := h.repo.Tickets.UpdateEffort(ctx, id, newData, newScore, userName); err != nil {
+            return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"effort update failed"}})
+        }
+    }
 	
 	// Add automatic comment if there were changes
 	if len(changes) > 0 {
 		commentBody := fmt.Sprintf("⚙️ Ticket fields updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
-		// Recalculate score distribution if final score changed for completed tickets
-		if body.FinalScore != nil && ticket.Status == models.StatusCompleted {
+        // Recalculate score distribution if effort changed or final score changed for completed tickets
+        if ticket.Status == models.StatusCompleted && (body.FinalScore != nil || body.EffortScore != nil || body.EffortData != nil) {
 			assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
 			if err == nil && len(assignees) > 0 {
 				// Extract assignee IDs
@@ -497,8 +558,13 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 				for i, assignee := range assignees {
 					assigneeIDs[i] = assignee.ID
 				}
-				// Redistribute points with new final score
-				h.repo.UserScores.DistributePoints(ctx, id, float64(*body.FinalScore), assigneeIDs)
+                // Redistribute points with new Effort (preferred)
+                updated, _ := h.repo.Tickets.GetByID(ctx, id)
+                total := float64(updated.EffortScore)
+                if len(assignees) > 0 {
+                    total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees))
+                }
+                h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 			}
 		}
 	}
@@ -590,7 +656,7 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 		commentBody := fmt.Sprintf("Assignment updated by %s:\n\n%s", role, strings.Join(assignmentChanges, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
-		// Recalculate score distribution if ticket is completed
+        // Recalculate score distribution if ticket is completed
 		ticket, err := h.repo.Tickets.GetByID(ctx, id)
 		if err == nil && ticket.Status == models.StatusCompleted && len(newAssignees) > 0 {
 			// Extract new assignee IDs
@@ -598,8 +664,12 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 			for i, assignee := range newAssignees {
 				assigneeIDs[i] = assignee.ID
 			}
-			// Redistribute points evenly among new assignees
-			h.repo.UserScores.DistributePoints(ctx, id, float64(ticket.FinalScore), assigneeIDs)
+            // Redistribute using Effort Score + collaboration
+            total := float64(ticket.EffortScore)
+            if len(newAssignees) > 0 {
+                total += float64(effort.CollaborationExtraPerPerson(len(newAssignees)) * len(newAssignees))
+            }
+            h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 		}
 	}
 	
@@ -662,7 +732,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 		commentBody := fmt.Sprintf("Assignment updated by %s:\n\n%s", role, strings.Join(unassignmentChanges, "\n"))
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
-		// Recalculate score distribution if ticket is completed
+        // Recalculate score distribution if ticket is completed
 		ticket, err := h.repo.Tickets.GetByID(ctx, id)
 		if err == nil && ticket.Status == models.StatusCompleted {
 			if len(newAssignees) > 0 {
@@ -671,7 +741,9 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 				for i, assignee := range newAssignees {
 					assigneeIDs[i] = assignee.ID
 				}
-				h.repo.UserScores.DistributePoints(ctx, id, float64(ticket.FinalScore), assigneeIDs)
+                total := float64(ticket.EffortScore)
+                total += float64(effort.CollaborationExtraPerPerson(len(newAssignees)) * len(newAssignees))
+                h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 			} else {
 				// No assignees left - remove all points for this ticket
 				h.repo.UserScores.RemoveAllPointsForTicket(ctx, id)
@@ -715,7 +787,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 		}
 	}
 	
-	// Track status change for automatic comment generation
+    // Track status change for automatic comment generation
 	var statusChangeComment string
 	if body.Status != ticket.Status {
 		statusChangeComment = fmt.Sprintf("Status changed from \"%s\" to \"%s\" by %s", ticket.Status, body.Status, role)
@@ -725,7 +797,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":err.Error()}})
 	}
 	
-	// Handle score distribution for completed tickets
+    // Handle score distribution for completed tickets (Effort-based)
 	if body.Status == models.StatusCompleted {
 		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
 		if err == nil && len(assignees) > 0 {
@@ -737,8 +809,10 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 				for i, assignee := range assignees {
 					assigneeIDs[i] = assignee.ID
 				}
-				// Distribute points evenly among assignees
-				h.repo.UserScores.DistributePoints(ctx, id, float64(ticket.FinalScore), assigneeIDs)
+                // Distribute Effort points among assignees (base/avg + collaboration per person)
+                total := float64(ticket.EffortScore)
+                if len(assignees) > 0 { total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees)) }
+                h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 			}
 		}
 	} else if body.Status == models.StatusPending || body.Status == models.StatusInProgress {
@@ -1028,6 +1102,72 @@ func (h *Handlers) TicketsClassify(c *fiber.Ctx) error {
 }
 
 // -------------------- Enhanced Scoring Fields --------------------
+// Effort fields API
+
+type UpdateEffortReq struct {
+    EffortInput effort.Input `json:"effortInput"`
+}
+
+func (h *Handlers) TicketsUpdateEffort(c *fiber.Ctx) error {
+    id := c.Params("id")
+    var body UpdateEffortReq
+    if err := c.BodyParser(&body); err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
+    }
+    userClaims, _ := c.Locals("user").(jwt.MapClaims)
+    if userClaims == nil { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"auth required"}}) }
+    userID, role, ok := middleware.GetUserFromContext(c)
+    if !ok { return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"invalid auth context"}}) }
+    if role != "Supervisor" && role != "Manager" { return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"insufficient permissions"}}) }
+
+    // Build data and score
+    score := effort.ComputeBase(body.EffortInput)
+    data := map[string]any{
+        "development": map[string]bool{
+            "versionControl": body.EffortInput.Development.VersionControl,
+            "externalService": body.EffortInput.Development.ExternalService,
+            "internalIntegration": body.EffortInput.Development.InternalIntegration,
+        },
+        "security": map[string]bool{
+            "legalCompliance": body.EffortInput.Security.LegalCompliance,
+            "accessControl": body.EffortInput.Security.AccessControl,
+            "personalData": body.EffortInput.Security.PersonalData,
+        },
+        "data": map[string]bool{
+            "migration": body.EffortInput.Data.Migration,
+            "dataPreparation": body.EffortInput.Data.DataPreparation,
+            "encryption": body.EffortInput.Data.Encryption,
+        },
+        "operations": map[string]bool{
+            "offHours": body.EffortInput.Operations.OffHours,
+            "training": body.EffortInput.Operations.Training,
+            "uat": body.EffortInput.Operations.UAT,
+        },
+    }
+
+    ctx := context.Background()
+    userName, _ := userClaims["name"].(string)
+    if userName == "" { userName = role }
+    if err := h.repo.Tickets.UpdateEffort(ctx, id, data, int32(score), userName); err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
+    }
+
+    // If completed, redistribute points using effort
+    ticket, _ := h.repo.Tickets.GetByID(ctx, id)
+    if ticket.Status == models.StatusCompleted {
+        assignees, _ := h.repo.Tickets.GetAssignees(ctx, id)
+        if len(assignees) > 0 {
+            ids := make([]string, len(assignees))
+            for i, a := range assignees { ids[i] = a.ID }
+            total := float64(score)
+            total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees))
+            h.repo.UserScores.DistributePoints(ctx, id, total, ids)
+        }
+    }
+
+    h.repo.Audits.Insert(ctx, id, &userID, "update_effort", nil, body)
+    return c.JSON(h.envelope(fiber.Map{"id": id}))
+}
 
 type UpdateRedFlagsReq struct {
 	RedFlagsData map[string]any `json:"redFlagsData"`
@@ -1079,19 +1219,16 @@ func (h *Handlers) TicketsUpdateRedFlags(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 	
-	// Trigger score recalculation if ticket is completed (Red Flags affect final score)
-	if ticket.Status == models.StatusCompleted {
+    // Trigger recalculation if ticket is completed
+    if ticket.Status == models.StatusCompleted {
 		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
 		if err == nil && len(assignees) > 0 {
-			// Recalculate final score based on updated red flags
-			// For now, we'll need to get the updated ticket to get the new final score
-			// TODO: Implement proper priority recalculation based on updated red flags data
-			// For immediate fix, we'll redistribute existing final score
-			assigneeIDs := make([]string, len(assignees))
-			for i, assignee := range assignees {
-				assigneeIDs[i] = assignee.ID
-			}
-			h.repo.UserScores.DistributePoints(ctx, id, float64(ticket.FinalScore), assigneeIDs)
+            assigneeIDs := make([]string, len(assignees))
+            for i, assignee := range assignees { assigneeIDs[i] = assignee.ID }
+            refreshed, _ := h.repo.Tickets.GetByID(ctx, id)
+            total := float64(refreshed.EffortScore)
+            if len(assignees) > 0 { total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees)) }
+            h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 		}
 	}
 	
@@ -1149,15 +1286,16 @@ func (h *Handlers) TicketsUpdateImpactAssessment(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 	
-	// Trigger score recalculation if ticket is completed (Impact affects final score)
-	if ticket.Status == models.StatusCompleted {
+    // Trigger recalculation if ticket is completed
+    if ticket.Status == models.StatusCompleted {
 		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
 		if err == nil && len(assignees) > 0 {
-			assigneeIDs := make([]string, len(assignees))
-			for i, assignee := range assignees {
-				assigneeIDs[i] = assignee.ID
-			}
-			h.repo.UserScores.DistributePoints(ctx, id, float64(ticket.FinalScore), assigneeIDs)
+            assigneeIDs := make([]string, len(assignees))
+            for i, assignee := range assignees { assigneeIDs[i] = assignee.ID }
+            refreshed, _ := h.repo.Tickets.GetByID(ctx, id)
+            total := float64(refreshed.EffortScore)
+            if len(assignees) > 0 { total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees)) }
+            h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 		}
 	}
 	
@@ -1215,15 +1353,16 @@ func (h *Handlers) TicketsUpdateUrgencyTimeline(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 	
-	// Trigger score recalculation if ticket is completed (Urgency affects final score)
-	if ticket.Status == models.StatusCompleted {
+    // Trigger recalculation if ticket is completed
+    if ticket.Status == models.StatusCompleted {
 		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
 		if err == nil && len(assignees) > 0 {
-			assigneeIDs := make([]string, len(assignees))
-			for i, assignee := range assignees {
-				assigneeIDs[i] = assignee.ID
-			}
-			h.repo.UserScores.DistributePoints(ctx, id, float64(ticket.FinalScore), assigneeIDs)
+            assigneeIDs := make([]string, len(assignees))
+            for i, assignee := range assignees { assigneeIDs[i] = assignee.ID }
+            refreshed, _ := h.repo.Tickets.GetByID(ctx, id)
+            total := float64(refreshed.EffortScore)
+            if len(assignees) > 0 { total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees)) }
+            h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 		}
 	}
 	
@@ -1265,4 +1404,38 @@ func (h *Handlers) MetricsSummary(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"metrics failed"}})
 	}
 	return c.JSON(h.envelope(data))
+}
+
+// -------------------- User Performance Statistics --------------------
+
+type UserPerformanceStats struct {
+	InProgressCount     int     `json:"inProgressCount"`
+	CompletedCount      int     `json:"completedCount"`
+	TotalSystemInProgress int   `json:"totalSystemInProgress"`
+	TotalSystemCompleted  int   `json:"totalSystemCompleted"`
+	ParticipationRateInProgress float64 `json:"participationRateInProgress"`
+	ParticipationRateCompleted  float64 `json:"participationRateCompleted"`
+	EffortScoreCurrentMonth   int     `json:"effortScoreCurrentMonth"`
+	EffortScorePreviousMonth  int     `json:"effortScorePreviousMonth"`
+	EffortScoreGrowthRate     float64 `json:"effortScoreGrowthRate"`
+}
+
+func (h *Handlers) GetUserPerformanceStats(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
+	}
+	
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"invalid user"}})
+	}
+
+	ctx := context.Background()
+	stats, err := h.repo.Metrics.GetUserPerformanceStats(ctx, userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get performance stats"}})
+	}
+	
+	return c.JSON(h.envelope(stats))
 }

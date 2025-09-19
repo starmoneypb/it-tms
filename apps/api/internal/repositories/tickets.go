@@ -17,17 +17,18 @@ import (
 type TicketRepo struct{ pool *pgxpool.Pool }
 
 func (r *TicketRepo) Create(ctx context.Context, t *models.Ticket) error {
-	details, _ := json.Marshal(t.Details)
-	redFlagsData, _ := json.Marshal(t.RedFlagsData)
-	impactAssessmentData, _ := json.Marshal(t.ImpactAssessmentData)
-	urgencyTimelineData, _ := json.Marshal(t.UrgencyTimelineData)
+    details, _ := json.Marshal(t.Details)
+    redFlagsData, _ := json.Marshal(t.RedFlagsData)
+    impactAssessmentData, _ := json.Marshal(t.ImpactAssessmentData)
+    urgencyTimelineData, _ := json.Marshal(t.UrgencyTimelineData)
+    effortData, _ := json.Marshal(t.EffortData)
 	
-	row := r.pool.QueryRow(ctx, `INSERT INTO tickets 
-		(created_by, contact_email, contact_phone, initial_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, red_flags_data, impact_assessment_data, urgency_timeline_data) 
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-		RETURNING id, code, created_at, updated_at`,
-		t.CreatedBy, t.ContactEmail, t.ContactPhone, t.InitialType, t.Status, t.Title, t.Description, details, t.ImpactScore, t.UrgencyScore, t.FinalScore, t.RedFlag, t.Priority, redFlagsData, impactAssessmentData, urgencyTimelineData,
-	)
+    row := r.pool.QueryRow(ctx, `INSERT INTO tickets 
+        (created_by, contact_email, contact_phone, initial_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, red_flags_data, impact_assessment_data, urgency_timeline_data, effort_data, effort_score) 
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        RETURNING id, code, created_at, updated_at`,
+        t.CreatedBy, t.ContactEmail, t.ContactPhone, t.InitialType, t.Status, t.Title, t.Description, details, t.ImpactScore, t.UrgencyScore, t.FinalScore, t.RedFlag, t.Priority, redFlagsData, impactAssessmentData, urgencyTimelineData, effortData, t.EffortScore,
+    )
 	return row.Scan(&t.ID, &t.Code, &t.CreatedAt, &t.UpdatedAt)
 }
 
@@ -121,13 +122,13 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 
 func (r *TicketRepo) GetByID(ctx context.Context, id string) (models.Ticket, error) {
 	var t models.Ticket
-	var details, redFlagsData, impactAssessmentData, urgencyTimelineData []byte
+    var details, redFlagsData, impactAssessmentData, urgencyTimelineData, effortData []byte
 	var latestComment *string
 	row := r.pool.QueryRow(ctx, `SELECT 
-		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.created_at, t.updated_at, t.closed_at,
+        t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.effort_data, t.effort_score, t.created_at, t.updated_at, t.closed_at,
 		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE t.id=$1`, id)
-	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
+    if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &effortData, &t.EffortScore, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) { return t, ErrNotFound }
 		return t, err
 	}
@@ -135,16 +136,17 @@ func (r *TicketRepo) GetByID(ctx context.Context, id string) (models.Ticket, err
 	json.Unmarshal(redFlagsData, &t.RedFlagsData)
 	json.Unmarshal(impactAssessmentData, &t.ImpactAssessmentData)
 	json.Unmarshal(urgencyTimelineData, &t.UrgencyTimelineData)
+    json.Unmarshal(effortData, &t.EffortData)
 	t.LatestComment = latestComment
 	return t, nil
 }
 
 func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ticket, []models.Comment, []models.Attachment, error) {
 	var t models.Ticket
-	var details []byte
+    var details []byte
 	var latestComment *string
 	row := r.pool.QueryRow(ctx, `SELECT 
-		t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
+        t.id, t.code, t.created_by, t.contact_email, t.contact_phone, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
 		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE t.id=$1`, id)
 	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.ContactEmail, &t.ContactPhone, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
@@ -294,11 +296,11 @@ func (r *TicketRepo) UpdateTicketFields(ctx context.Context, id string, initialT
 		args = append(args, *finalScore)
 		arg++
 	}
-	if redFlag != nil {
-		set = append(set, fmt.Sprintf("red_flag=$%d", arg))
-		args = append(args, *redFlag)
-		arg++
-	}
+    if redFlag != nil {
+        set = append(set, fmt.Sprintf("red_flag=$%d", arg))
+        args = append(args, *redFlag)
+        arg++
+    }
 	
 	if len(set) == 0 {
 		return nil
@@ -394,6 +396,17 @@ func (r *TicketRepo) UpdateUrgencyTimeline(ctx context.Context, id string, urgen
 	// Add automatic comment
 	commentBody := fmt.Sprintf("Urgency Timeline updated by %s", authorName)
 	return r.AddSystemComment(ctx, id, commentBody)
+}
+
+// UpdateEffort updates effort data and updates effort_score accordingly
+func (r *TicketRepo) UpdateEffort(ctx context.Context, id string, effortData map[string]any, effortScore int32, authorName string) error {
+    effortJSON, _ := json.Marshal(effortData)
+    _, err := r.pool.Exec(ctx, `UPDATE tickets SET effort_data=$1, effort_score=$2, updated_at=NOW() WHERE id=$3`, effortJSON, effortScore, id)
+    if err != nil {
+        return err
+    }
+    commentBody := fmt.Sprintf("Effort Score updated by %s", authorName)
+    return r.AddSystemComment(ctx, id, commentBody)
 }
 
 func (r *TicketRepo) GetAttachmentByID(ctx context.Context, attachmentID string) (models.Attachment, error) {

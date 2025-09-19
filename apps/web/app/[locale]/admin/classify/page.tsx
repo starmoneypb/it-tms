@@ -18,6 +18,8 @@ type Ticket = {
   urgencyScore: number;
   finalScore: number;
   redFlag: boolean;
+  effortData?: any;
+  effortScore?: number;
   contactEmail?: string;
   contactPhone?: string;
   createdBy?: string;
@@ -50,6 +52,9 @@ export default function ClassifyPage() {
   };
 
   const handleViewDetails = (ticket: Ticket) => {
+    console.log('Selected ticket data:', ticket);
+    console.log('Effort data:', ticket.effortData);
+    console.log('Effort score:', ticket.effortScore);
     setSelectedTicket(ticket);
     onOpen();
   };
@@ -81,7 +86,7 @@ export default function ClassifyPage() {
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-            <p className="text-white/70">Loading tickets for classification...</p>
+            <p className="text-white/70">{t('loadingTicketsForClassification')}</p>
           </div>
         </div>
       </div>
@@ -120,63 +125,63 @@ export default function ClassifyPage() {
               </div>
             )}
             
-            {items.map((t) => (
+            {items.map((ticket) => (
               <Card 
-                key={t.id} 
+                key={ticket.id} 
                 className="glass border-white/10 hover:border-primary-500/30 transition-colors"
               >
                 <CardBody className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-semibold">{t.title}</h3>
+                        <h3 className="text-lg font-semibold">{ticket.title}</h3>
                         <Chip size="sm" color="primary" variant="flat">
-                          #{t.code}
+                          #{ticket.code}
                         </Chip>
                       </div>
                       <div className="flex items-center gap-2 mb-4">
                         <Chip size="sm" variant="flat" className="bg-orange-500/20 text-orange-300">
-                          {t.initialType.replace(/_/g, ' ')}
+                          {ticket.initialType.replace(/_/g, ' ')}
                         </Chip>
-                        <span className="text-sm text-white/60">Initial Classification</span>
+                        <span className="text-sm text-white/60">{t('initialClassification')}</span>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-3">
                       <Button 
                         variant="ghost" 
-                        onPress={() => handleViewDetails(t)}
+                        onPress={() => handleViewDetails(ticket)}
                         className="min-w-[120px] text-blue-400 hover:text-blue-300"
                         startContent={<Eye size={16} />}
                       >
-                        View Details
+                        {t('viewDetails')}
                       </Button>
                       
                       <div className="flex flex-col gap-2">
                         <Select 
-                          label="Resolved Type" 
-                          placeholder="Select classification"
-                          selectedKeys={sel[t.id] ? [sel[t.id]] : []} 
-                          onSelectionChange={(keys) => handleSelectionChange(t.id, keys)}
+                          label={t('resolvedType')} 
+                          placeholder={t('selectClassification')}
+                          selectedKeys={sel[ticket.id] ? [sel[ticket.id]] : []} 
+                          onSelectionChange={(keys) => handleSelectionChange(ticket.id, keys)}
                           variant="bordered"
                           className="min-w-[200px]"
                         >
                           <SelectItem key="EMERGENCY_CHANGE">
-                            Emergency Change
+                            {t('emergencyChange')}
                           </SelectItem>
                           <SelectItem key="DATA_CORRECTION">
-                            Data Correction
+                            {t('dataCorrection')}
                           </SelectItem>
                         </Select>
                       </div>
                       
                       <Button 
                         color="primary" 
-                        onPress={() => classify(t.id)}
-                        isDisabled={!sel[t.id]}
+                        onPress={() => classify(ticket.id)}
+                        isDisabled={!sel[ticket.id]}
                         className="min-w-[100px]"
                       >
-                        Apply
+                        {t('apply')}
                       </Button>
                     </div>
                   </div>
@@ -192,10 +197,10 @@ export default function ClassifyPage() {
               <div className="flex items-center gap-3">
                 <Info size={20} className="text-blue-400" />
                 <div>
-                  <h4 className="font-semibold text-blue-300">Classification Guidelines</h4>
+                  <h4 className="font-semibold text-blue-300">{t('classificationGuidelines')}</h4>
                   <p className="text-sm text-white/70">
-                    <strong>Emergency Change:</strong> Critical issues requiring immediate attention<br/>
-                    <strong>Data Correction:</strong> Issues related to data accuracy or integrity
+                    <strong>{t('emergencyChange')}:</strong> {t('emergencyChangeDesc')}<br/>
+                    <strong>{t('dataCorrection')}:</strong> {t('dataCorrectionDesc')}
                   </p>
                 </div>
               </div>
@@ -220,7 +225,7 @@ export default function ClassifyPage() {
             <>
               <ModalHeader className="flex flex-col gap-1 border-b border-white/10">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-semibold">Ticket Details</h3>
+                  <h3 className="text-xl font-semibold">{t('ticketDetails')}</h3>
                   {selectedTicket && (
                     <Chip size="sm" color="primary" variant="flat">
                       #{selectedTicket.code}
@@ -247,7 +252,7 @@ export default function ClassifyPage() {
                         </Chip>
                         {selectedTicket.redFlag && (
                           <Chip size="sm" color="danger" variant="flat" startContent={<AlertTriangle size={12} />}>
-                            Red Flag
+                            {t('redFlag')}
                           </Chip>
                         )}
                       </div>
@@ -257,36 +262,95 @@ export default function ClassifyPage() {
                     <div>
                       <h5 className="font-semibold mb-2 flex items-center gap-2">
                         <Info size={16} />
-                        Description
+                        {t('description')}
                       </h5>
                       <div className="bg-default-100 rounded-lg p-4">
-                        <p className="text-sm whitespace-pre-wrap">{selectedTicket.description || 'No description provided'}</p>
+                        <p className="text-sm whitespace-pre-wrap">{selectedTicket.description || t('noDescriptionProvided')}</p>
                       </div>
                     </div>
 
                     {/* Priority Scores */}
                     <div>
-                      <h5 className="font-semibold mb-3">Priority Assessment</h5>
+                      <h5 className="font-semibold mb-3">{t('priorityAssessment')}</h5>
                       <div className="grid grid-cols-3 gap-4">
                         <div className="bg-default-100 rounded-lg p-3 text-center">
                           <div className="text-lg font-bold text-primary">{selectedTicket.impactScore}</div>
-                          <div className="text-xs text-default-500">Impact Score</div>
+                          <div className="text-xs text-default-500">{t('impactScore')}</div>
                         </div>
                         <div className="bg-default-100 rounded-lg p-3 text-center">
                           <div className="text-lg font-bold text-warning">{selectedTicket.urgencyScore}</div>
-                          <div className="text-xs text-default-500">Urgency Score</div>
+                          <div className="text-xs text-default-500">{t('urgencyScore')}</div>
                         </div>
                         <div className="bg-default-100 rounded-lg p-3 text-center">
                           <div className="text-lg font-bold text-secondary">{selectedTicket.finalScore}</div>
-                          <div className="text-xs text-default-500">Final Score</div>
+                          <div className="text-xs text-default-500">{t('finalScore')}</div>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Effort Assessment */}
+                    <div>
+                      <h5 className="font-semibold mb-3">{t('effortAssessment')}</h5>
+                      {selectedTicket.effortData ? (
+                        <>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div className="bg-default-100 rounded-lg p-3 text-center">
+                              <div className="text-lg font-bold text-blue-500">
+                                {[
+                                  selectedTicket.effortData?.development?.versionControl,
+                                  selectedTicket.effortData?.development?.externalService,
+                                  selectedTicket.effortData?.development?.internalIntegration
+                                ].filter(Boolean).length}/3
+                              </div>
+                              <div className="text-xs text-default-500">Development</div>
+                            </div>
+                            <div className="bg-default-100 rounded-lg p-3 text-center">
+                              <div className="text-lg font-bold text-purple-500">
+                                {[
+                                  selectedTicket.effortData?.security?.legalCompliance,
+                                  selectedTicket.effortData?.security?.accessControl,
+                                  selectedTicket.effortData?.security?.personalData
+                                ].filter(Boolean).length}/3
+                              </div>
+                              <div className="text-xs text-default-500">Security</div>
+                            </div>
+                            <div className="bg-default-100 rounded-lg p-3 text-center">
+                              <div className="text-lg font-bold text-green-500">
+                                {[
+                                  selectedTicket.effortData?.data?.migration,
+                                  selectedTicket.effortData?.data?.dataPreparation,
+                                  selectedTicket.effortData?.data?.encryption
+                                ].filter(Boolean).length}/3
+                              </div>
+                              <div className="text-xs text-default-500">Data</div>
+                            </div>
+                            <div className="bg-default-100 rounded-lg p-3 text-center">
+                              <div className="text-lg font-bold text-yellow-500">
+                                {[
+                                  selectedTicket.effortData?.operations?.offHours,
+                                  selectedTicket.effortData?.operations?.training,
+                                  selectedTicket.effortData?.operations?.uat
+                                ].filter(Boolean).length}/3
+                              </div>
+                              <div className="text-xs text-default-500">Operations</div>
+                            </div>
+                          </div>
+                          <div className="bg-primary-100 rounded-lg p-3 text-center">
+                            <div className="text-lg font-bold text-primary">{selectedTicket.effortScore || 0}/12</div>
+                            <div className="text-xs text-default-500">Total Effort Score</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-default-100 rounded-lg p-4 text-center">
+                          <p className="text-sm text-default-500">{t('noEffortDataAvailable')}</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Contact Information */}
                     {(selectedTicket.contactEmail || selectedTicket.contactPhone) && (
                       <div>
-                        <h5 className="font-semibold mb-3">Contact Information</h5>
+                        <h5 className="font-semibold mb-3">{t('contactInformation')}</h5>
                         <div className="space-y-2">
                           {selectedTicket.contactEmail && (
                             <div className="flex items-center gap-2 text-sm">
@@ -307,7 +371,7 @@ export default function ClassifyPage() {
                     {/* Latest Comment */}
                     {selectedTicket.latestComment && (
                       <div>
-                        <h5 className="font-semibold mb-2">Latest Comment</h5>
+                        <h5 className="font-semibold mb-2">{t('latestComment')}</h5>
                         <div className="bg-default-100 rounded-lg p-4">
                           <p className="text-sm">{selectedTicket.latestComment}</p>
                         </div>
@@ -316,15 +380,15 @@ export default function ClassifyPage() {
 
                     {/* Timestamps */}
                     <div>
-                      <h5 className="font-semibold mb-3">Timeline</h5>
+                      <h5 className="font-semibold mb-3">{t('timeline')}</h5>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar size={16} className="text-blue-400" />
-                          <span>Created: {new Date(selectedTicket.createdAt).toLocaleString()}</span>
+                          <span>{t('created')}: {new Date(selectedTicket.createdAt).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar size={16} className="text-green-400" />
-                          <span>Updated: {new Date(selectedTicket.updatedAt).toLocaleString()}</span>
+                          <span>{t('updated')}: {new Date(selectedTicket.updatedAt).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -333,7 +397,7 @@ export default function ClassifyPage() {
               </ModalBody>
               <ModalFooter className="border-t border-white/10">
                 <Button color="primary" variant="light" onPress={onClose}>
-                  Close
+{t('close')}
                 </Button>
               </ModalFooter>
             </>

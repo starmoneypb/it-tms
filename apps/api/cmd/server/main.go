@@ -96,6 +96,7 @@ func main() {
 	protected := v1.Group("/", middleware.AuthRequired(cfg.JWTSecret))
 	protected.Patch("/profile", h.ProfileUpdate)
 	protected.Post("/profile/picture", h.ProfilePictureUpload)
+	protected.Get("/profile/performance", h.GetUserPerformanceStats)
 	protected.Get("/users/search", h.UsersSearch)
 	protected.Patch("/tickets/:id", h.TicketsUpdate)
 	protected.Patch("/tickets/:id/fields", h.TicketsUpdateFields)
@@ -116,6 +117,7 @@ func main() {
 	admin.Put("/tickets/:id/red-flags", h.TicketsUpdateRedFlags)
 	admin.Put("/tickets/:id/impact-assessment", h.TicketsUpdateImpactAssessment)
 	admin.Put("/tickets/:id/urgency-timeline", h.TicketsUpdateUrgencyTimeline)
+	admin.Post("/tickets/:id/effort", h.TicketsUpdateEffort)
 
 	// Static file serving - protected with authentication
 	app.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {

@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardBody, CardHeader, Input, Button, Avatar } from "@heroui/react";
+import { Card, CardBody, CardHeader, Input, Button, Avatar, Progress } from "@heroui/react";
 import { useAuth } from "@/lib/auth";
-import { AlertTriangle, Camera, User } from "lucide-react";
+import { AlertTriangle, Camera, User, BarChart3, TrendingUp } from "lucide-react";
 import { useTranslations } from 'next-intl';
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -25,15 +25,29 @@ interface UserProfile {
   profilePicture?: string;
 }
 
+interface PerformanceStats {
+  inProgressCount: number;
+  completedCount: number;
+  totalSystemInProgress: number;
+  totalSystemCompleted: number;
+  participationRateInProgress: number;
+  participationRateCompleted: number;
+  effortScoreCurrentMonth: number;
+  effortScorePreviousMonth: number;
+  effortScoreGrowthRate: number;
+}
+
 export default function ProfilePage() {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const { user, isLoading, refreshUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [performanceStats, setPerformanceStats] = useState<PerformanceStats | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
   
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -47,6 +61,33 @@ export default function ProfilePage() {
       setValue("email", user.email);
     }
   }, [user, setValue]);
+
+  // Load performance statistics
+  useEffect(() => {
+    if (user) {
+      loadPerformanceStats();
+    }
+  }, [user]);
+
+  const loadPerformanceStats = async () => {
+    setLoadingStats(true);
+    try {
+      const response = await fetch(`${API}/api/v1/profile/performance`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setPerformanceStats(result.data);
+      } else {
+        console.error("Failed to load performance stats");
+      }
+    } catch (error) {
+      console.error("Error loading performance stats:", error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   // Clear error messages when user starts typing
   const watchedName = watch("name");
@@ -282,6 +323,179 @@ export default function ProfilePage() {
                 </Button>
               </div>
             </form>
+          </CardBody>
+        </Card>
+
+        {/* Performance Statistics Section */}
+        <Card className="glass">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <BarChart3 size={20} className="text-primary-400" />
+                {t('performanceStatistics')}
+              </h2>
+              <p className="text-sm text-white/70">{t('performanceSubtitle')}</p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            {loadingStats ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-4"></div>
+                  <p className="text-white/70">{t('loadingStats')}</p>
+                </div>
+              </div>
+            ) : performanceStats ? (
+              <div className="space-y-6">
+                {/* Participation Rate Explanation */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <TrendingUp size={20} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-blue-400">
+                      <p className="font-medium mb-1">{t('participationExplanation')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Statistics Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* In Progress Tickets */}
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-white">{t('ticketsInProgress')}</h3>
+                      <div className="text-2xl font-bold text-primary-400">{performanceStats.inProgressCount}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-white/70">
+                        <span>{t('yourTickets')}</span>
+                        <span>{performanceStats.inProgressCount}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-white/70">
+                        <span>{t('totalSystemTickets')}</span>
+                        <span>{performanceStats.totalSystemInProgress}</span>
+                      </div>
+                      <div className="mt-3">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-white/80">{t('participationRateInProgress')}</span>
+                          <span className="font-medium text-white">{performanceStats.participationRateInProgress.toFixed(1)}%</span>
+                        </div>
+                        <Progress 
+                          value={performanceStats.participationRateInProgress} 
+                          className="w-full"
+                          color="primary"
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Completed Tickets */}
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-white">{t('ticketsCompleted')}</h3>
+                      <div className="text-2xl font-bold text-green-400">{performanceStats.completedCount}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-white/70">
+                        <span>{t('yourTickets')}</span>
+                        <span>{performanceStats.completedCount}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-white/70">
+                        <span>{t('totalSystemTickets')}</span>
+                        <span>{performanceStats.totalSystemCompleted}</span>
+                      </div>
+                      <div className="mt-3">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-white/80">{t('participationRateCompleted')}</span>
+                          <span className="font-medium text-white">{performanceStats.participationRateCompleted.toFixed(1)}%</span>
+                        </div>
+                        <Progress 
+                          value={performanceStats.participationRateCompleted} 
+                          className="w-full"
+                          color="success"
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Effort Score Growth Section */}
+                <div className="bg-white/5 rounded-lg p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp size={20} className="text-primary-400" />
+                    <h3 className="text-lg font-semibold text-white">{t('effortScoreGrowth')}</h3>
+                  </div>
+                  <p className="text-sm text-white/70 mb-6">{t('effortScoreGrowthExplanation')}</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Current Month */}
+                    <div className="bg-white/5 rounded-lg p-4">
+                      <div className="text-sm text-white/70 mb-2">{t('currentMonth')}</div>
+                      <div className="text-2xl font-bold text-primary-400">{performanceStats.effortScoreCurrentMonth}</div>
+                      <div className="text-xs text-white/50 mt-1">{t('effortScoreCurrentMonth')}</div>
+                    </div>
+
+                    {/* Previous Month */}
+                    <div className="bg-white/5 rounded-lg p-4">
+                      <div className="text-sm text-white/70 mb-2">{t('previousMonth')}</div>
+                      <div className="text-2xl font-bold text-blue-400">{performanceStats.effortScorePreviousMonth}</div>
+                      <div className="text-xs text-white/50 mt-1">{t('effortScorePreviousMonth')}</div>
+                    </div>
+
+                    {/* Growth Rate */}
+                    <div className="bg-white/5 rounded-lg p-4">
+                      <div className="text-sm text-white/70 mb-2">{t('effortScoreGrowthRate')}</div>
+                      <div className={`text-2xl font-bold ${
+                        performanceStats.effortScoreGrowthRate > 0 ? 'text-green-400' : 
+                        performanceStats.effortScoreGrowthRate < 0 ? 'text-red-400' : 
+                        'text-white/70'
+                      }`}>
+                        {performanceStats.effortScoreGrowthRate > 0 ? '+' : ''}{performanceStats.effortScoreGrowthRate.toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-white/50 mt-1">
+                        {performanceStats.effortScoreGrowthRate > 0 ? t('positiveGrowth') : 
+                         performanceStats.effortScoreGrowthRate < 0 ? t('negativeGrowth') : 
+                         t('noGrowth')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Comparison */}
+                  <div className="mt-6 bg-white/5 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-white mb-3">{t('detailedComparison')}</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-white/70">{t('previousMonth')}:</span>
+                        <span className="text-white">{performanceStats.effortScorePreviousMonth} {t('points')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/70">{t('currentMonth')}:</span>
+                        <span className="text-white">{performanceStats.effortScoreCurrentMonth} {t('points')}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-white/10 pt-2">
+                        <span className="text-white/70">{t('effortScoreGrowthRate')}:</span>
+                        <span className={`font-medium ${
+                          performanceStats.effortScoreGrowthRate > 0 ? 'text-green-400' : 
+                          performanceStats.effortScoreGrowthRate < 0 ? 'text-red-400' : 
+                          'text-white'
+                        }`}>
+                          {performanceStats.effortScoreGrowthRate > 0 ? '+' : ''}{performanceStats.effortScoreGrowthRate.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-red-400 text-lg mb-2 flex items-center justify-center gap-2">
+                  <AlertTriangle size={20} />
+                  {t('errorLoadingStats')}
+                </div>
+                <p className="text-white/70">{t('errorLoadingStats')}</p>
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
