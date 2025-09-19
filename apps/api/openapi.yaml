@@ -299,12 +299,45 @@ paths:
   /metrics/summary:
     get:
       summary: Public dashboard metrics
+      parameters:
+        - name: month
+          in: query
+          description: Filter metrics by month (1-12). Must be used together with year parameter.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+        - name: year
+          in: query
+          description: Filter metrics by year (2000-2100). Must be used together with month parameter.
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MetricsSummary' }
+        "400":
+          description: Bad Request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: "INVALID_PARAMETERS"
+                      message:
+                        type: string
+                        example: "both month and year must be provided together"
 
 components:
   schemas:

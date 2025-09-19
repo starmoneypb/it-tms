@@ -34,6 +34,10 @@ type TicketSummary struct {
 }
 
 func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
+	return r.SummaryWithDateFilter(ctx, nil, nil)
+}
+
+func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, year *int) (MetricsSummary, error) {
 	var res MetricsSummary
 	res.StatusCounts = map[string]int{}
 	res.CategoryCounts = map[string]int{}
@@ -122,18 +126,30 @@ func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
 	}
 	rows.Close()
 
+	// Build date filter condition
+	dateFilter := ""
+	var args []interface{}
+	if month != nil && year != nil {
+		dateFilter = " WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2"
+		args = []interface{}{*month, *year}
+	}
+
 	// Status counts
-	r.countInto(ctx, `SELECT status, COUNT(*) FROM tickets GROUP BY status`, res.StatusCounts)
+	r.countIntoWithDateFilter(ctx, `SELECT status, COUNT(*) FROM tickets`+dateFilter+` GROUP BY status`, args, res.StatusCounts)
 	// Category (by resolved_type if available, otherwise initial_type)
-	r.countInto(ctx, `SELECT COALESCE(resolved_type::text, initial_type::text), COUNT(*) FROM tickets GROUP BY COALESCE(resolved_type::text, initial_type::text)`, res.CategoryCounts)
+	r.countIntoWithDateFilter(ctx, `SELECT COALESCE(resolved_type::text, initial_type::text), COUNT(*) FROM tickets`+dateFilter+` GROUP BY COALESCE(resolved_type::text, initial_type::text)`, args, res.CategoryCounts)
 	// Priority counts
-	r.countInto(ctx, `SELECT priority, COUNT(*) FROM tickets GROUP BY priority`, res.PriorityCounts)
+	r.countIntoWithDateFilter(ctx, `SELECT priority, COUNT(*) FROM tickets`+dateFilter+` GROUP BY priority`, args, res.PriorityCounts)
 
 	return res, nil
 }
 
 func (r *MetricsRepo) countInto(ctx context.Context, sql string, target map[string]int) {
-	rows, err := r.pool.Query(ctx, sql)
+	r.countIntoWithDateFilter(ctx, sql, nil, target)
+}
+
+func (r *MetricsRepo) countIntoWithDateFilter(ctx context.Context, sql string, args []interface{}, target map[string]int) {
+	rows, err := r.pool.Query(ctx, sql, args...)
 	if err != nil { return }
 	for rows.Next() {
 		var key string

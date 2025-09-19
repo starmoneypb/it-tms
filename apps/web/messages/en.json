@@ -84,7 +84,24 @@
     "apiConnectionFailed": "API connection failed - using demo data",
     "noData": "No Data",
     "noDataAvailable": "No data available",
-    "chartsWillAppear": "Charts will appear when tickets are created"
+    "chartsWillAppear": "Charts will appear when tickets are created",
+    "filterBy": "Filter by",
+    "allTime": "All Time",
+    "currentMonth": "Current Month",
+    "selectMonth": "Select Month",
+    "selectYear": "Select Year",
+    "january": "January",
+    "february": "February",
+    "march": "March",
+    "april": "April",
+    "may": "May",
+    "june": "June",
+    "july": "July",
+    "august": "August",
+    "september": "September",
+    "october": "October",
+    "november": "November",
+    "december": "December"
   },
   "tickets": {
     "title": "Tickets",
@@ -241,7 +258,10 @@
     "deadline3to7d": "Deadline 3–7 days (3)",
     "deadline8to30d": "Deadline 8–30 days (2)",
     "deadline31dPlus": "Deadline ≥31 days (1)",
-    "noDeadline": "No deadline (0)"
+    "noDeadline": "No deadline (0)",
+    "authRequired": "Authentication Required",
+    "signInToCreateTicket": "You need to sign in to create tickets. Only authenticated users can submit support requests.",
+    "goToSignIn": "Go to Sign In"
   },
   "profile": {
     "title": "Profile Settings",
@@ -527,6 +547,6 @@
     "password": "Password",
     "enterPassword": "Enter your password",
     "signingIn": "Signing In...",
-    "invalidCredentials": "Invalid credentials",
+    "invalidCredentials": "Invalid credentials"
   }
 }

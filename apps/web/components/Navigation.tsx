@@ -115,12 +115,14 @@ export function Navigation() {
         >
           {t('tickets')}
         </Link>
-        <Link 
-          href={createLocalizedUrl("/tickets/new")} 
-          className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-        >
-          {t('openTicket')}
-        </Link>
+        {user && (
+          <Link 
+            href={createLocalizedUrl("/tickets/new")} 
+            className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+          >
+            {t('openTicket')}
+          </Link>
+        )}
 
         {/* Role-based links */}
         {hasAnyRole(["Supervisor", "Manager"]) && (
@@ -224,13 +226,15 @@ export function Navigation() {
             >
               {t('tickets')}
             </Link>
-            <Link 
-              href={createLocalizedUrl("/tickets/new")} 
-              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              {t('openTicket')}
-            </Link>
+            {user && (
+              <Link 
+                href={createLocalizedUrl("/tickets/new")} 
+                className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {t('openTicket')}
+              </Link>
+            )}
 
             {hasAnyRole(["Supervisor", "Manager"]) && (
               <Link 

@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Avatar } from "@heroui/react";
+import { Card, CardBody, CardHeader, Avatar, Select, SelectItem, Button } from "@heroui/react";
 import DOMPurify from "isomorphic-dompurify";
 import dynamic from "next/dynamic";
-import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award } from "lucide-react";
+import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award, Calendar, Filter } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 
 // Import the Chart.js pie chart component with SSR disabled
@@ -108,21 +108,39 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   
+  // Date filtering state
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [isAllTime, setIsAllTime] = useState(true);
+  
   useEffect(() => {
     setMounted(true);
+    // Set current month and year as default
+    const now = new Date();
+    setSelectedMonth(now.getMonth() + 1); // getMonth() returns 0-11, we need 1-12
+    setSelectedYear(now.getFullYear());
+    setIsAllTime(false); // Start with current month, not all time
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [metricsResponse, rankingsResponse] = await Promise.all([
-          fetch(`${API}/api/v1/metrics/summary`, {
-            credentials: "include",
-          }),
-          fetch(`${API}/api/v1/rankings`, {
-            credentials: "include",
-          })
-        ]);
+  const fetchData = async () => {
+    try {
+      // Build query string for date filtering
+      const queryParams = new URLSearchParams();
+      if (!isAllTime && selectedMonth !== null && selectedYear !== null) {
+        queryParams.append('month', selectedMonth.toString());
+        queryParams.append('year', selectedYear.toString());
+      }
+      const queryString = queryParams.toString();
+      const metricsUrl = `${API}/api/v1/metrics/summary${queryString ? `?${queryString}` : ''}`;
+      
+      const [metricsResponse, rankingsResponse] = await Promise.all([
+        fetch(metricsUrl, {
+          credentials: "include",
+        }),
+        fetch(`${API}/api/v1/rankings`, {
+          credentials: "include",
+        })
+      ]);
         
         if (!metricsResponse.ok) {
           throw new Error(`HTTP ${metricsResponse.status}: ${metricsResponse.statusText}`);
@@ -166,9 +184,13 @@ export default function Dashboard() {
         setLoading(false);
       }
     };
-    
-    fetchData();
-  }, []);
+
+  // Effect to fetch data when date filters change
+  useEffect(() => {
+    if (mounted) {
+      fetchData();
+    }
+  }, [mounted, isAllTime, selectedMonth, selectedYear]);
 
   if (error) return (
     <div className="container">
@@ -206,11 +228,119 @@ export default function Dashboard() {
       value: Number(value) || 0 // Ensure it's a number, default to 0 if invalid
     })).filter(item => item.value > 0); // Only include items with positive values
 
+  const monthNames = [
+    t('january'), t('february'), t('march'), t('april'),
+    t('may'), t('june'), t('july'), t('august'),
+    t('september'), t('october'), t('november'), t('december')
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
+
+  const handleFilterChange = (filterType: 'allTime' | 'currentMonth' | 'custom') => {
+    if (filterType === 'allTime') {
+      setIsAllTime(true);
+      setSelectedMonth(null);
+      setSelectedYear(null);
+    } else if (filterType === 'currentMonth') {
+      const now = new Date();
+      setIsAllTime(false);
+      setSelectedMonth(now.getMonth() + 1);
+      setSelectedYear(now.getFullYear());
+    }
+  };
+
   return (
     <div className="container">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
-        <p className="text-white/70">{t('subtitle')}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+            <p className="text-white/70">{t('subtitle')}</p>
+          </div>
+          
+          {/* Date Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex items-center gap-2 text-sm text-white/70">
+              <Filter size={16} />
+              <span>{t('filterBy')}:</span>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={isAllTime ? "solid" : "bordered"}
+                color={isAllTime ? "primary" : "default"}
+                onClick={() => handleFilterChange('allTime')}
+                className="min-w-0"
+              >
+                {t('allTime')}
+              </Button>
+              
+              <Button
+                size="sm"
+                variant={!isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "solid" : "bordered"}
+                color={!isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "primary" : "default"}
+                onClick={() => handleFilterChange('currentMonth')}
+                className="min-w-0"
+              >
+                {t('currentMonth')}
+              </Button>
+            </div>
+            
+            <div className="flex gap-2">
+              <Select
+                size="sm"
+                placeholder={t('selectMonth')}
+                selectedKeys={selectedMonth !== null ? [selectedMonth.toString()] : []}
+                onSelectionChange={(keys) => {
+                  const month = Array.from(keys)[0] as string;
+                  if (month) {
+                    setSelectedMonth(parseInt(month));
+                    setIsAllTime(false);
+                  }
+                }}
+                className="w-32"
+                classNames={{
+                  trigger: "bg-white/10 border-white/20",
+                  value: "text-white",
+                  popoverContent: "bg-gray-900 border-white/20"
+                }}
+              >
+                {monthNames.map((month, index) => (
+                  <SelectItem key={(index + 1).toString()}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </Select>
+              
+              <Select
+                size="sm"
+                placeholder={t('selectYear')}
+                selectedKeys={selectedYear !== null ? [selectedYear.toString()] : []}
+                onSelectionChange={(keys) => {
+                  const year = Array.from(keys)[0] as string;
+                  if (year) {
+                    setSelectedYear(parseInt(year));
+                    setIsAllTime(false);
+                  }
+                }}
+                className="w-24"
+                classNames={{
+                  trigger: "bg-white/10 border-white/20",
+                  value: "text-white",
+                  popoverContent: "bg-gray-900 border-white/20"
+                }}
+              >
+                {years.map((year) => (
+                  <SelectItem key={year.toString()}>
+                    {year.toString()}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

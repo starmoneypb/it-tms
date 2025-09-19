@@ -66,7 +66,54 @@ export default function NewTicket() {
   const tCommon = useTranslations('common');
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [submitting, setSubmitting] = useState(false);
-  const { user, canCreateTicketType } = useAuth();
+  const { user, isLoading, canCreateTicketType } = useAuth();
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="container">
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+            <p className="text-white/70">{tCommon('loading')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect anonymous users to sign in
+  if (!user) {
+    return (
+      <div className="container">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-full max-w-md">
+            <Card className="glass border-orange-500/20">
+              <CardHeader className="text-center pb-3">
+                <div className="text-orange-400 text-xl mb-2 flex items-center justify-center gap-2">
+                  <AlertTriangle size={24} />
+                  {t('authRequired')}
+                </div>
+              </CardHeader>
+              <CardBody className="text-center space-y-4">
+                <p className="text-white/70">{t('signInToCreateTicket')}</p>
+                <Button 
+                  color="primary" 
+                  size="lg"
+                  className="w-full font-semibold"
+                  onPress={() => {
+                    window.location.href = `/${locale}/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`;
+                  }}
+                >
+                  {t('goToSignIn')}
+                </Button>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const steps = [
     { number: 1, title: t('steps.issueType.title'), description: t('steps.issueType.description') },

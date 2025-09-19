@@ -1454,7 +1454,34 @@ func (h *Handlers) convertProfilePictureToURL(profilePicture *string) *string {
 
 func (h *Handlers) MetricsSummary(c *fiber.Ctx) error {
 	ctx := context.Background()
-	data, err := h.repo.Metrics.Summary(ctx)
+	
+	// Parse optional query parameters for date filtering
+	var month, year *int
+	if monthStr := c.Query("month"); monthStr != "" {
+		if m, err := strconv.Atoi(monthStr); err == nil && m >= 1 && m <= 12 {
+			month = &m
+		}
+	}
+	if yearStr := c.Query("year"); yearStr != "" {
+		if y, err := strconv.Atoi(yearStr); err == nil && y >= 2000 && y <= 2100 {
+			year = &y
+		}
+	}
+	
+	// Both month and year must be provided together, or neither
+	if (month == nil) != (year == nil) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"INVALID_PARAMETERS","message":"both month and year must be provided together"}})
+	}
+	
+	var data repositories.MetricsSummary
+	var err error
+	
+	if month != nil && year != nil {
+		data, err = h.repo.Metrics.SummaryWithDateFilter(ctx, month, year)
+	} else {
+		data, err = h.repo.Metrics.Summary(ctx)
+	}
+	
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"metrics failed"}})
 	}

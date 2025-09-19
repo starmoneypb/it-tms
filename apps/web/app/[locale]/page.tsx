@@ -5,23 +5,25 @@ import Image from "next/image";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
 import { Ticket, BarChart3, Clipboard, LogIn } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
+import { useAuth } from '@/lib/auth';
 
 export default function Landing() {
   const t = useTranslations('landing');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+  const { user } = useAuth();
 
   // Test: Show both hardcoded and translated text for debugging
   const isThaiLocale = locale === 'th';
   
   const cards = [
-    { 
+    ...(user ? [{ 
       href: `/${locale}/tickets/new`, 
       title: t('openTicket.title'), 
       desc: t('openTicket.description'),
       icon: <Ticket size={24} />,
       color: "from-blue-500 to-purple-600"
-    },
+    }] : []),
     { 
       href: `/${locale}/dashboard`, 
       title: t('dashboard.title'), 
@@ -36,13 +38,13 @@ export default function Landing() {
       icon: <Clipboard size={24} />,
       color: "from-orange-500 to-red-600"
     },
-    { 
+    ...(!user ? [{ 
       href: `/${locale}/sign-in`, 
       title: t('signIn.title'), 
       desc: t('signIn.description'),
       icon: <LogIn size={24} />,
       color: "from-purple-500 to-pink-600"
-    }
+    }] : [])
   ];
 
   return (
@@ -65,15 +67,27 @@ export default function Landing() {
           {t('subtitle')}
         </p>
         <div className="flex gap-4 justify-center">
-          <Button 
-            as={Link} 
-            href={`/${locale}/tickets/new`} 
-            color="primary" 
-            size="lg"
-            className="px-8"
-          >
-            {tCommon('getStarted')}
-          </Button>
+          {user ? (
+            <Button 
+              as={Link} 
+              href={`/${locale}/tickets/new`} 
+              color="primary" 
+              size="lg"
+              className="px-8"
+            >
+              {tCommon('getStarted')}
+            </Button>
+          ) : (
+            <Button 
+              as={Link} 
+              href={`/${locale}/sign-in`} 
+              color="primary" 
+              size="lg"
+              className="px-8"
+            >
+              {tCommon('getStarted')}
+            </Button>
+          )}
           <Button 
             as={Link} 
             href={`/${locale}/dashboard`} 
