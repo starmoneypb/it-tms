@@ -180,6 +180,42 @@ paths:
       responses:
         "200": { description: OK }
   /tickets/{id}/comments:
+    get:
+      summary: Get paginated comments for ticket
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      comments:
+                        type: array
+                        items: { $ref: '#/components/schemas/Comment' }
+                      pagination:
+                        type: object
+                        properties:
+                          page: { type: integer }
+                          pageSize: { type: integer }
+                          total: { type: integer }
+                          totalPages: { type: integer }
+                          hasNext: { type: boolean }
+                          hasPrev: { type: boolean }
     post:
       summary: Add comment
       parameters:
@@ -242,8 +278,10 @@ paths:
                 finalScore: { type: integer }
                 redFlag: { type: boolean }
       responses:
-        "200": { description: OK }
-        "403": { description: Forbidden - Supervisor/Manager role required }
+        "200": { description: "OK - Issue report classified or rejected successfully" }
+        "400": { description: "Bad Request - Invalid payload or conflicting parameters" }
+        "403": { description: "Forbidden - Supervisor/Manager role required" }
+        "404": { description: "Not Found - Ticket not found or not an issue report" }
   /tickets/{id}/effort:
     post:
       summary: Update Effort checklist and score (Supervisor/Manager only)
@@ -265,7 +303,7 @@ paths:
         "200": { description: OK }
   /tickets/{id}/classify:
     post:
-      summary: Classify Issue Report
+      summary: Classify or Reject Issue Report
       parameters:
         - in: path
           name: id
@@ -280,8 +318,16 @@ paths:
                 resolvedType:
                   type: string
                   enum: [EMERGENCY_CHANGE, DATA_CORRECTION]
+                  description: "Classification type for the issue report"
+                reject:
+                  type: boolean
+                  description: "Set to true to reject the issue report (sets status to canceled)"
+              description: "Either resolvedType or reject must be provided, but not both"
       responses:
-        "200": { description: OK }
+        "200": { description: "OK - Issue report classified or rejected successfully" }
+        "400": { description: "Bad Request - Invalid payload or conflicting parameters" }
+        "403": { description: "Forbidden - Supervisor/Manager role required" }
+        "404": { description: "Not Found - Ticket not found or not an issue report" }
   /priority/compute:
     post:
       summary: Compute priority from questionnaire
@@ -322,6 +368,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MetricsSummary' }
+        "400":
+          description: Bad Request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: "INVALID_PARAMETERS"
+                      message:
+                        type: string
+                        example: "both month and year must be provided together"
+  /rankings:
+    get:
+      summary: User rankings by points
+      parameters:
+        - name: month
+          in: query
+          description: Filter rankings by month (1-12). Must be used together with year parameter.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+        - name: year
+          in: query
+          description: Filter rankings by year (2000-2100). Must be used together with month parameter.
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserRanking'
         "400":
           description: Bad Request - Invalid parameters
           content:
@@ -409,8 +503,6 @@ components:
             - SERVICE_REQUEST_ADVISORY
             - SERVICE_REQUEST_GENERAL
         details: { type: object, additionalProperties: true }
-        contactEmail: { type: string }
-        contactPhone: { type: string }
         priorityInput: { $ref: '#/components/schemas/PriorityInput' }
     TicketUpdate:
       type: object
@@ -424,6 +516,30 @@ components:
       required: [body]
       properties:
         body: { type: string }
+    Comment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ticketId: { type: string, format: uuid }
+        authorId: { type: string, format: uuid, nullable: true }
+        authorName: { type: string, nullable: true }
+        authorRole: { type: string, nullable: true }
+        body: { type: string }
+        isSystemGenerated: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/CommentAttachment' }
+    CommentAttachment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        commentId: { type: string, format: uuid }
+        filename: { type: string }
+        mime: { type: string }
+        size: { type: integer }
+        path: { type: string }
+        createdAt: { type: string, format: date-time }
     AssignRequest:
       type: object
       properties:
@@ -498,3 +614,27 @@ components:
             priorityCounts:
               type: object
               additionalProperties: { type: integer }
+    UserRanking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [User, Supervisor, Manager]
+        profilePicture:
+          type: string
+          nullable: true
+        totalPoints:
+          type: number
+          format: float
+        ticketsCompleted:
+          type: integer
+        rank:
+          type: integer

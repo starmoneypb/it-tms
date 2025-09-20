@@ -50,10 +50,20 @@ export default function TicketDetails() {
   const id = params.id;
   const { user, canEditTicket, canCancelTicket, canAssignTicket, canModifyTicketFields, canEditTicketContent } = useAuth();
   const [data, setData] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentPagination, setCommentPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  });
   const [comment, setComment] = useState("");
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
   
@@ -124,6 +134,17 @@ export default function TicketDetails() {
     priorityInput: null as PriorityInput | null,
     effort: null as any
   });
+
+  function loadComments(page = 1) {
+    setCommentsLoading(true);
+    fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${commentPagination.pageSize}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        setComments(j.data.comments);
+        setCommentPagination(j.data.pagination);
+      })
+      .finally(() => setCommentsLoading(false));
+  }
 
   function load() {
     setLoading(true);
@@ -234,7 +255,10 @@ export default function TicketDetails() {
       })
       .finally(() => setLoading(false));
   }
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { 
+    load(); 
+    loadComments(1);
+  }, [id]);
   
 
   async function updateTicketFields() {
@@ -393,6 +417,7 @@ export default function TicketDetails() {
       setComment("");
       setCommentFiles([]);
       load();
+      loadComments(1); // Reload comments to show the new one
     } catch (error) {
       alert("Failed to post comment");
     }
@@ -721,61 +746,122 @@ export default function TicketDetails() {
             <Divider />
 
             <div>
-              <h3 className="text-lg font-semibold mb-3">{t('activityTimeline')}</h3>
-              {data.comments && data.comments.length > 0 ? (
-                <div className="space-y-3">
-                  {data.comments.map((c: any) => (
-                    <div key={c.id} className="p-4 bg-white/5 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        {c.authorName && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white/90">
-                              {c.authorName}
-                            </span>
-                            {c.authorRole && (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                c.authorRole === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
-                                c.authorRole === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
-                                'bg-gray-500/20 text-gray-300'
-                              }`}>
-                                {c.authorRole}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold">{t('activityTimeline')}</h3>
+                {commentPagination.total > 0 && (
+                  <div className="text-sm text-white/60">
+                    {commentPagination.total} {t('comments')}
+                  </div>
+                )}
+              </div>
+              
+              {commentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                </div>
+              ) : comments.length > 0 ? (
+                <>
+                  <div className="space-y-3">
+                    {comments.map((c: any) => (
+                      <div key={c.id} className="p-4 bg-white/5 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          {c.authorName && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-white/90">
+                                {c.authorName}
                               </span>
-                            )}
+                              {c.authorRole && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  c.authorRole === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
+                                  c.authorRole === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
+                                  'bg-gray-500/20 text-gray-300'
+                                }`}>
+                                  {c.authorRole}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <span className="text-xs text-white/60">
+                            {new Date(c.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <div 
+                          className="text-sm text-white/80 prose prose-invert prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ 
+                            __html: DOMPurify.sanitize(c.body) 
+                          }}
+                        />
+                        {c.attachments && c.attachments.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <h4 className="text-xs font-medium text-white/60">{t('attachmentsColon')}</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {c.attachments.map((att: any) => (
+                                <a
+                                  key={att.id}
+                                  href={`${API}/api/v1/comment-attachments/${att.id}/download`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors"
+                                >
+                                  <Paperclip size={14} />
+                                  <span>{att.filename}</span>
+                                  <span className="text-white/60">({(att.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                </a>
+                              ))}
+                            </div>
                           </div>
                         )}
-                        <span className="text-xs text-white/60">
-                          {new Date(c.createdAt).toLocaleString()}
-                        </span>
                       </div>
-                      <div 
-                        className="text-sm text-white/80 prose prose-invert prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ 
-                          __html: DOMPurify.sanitize(c.body) 
-                        }}
-                      />
-                      {c.attachments && c.attachments.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          <h4 className="text-xs font-medium text-white/60">{t('attachmentsColon')}</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {c.attachments.map((att: any) => (
-                              <a
-                                key={att.id}
-                                href={`${API}/api/v1/comment-attachments/${att.id}/download`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors"
-                              >
-                                <Paperclip size={14} />
-                                <span>{att.filename}</span>
-                                <span className="text-white/60">({(att.size / 1024 / 1024).toFixed(2)} MB)</span>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    ))}
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  {commentPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="bordered"
+                          onPress={() => loadComments(commentPagination.page - 1)}
+                          isDisabled={!commentPagination.hasPrev || commentsLoading}
+                          isLoading={commentsLoading}
+                        >
+                          {t('previous')}
+                        </Button>
+                        <span className="text-sm text-white/70 px-3">
+                          {t('page')} {commentPagination.page} {t('of')} {commentPagination.totalPages}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="bordered"
+                          onPress={() => loadComments(commentPagination.page + 1)}
+                          isDisabled={!commentPagination.hasNext || commentsLoading}
+                          isLoading={commentsLoading}
+                        >
+                          {t('next')}
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-white/60">{t('commentsPerPage')}:</span>
+                        <Select
+                          size="sm"
+                          variant="bordered"
+                          selectedKeys={[commentPagination.pageSize.toString()]}
+                          onSelectionChange={(keys) => {
+                            const newPageSize = parseInt(Array.from(keys)[0] as string);
+                            setCommentPagination(prev => ({ ...prev, pageSize: newPageSize }));
+                            loadComments(1);
+                          }}
+                          className="w-20"
+                        >
+                          <SelectItem key="5">5</SelectItem>
+                          <SelectItem key="10">10</SelectItem>
+                          <SelectItem key="20">20</SelectItem>
+                        </Select>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <p className="text-white/60">{t('noComments')}</p>
               )}

@@ -133,11 +133,13 @@ export default function Dashboard() {
       const queryString = queryParams.toString();
       const metricsUrl = `${API}/api/v1/metrics/summary${queryString ? `?${queryString}` : ''}`;
       
+      const rankingsUrl = `${API}/api/v1/rankings${queryString ? `?${queryString}` : ''}`;
+      
       const [metricsResponse, rankingsResponse] = await Promise.all([
         fetch(metricsUrl, {
           credentials: "include",
         }),
-        fetch(`${API}/api/v1/rankings`, {
+        fetch(rankingsUrl, {
           credentials: "include",
         })
       ]);
@@ -253,91 +255,158 @@ export default function Dashboard() {
   return (
     <div className="container">
       <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
-            <p className="text-white/70">{t('subtitle')}</p>
-          </div>
-          
-          {/* Date Filter Controls */}
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <div className="flex items-center gap-2 text-sm text-white/70">
-              <Filter size={16} />
-              <span>{t('filterBy')}:</span>
+        <div className="flex flex-col gap-6 mb-6">
+          {/* Header Section */}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold gradient-text mb-2">{t('title')}</h1>
+              <p className="text-white/70">{t('subtitle')}</p>
             </div>
             
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={isAllTime ? "solid" : "bordered"}
-                color={isAllTime ? "primary" : "default"}
-                onClick={() => handleFilterChange('allTime')}
-                className="min-w-0"
-              >
-                {t('allTime')}
-              </Button>
+            {/* Modern Date Filter Controls */}
+            <div className="flex flex-col gap-4 lg:max-w-md lg:min-w-[400px]">
+              {/* Filter Header */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-white/90 font-medium">
+                  <div className="p-2 rounded-lg bg-primary-500/20 border border-primary-500/30">
+                    <Filter size={16} className="text-primary-400" />
+                  </div>
+                  <span className="text-sm font-semibold tracking-wide uppercase">{t('filterBy')}</span>
+                </div>
+                <div className="flex-1 h-px bg-gradient-to-r from-white/20 to-transparent"></div>
+              </div>
               
-              <Button
-                size="sm"
-                variant={!isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "solid" : "bordered"}
-                color={!isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "primary" : "default"}
-                onClick={() => handleFilterChange('currentMonth')}
-                className="min-w-0"
-              >
-                {t('currentMonth')}
-              </Button>
-            </div>
-            
-            <div className="flex gap-2">
-              <Select
-                size="sm"
-                placeholder={t('selectMonth')}
-                selectedKeys={selectedMonth !== null ? [selectedMonth.toString()] : []}
-                onSelectionChange={(keys) => {
-                  const month = Array.from(keys)[0] as string;
-                  if (month) {
-                    setSelectedMonth(parseInt(month));
-                    setIsAllTime(false);
+              {/* Quick Filter Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  size="md"
+                  variant={isAllTime ? "solid" : "ghost"}
+                  color={isAllTime ? "primary" : "default"}
+                  onClick={() => handleFilterChange('allTime')}
+                  className={`flex-1 transition-all duration-300 ${
+                    isAllTime 
+                      ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25 scale-105" 
+                      : "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/80 hover:text-white"
+                  }`}
+                  startContent={
+                    <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      isAllTime ? "bg-white/90" : "bg-white/40"
+                    }`} />
                   }
-                }}
-                className="w-32"
-                classNames={{
-                  trigger: "bg-white/10 border-white/20",
-                  value: "text-white",
-                  popoverContent: "bg-gray-900 border-white/20"
-                }}
-              >
-                {monthNames.map((month, index) => (
-                  <SelectItem key={(index + 1).toString()}>
-                    {month}
-                  </SelectItem>
-                ))}
-              </Select>
+                >
+                  {t('allTime')}
+                </Button>
+                
+                <Button
+                  size="md"
+                  variant={!isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "solid" : "ghost"}
+                  color={!isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "primary" : "default"}
+                  onClick={() => handleFilterChange('currentMonth')}
+                  className={`flex-1 transition-all duration-300 ${
+                    !isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear()
+                      ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25 scale-105" 
+                      : "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/80 hover:text-white"
+                  }`}
+                  startContent={
+                    <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      !isAllTime && selectedMonth === new Date().getMonth() + 1 && selectedYear === new Date().getFullYear() ? "bg-white/90" : "bg-white/40"
+                    }`} />
+                  }
+                >
+                  {t('currentMonth')}
+                </Button>
+              </div>
               
-              <Select
-                size="sm"
-                placeholder={t('selectYear')}
-                selectedKeys={selectedYear !== null ? [selectedYear.toString()] : []}
-                onSelectionChange={(keys) => {
-                  const year = Array.from(keys)[0] as string;
-                  if (year) {
-                    setSelectedYear(parseInt(year));
-                    setIsAllTime(false);
+              {/* Custom Date Selection */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Select
+                    size="md"
+                    placeholder={t('selectMonth')}
+                    selectedKeys={selectedMonth !== null ? [selectedMonth.toString()] : []}
+                    onSelectionChange={(keys) => {
+                      const month = Array.from(keys)[0] as string;
+                      if (month) {
+                        setSelectedMonth(parseInt(month));
+                        setIsAllTime(false);
+                      }
+                    }}
+                    classNames={{
+                      base: "transition-all duration-300",
+                      trigger: "bg-white/8 border-white/20 hover:bg-white/12 hover:border-white/30 transition-all duration-300 backdrop-blur-sm",
+                      value: "text-white font-medium",
+                      popoverContent: "bg-gray-900/95 border-white/20 backdrop-blur-xl shadow-2xl",
+                      listbox: "p-1",
+                      listboxWrapper: "max-h-64"
+                    }}
+                    startContent={
+                      <Calendar size={16} className="text-white/60" />
+                    }
+                  >
+                    {monthNames.map((month, index) => (
+                      <SelectItem 
+                        key={(index + 1).toString()}
+                        classNames={{
+                          base: "rounded-lg hover:bg-white/10 transition-colors duration-200",
+                          title: "text-white/90"
+                        }}
+                      >
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+                
+                <div className="w-24">
+                  <Select
+                    size="md"
+                    placeholder={t('selectYear')}
+                    selectedKeys={selectedYear !== null ? [selectedYear.toString()] : []}
+                    onSelectionChange={(keys) => {
+                      const year = Array.from(keys)[0] as string;
+                      if (year) {
+                        setSelectedYear(parseInt(year));
+                        setIsAllTime(false);
+                      }
+                    }}
+                    classNames={{
+                      base: "transition-all duration-300",
+                      trigger: "bg-white/8 border-white/20 hover:bg-white/12 hover:border-white/30 transition-all duration-300 backdrop-blur-sm",
+                      value: "text-white font-medium",
+                      popoverContent: "bg-gray-900/95 border-white/20 backdrop-blur-xl shadow-2xl",
+                      listbox: "p-1",
+                      listboxWrapper: "max-h-64"
+                    }}
+                  >
+                    {years.map((year) => (
+                      <SelectItem 
+                        key={year.toString()}
+                        classNames={{
+                          base: "rounded-lg hover:bg-white/10 transition-colors duration-200",
+                          title: "text-white/90"
+                        }}
+                      >
+                        {year.toString()}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Filter Status Indicator */}
+              <div className="flex items-center gap-2 text-xs">
+                <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  isAllTime ? "bg-blue-400" : "bg-green-400"
+                }`} />
+                <span className="text-white/60">
+                  {isAllTime 
+                    ? t('allTime').toLowerCase() 
+                    : selectedMonth && selectedYear 
+                      ? `${monthNames[selectedMonth - 1]} ${selectedYear}`
+                      : t('currentMonth').toLowerCase()
                   }
-                }}
-                className="w-24"
-                classNames={{
-                  trigger: "bg-white/10 border-white/20",
-                  value: "text-white",
-                  popoverContent: "bg-gray-900 border-white/20"
-                }}
-              >
-                {years.map((year) => (
-                  <SelectItem key={year.toString()}>
-                    {year.toString()}
-                  </SelectItem>
-                ))}
-              </Select>
+                </span>
+              </div>
             </div>
           </div>
         </div>

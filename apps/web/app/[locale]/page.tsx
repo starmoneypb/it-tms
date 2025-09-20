@@ -103,11 +103,11 @@ export default function Landing() {
       {/* Features Grid */}
       <section className="py-16">
         <h2 className="text-3xl font-bold text-center mb-12">{t('quickActions')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {cards.map((c) => (
             <Card 
               key={c.href} 
-              className="glass hover:scale-105 transition-all duration-300 group cursor-pointer p-2"
+              className="glass hover:scale-105 transition-all duration-300 group cursor-pointer p-2 w-full sm:w-80 md:w-72 lg:w-64"
               isPressable
               as={Link}
               href={c.href as any}

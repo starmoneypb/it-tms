@@ -38,12 +38,47 @@ func (r *UserScoresRepo) RemoveAllPointsForTicket(ctx context.Context, ticketID 
 
 // GetUserRankings returns top N users by total points
 func (r *UserScoresRepo) GetUserRankings(ctx context.Context, limit int) ([]models.UserRanking, error) {
-	rows, err := r.pool.Query(ctx, `
-		SELECT ur.id, ur.name, ur.email, ur.role, u.profile_picture, ur.total_points, ur.tickets_completed, ur.rank
-		FROM user_rankings ur
-		LEFT JOIN users u ON ur.id = u.id
-		ORDER BY ur.total_points DESC, ur.name ASC
-		LIMIT $1`, limit)
+	return r.GetUserRankingsWithDateFilter(ctx, limit, nil, nil)
+}
+
+// GetUserRankingsWithDateFilter returns top N users by total points, optionally filtered by ticket creation date
+func (r *UserScoresRepo) GetUserRankingsWithDateFilter(ctx context.Context, limit int, month *int, year *int) ([]models.UserRanking, error) {
+	// Build the query with optional date filtering
+	var query string
+	var args []interface{}
+	
+	if month != nil && year != nil {
+		// Filter by ticket creation date
+		query = `
+			SELECT 
+				u.id,
+				u.name,
+				u.email,
+				u.role,
+				u.profile_picture,
+				COALESCE(SUM(us.points), 0) as total_points,
+				COUNT(us.ticket_id) as tickets_completed,
+				ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(us.points), 0) DESC, u.name ASC) as rank
+			FROM users u
+			LEFT JOIN user_scores us ON u.id = us.user_id
+			LEFT JOIN tickets t ON us.ticket_id = t.id
+			WHERE t.id IS NULL OR (EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2)
+			GROUP BY u.id, u.name, u.email, u.role
+			ORDER BY total_points DESC, u.name ASC
+			LIMIT $3`
+		args = []interface{}{*month, *year, limit}
+	} else {
+		// Use the existing view for all-time rankings
+		query = `
+			SELECT ur.id, ur.name, ur.email, ur.role, u.profile_picture, ur.total_points, ur.tickets_completed, ur.rank
+			FROM user_rankings ur
+			LEFT JOIN users u ON ur.id = u.id
+			ORDER BY ur.total_points DESC, ur.name ASC
+			LIMIT $1`
+		args = []interface{}{limit}
+	}
+	
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

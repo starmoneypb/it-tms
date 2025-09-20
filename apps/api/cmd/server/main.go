@@ -104,6 +104,7 @@ func main() {
 	protected.Delete("/tickets/:id/assign", h.TicketsUnassign)
 	protected.Post("/tickets/:id/status", h.TicketsStatus)
 	protected.Post("/tickets/:id/comments", h.TicketsAddComment)
+	protected.Get("/tickets/:id/comments", h.TicketsGetComments)
 	protected.Post("/tickets/:id/comments/:commentId/attachments", h.CommentsUploadAttachments)
 	
 	// Download routes (require auth with redirect for browser requests)

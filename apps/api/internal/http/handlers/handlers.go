@@ -232,8 +232,6 @@ type TicketCreateReq struct {
 	Description  string                 `json:"description"`
 	InitialType  models.TicketInitialType `json:"initialType"`
 	Details      map[string]any         `json:"details"`
-	ContactEmail *string                `json:"contactEmail"`
-	ContactPhone *string                `json:"contactPhone"`
 	PriorityInput *priority.PriorityInput `json:"priorityInput"`
 	EffortInput   *effort.Input           `json:"effortInput"`
 }
@@ -256,12 +254,9 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 	// RBAC Enforcement based on requirements matrix
 	switch role {
 	case "Anonymous":
-		// Anonymous can only create Issue Reports and must provide contact info
+		// Anonymous can only create Issue Reports
 		if body.InitialType != models.InitialIssueReport {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"anonymous can only open issue reports"}})
-		}
-		if body.ContactEmail == nil || *body.ContactEmail == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"contact email required for anonymous users"}})
 		}
 	case "User":
 		// Users can create all types except Emergency Change and Data Correction
@@ -322,8 +317,6 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 
 	t := models.Ticket{
 		CreatedBy: createdBy,
-		ContactEmail: body.ContactEmail,
-		ContactPhone: body.ContactPhone,
 		InitialType: body.InitialType,
 		Status: models.StatusPending,
 		Title: body.Title,
@@ -409,9 +402,10 @@ type TicketUpdateReq struct {
 }
 
 type TicketFieldsUpdateReq struct {
-	InitialType  *models.TicketInitialType  `json:"initialType"`
+	InitialType   *models.TicketInitialType  `json:"initialType"`
 	ResolvedType  *models.TicketResolvedType `json:"resolvedType"`
 	Priority      *models.TicketPriority     `json:"priority"`
+	PriorityInput *priority.PriorityInput    `json:"priorityInput"`
 	ImpactScore   *int32                     `json:"impactScore"`
 	UrgencyScore  *int32                     `json:"urgencyScore"`
 	FinalScore    *int32                     `json:"finalScore"`
@@ -537,6 +531,46 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors, managers, and assigned users can update ticket fields"}})
 	}
 	
+	// Process priority input if provided
+	if body.PriorityInput != nil {
+		p := priority.Compute(*body.PriorityInput)
+		// Override computed values
+		body.Priority = (*models.TicketPriority)(&p.Priority)
+		impactScore := int32(p.Impact)
+		body.ImpactScore = &impactScore
+		urgencyScore := int32(p.Urgency)
+		body.UrgencyScore = &urgencyScore
+		finalScore := int32(p.Final)
+		body.FinalScore = &finalScore
+		body.RedFlag = &p.RedFlag
+		
+		// Store the priority input data in the database
+		redFlagsData := map[string]any{
+			"criticalIssues": body.PriorityInput.RedFlags,
+		}
+		impactAssessmentData := map[string]any{
+			"impacts": body.PriorityInput.Impact,
+		}
+		urgencyTimelineData := map[string]any{
+			"timeline": body.PriorityInput.Urgency,
+		}
+		
+		// Get user name for comment
+		userClaims, _ := c.Locals("user").(jwt.MapClaims)
+		userName, _ := userClaims["name"].(string)
+		if userName == "" { userName = role }
+		
+		if err := h.repo.Tickets.UpdateRedFlags(ctx, id, redFlagsData, userName); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"red flags update failed"}})
+		}
+		if err := h.repo.Tickets.UpdateImpactAssessment(ctx, id, impactAssessmentData, userName); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"impact assessment update failed"}})
+		}
+		if err := h.repo.Tickets.UpdateUrgencyTimeline(ctx, id, urgencyTimelineData, userName); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"urgency timeline update failed"}})
+		}
+	}
+
 	// Track changes for automatic comment generation
 	var changes []string
 	if body.InitialType != nil && *body.InitialType != ticket.InitialType {
@@ -902,6 +936,34 @@ func (h *Handlers) TicketsAddComment(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(fiber.Map{"commentId": commentID}))
 }
 
+func (h *Handlers) TicketsGetComments(c *fiber.Ctx) error {
+	id := c.Params("id")
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("pageSize", "10"))
+	if pageSize <= 0 { pageSize = 10 }
+	if pageSize > 50 { pageSize = 50 }
+	
+	ctx := context.Background()
+	comments, total, err := h.repo.Tickets.GetCommentsPaginated(ctx, id, page, pageSize)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get comments"}})
+	}
+	
+	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
+	
+	return c.JSON(h.envelope(fiber.Map{
+		"comments": comments,
+		"pagination": fiber.Map{
+			"page": page,
+			"pageSize": pageSize,
+			"total": total,
+			"totalPages": totalPages,
+			"hasNext": page < totalPages,
+			"hasPrev": page > 1,
+		},
+	}))
+}
+
 // -------------------- Attachments --------------------
 
 var allowedMimes = map[string]struct{}{
@@ -1070,7 +1132,23 @@ func (h *Handlers) ProfileUpdate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 
-	return c.JSON(h.envelope(user))
+	// Convert profile picture path to URL format for consistency with other endpoints
+	var profilePictureURL *string
+	if user.ProfilePicture != nil && *user.ProfilePicture != "" {
+		filename := filepath.Base(*user.ProfilePicture)
+		url := fmt.Sprintf("/uploads/%s", filename)
+		profilePictureURL = &url
+	}
+
+	return c.JSON(h.envelope(fiber.Map{
+		"id": user.ID,
+		"name": user.Name,
+		"email": user.Email,
+		"role": user.Role,
+		"profilePicture": profilePictureURL,
+		"createdAt": user.CreatedAt,
+		"updatedAt": user.UpdatedAt,
+	}))
 }
 
 func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
@@ -1122,7 +1200,8 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 // -------------------- Classification --------------------
 
 type ClassifyReq struct {
-	ResolvedType models.TicketResolvedType `json:"resolvedType"`
+	ResolvedType *models.TicketResolvedType `json:"resolvedType,omitempty"`
+	Reject       *bool                      `json:"reject,omitempty"`
 }
 
 func (h *Handlers) TicketsClassify(c *fiber.Ctx) error {
@@ -1131,23 +1210,45 @@ func (h *Handlers) TicketsClassify(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid payload"}})
 	}
-	if body.ResolvedType != models.ResolvedEmergencyChange && body.ResolvedType != models.ResolvedDataCorrection {
+	
+	// Validate that either resolvedType or reject is provided, but not both
+	if (body.ResolvedType == nil && (body.Reject == nil || !*body.Reject)) || 
+	   (body.ResolvedType != nil && body.Reject != nil && *body.Reject) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"either resolvedType or reject must be provided, but not both"}})
+	}
+	
+	if body.ResolvedType != nil && *body.ResolvedType != models.ResolvedEmergencyChange && *body.ResolvedType != models.ResolvedDataCorrection {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid resolvedType"}})
 	}
+	
 	ctx := context.Background()
-	if err := h.repo.Tickets.Classify(ctx, id, body.ResolvedType); err != nil {
-		if errors.Is(err, repositories.ErrNotFound) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"classify failed"}})
-	}
 	userClaims, _ := c.Locals("user").(jwt.MapClaims)
 	var userID *string
 	if userClaims != nil {
 		if sid, ok := userClaims["sub"].(string); ok { userID = &sid }
 	}
-	h.repo.Audits.Insert(ctx, id, userID, "classify", nil, body)
-	return c.JSON(h.envelope(fiber.Map{"id": id, "resolvedType": body.ResolvedType}))
+	
+	if body.Reject != nil && *body.Reject {
+		// Handle rejection by setting status to canceled
+		if err := h.repo.Tickets.RejectIssueReport(ctx, id); err != nil {
+			if errors.Is(err, repositories.ErrNotFound) {
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+			}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"reject failed"}})
+		}
+		h.repo.Audits.Insert(ctx, id, userID, "issue_report_rejected", nil, models.StatusCanceled)
+		return c.JSON(h.envelope(fiber.Map{"id": id, "status": "rejected"}))
+	} else {
+		// Handle normal classification
+		if err := h.repo.Tickets.Classify(ctx, id, *body.ResolvedType); err != nil {
+			if errors.Is(err, repositories.ErrNotFound) {
+				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+			}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"classify failed"}})
+		}
+		h.repo.Audits.Insert(ctx, id, userID, "classified", nil, *body.ResolvedType)
+		return c.JSON(h.envelope(fiber.Map{"id": id, "resolvedType": *body.ResolvedType}))
+	}
 }
 
 // -------------------- Enhanced Scoring Fields --------------------
@@ -1423,7 +1524,34 @@ func (h *Handlers) TicketsUpdateUrgencyTimeline(c *fiber.Ctx) error {
 
 func (h *Handlers) GetUserRankings(c *fiber.Ctx) error {
 	ctx := context.Background()
-	rankings, err := h.repo.UserScores.GetUserRankings(ctx, 10)
+	
+	// Parse optional query parameters for date filtering
+	var month, year *int
+	if monthStr := c.Query("month"); monthStr != "" {
+		if m, err := strconv.Atoi(monthStr); err == nil && m >= 1 && m <= 12 {
+			month = &m
+		}
+	}
+	if yearStr := c.Query("year"); yearStr != "" {
+		if y, err := strconv.Atoi(yearStr); err == nil && y >= 2000 && y <= 2100 {
+			year = &y
+		}
+	}
+	
+	// Both month and year must be provided together, or neither
+	if (month == nil) != (year == nil) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"INVALID_PARAMETERS","message":"both month and year must be provided together"}})
+	}
+	
+	var rankings []models.UserRanking
+	var err error
+	
+	if month != nil && year != nil {
+		rankings, err = h.repo.UserScores.GetUserRankingsWithDateFilter(ctx, 10, month, year)
+	} else {
+		rankings, err = h.repo.UserScores.GetUserRankings(ctx, 10)
+	}
+	
 	if err != nil {
 		// If the user_scores table doesn't exist yet (migration not run), return empty rankings
 		if strings.Contains(err.Error(), "user_rankings") || strings.Contains(err.Error(), "does not exist") {

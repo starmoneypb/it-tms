@@ -31,8 +31,6 @@ type Draft = {
   title?: string;
   description?: string;
   details?: Record<string, any>;
-  contactEmail?: string;
-  contactPhone?: string;
   files?: File[];
   priority: PriorityInput;
   effort: {
@@ -137,8 +135,6 @@ export default function NewTicket() {
         description: draft.description || "",
         initialType,
         details: draft.details || {},
-        contactEmail: draft.contactEmail,
-        contactPhone: draft.contactPhone,
         priorityInput: draft.priority,
         effortInput: draft.effort,
         redFlagsData: {
@@ -283,24 +279,6 @@ export default function NewTicket() {
                     onChange={(v)=>setDraft({...draft, details: {...(draft.details||{}), steps: v}})}
                     minHeight="100px"
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input 
-                      label={t('contactEmail')} 
-                      placeholder={t('yourEmail')}
-                      variant="flat" 
-                      value={draft.contactEmail||""} 
-                      onValueChange={(v)=>setDraft({...draft, contactEmail: v})}
-                      isRequired={!user}
-                      description={!user ? t('requiredForAnonymous') : ""}
-                    />
-                    <Input 
-                      label={t('contactPhone')} 
-                      placeholder={t('yourPhone')}
-                      variant="flat" 
-                      value={draft.contactPhone||""} 
-                      onValueChange={(v)=>setDraft({...draft, contactPhone: v})}
-                    />
-                  </div>
                 </div>
                 <div className="flex gap-3">
                   <Button onPress={()=>setDraft({...draft, step: 3})} color="primary" size="lg">

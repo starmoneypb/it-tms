@@ -23,8 +23,6 @@ type Ticket = {
   redFlag: boolean;
   effortData?: any;
   effortScore?: number;
-  contactEmail?: string;
-  contactPhone?: string;
   createdBy?: string;
   latestComment?: string;
   createdAt: string;
@@ -68,11 +66,19 @@ export default function ClassifyPage() {
   async function classify(id: string) {
     const rt = sel[id];
     if (!rt) return;
+    
+    let payload: any;
+    if (rt === "REJECT") {
+      payload = { reject: true };
+    } else {
+      payload = { resolvedType: rt };
+    }
+    
     await fetch(`${API}/api/v1/tickets/${id}/classify`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resolvedType: rt }),
+      body: JSON.stringify(payload),
     });
     load();
   }
@@ -169,6 +175,9 @@ export default function ClassifyPage() {
                           <SelectItem key="DATA_CORRECTION">
                             {t('dataCorrection')}
                           </SelectItem>
+                          <SelectItem key="REJECT" className="text-red-400">
+                            {t('reject')}
+                          </SelectItem>
                         </Select>
                       </div>
                       
@@ -197,7 +206,8 @@ export default function ClassifyPage() {
                   <h4 className="font-semibold text-blue-300">{t('classificationGuidelines')}</h4>
                   <p className="text-sm text-white/70">
                     <strong>{t('emergencyChange')}:</strong> {t('emergencyChangeDesc')}<br/>
-                    <strong>{t('dataCorrection')}:</strong> {t('dataCorrectionDesc')}
+                    <strong>{t('dataCorrection')}:</strong> {t('dataCorrectionDesc')}<br/>
+                    <strong className="text-red-400">{t('reject')}:</strong> {t('rejectDesc')}
                   </p>
                 </div>
               </div>
@@ -344,26 +354,6 @@ export default function ClassifyPage() {
                       )}
                     </div>
 
-                    {/* Contact Information */}
-                    {(selectedTicket.contactEmail || selectedTicket.contactPhone) && (
-                      <div>
-                        <h5 className="font-semibold mb-3">{t('contactInformation')}</h5>
-                        <div className="space-y-2">
-                          {selectedTicket.contactEmail && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Mail size={16} className="text-blue-400" />
-                              <span>{selectedTicket.contactEmail}</span>
-                            </div>
-                          )}
-                          {selectedTicket.contactPhone && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone size={16} className="text-green-400" />
-                              <span>{selectedTicket.contactPhone}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                     {/* Latest Comment */}
                     {selectedTicket.latestComment && (
