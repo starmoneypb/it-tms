@@ -816,8 +816,9 @@ export default function TicketDetails() {
                   </div>
                   
                   {/* Pagination Controls */}
-                  {commentPagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+                    {/* Navigation Controls - Only show when there are multiple pages */}
+                    {commentPagination.totalPages > 1 ? (
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
@@ -841,26 +842,34 @@ export default function TicketDetails() {
                           {t('next')}
                         </Button>
                       </div>
+                    ) : (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-white/60">{t('commentsPerPage')}:</span>
-                        <Select
-                          size="sm"
-                          variant="bordered"
-                          selectedKeys={[commentPagination.pageSize.toString()]}
-                          onSelectionChange={(keys) => {
-                            const newPageSize = parseInt(Array.from(keys)[0] as string);
-                            setCommentPagination(prev => ({ ...prev, pageSize: newPageSize }));
-                            loadComments(1, newPageSize);
-                          }}
-                          className="w-20"
-                        >
-                          <SelectItem key="5">5</SelectItem>
-                          <SelectItem key="10">10</SelectItem>
-                          <SelectItem key="20">20</SelectItem>
-                        </Select>
+                        <span className="text-sm text-white/70">
+                          {commentPagination.total} {t('comments')}
+                        </span>
                       </div>
+                    )}
+                    
+                    {/* Page Size Selector - Always visible */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white/60">{t('commentsPerPage')}:</span>
+                      <Select
+                        size="sm"
+                        variant="bordered"
+                        selectedKeys={[commentPagination.pageSize.toString()]}
+                        onSelectionChange={(keys) => {
+                          const newPageSize = parseInt(Array.from(keys)[0] as string);
+                          setCommentPagination(prev => ({ ...prev, pageSize: newPageSize }));
+                          loadComments(1, newPageSize);
+                        }}
+                        className="w-20"
+                      >
+                        <SelectItem key="5">5</SelectItem>
+                        <SelectItem key="10">10</SelectItem>
+                        <SelectItem key="20">20</SelectItem>
+                      </Select>
                     </div>
-                  )}
+                  </div>
                 </>
               ) : (
                 <p className="text-white/60">{t('noComments')}</p>
