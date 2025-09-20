@@ -11,20 +11,16 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    # Internal network only - no external ports
     networks:
       - app-network
     command: >
       postgres
-      -c ssl=on
-      -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
-      -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+      -c ssl=off
       -c log_statement=none
       -c log_min_duration_statement=5000
       -c shared_preload_libraries=pg_stat_statements
@@ -35,6 +31,56 @@ services:
       -c checkpoint_completion_target=0.9
       -c wal_buffers=16MB
       -c default_statistics_target=100
+
+  # Database migration service
+  db-migrate:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations:ro
+    networks:
+      - app-network
+    command: >
+      sh -c "
+        echo 'Applying database migrations...';
+        for migration in /migrations/*.up.sql; do
+          echo \"Applying $$(basename $$migration)...\";
+          psql -h db -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f $$migration || exit 1;
+        done;
+        echo 'All migrations applied successfully!';
+      "
+    restart: "no"
+
+  # Database seeding service
+  db-seed:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: builder
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./apps/api:/workspace:ro
+    working_dir: /workspace
+    networks:
+      - app-network
+    command: >
+      sh -c "
+        echo 'Seeding database...';
+        go run cmd/seed/main.go;
+        echo 'Database seeding complete!';
+      "
+    restart: "no"
 
   api:
     build:
@@ -50,8 +96,8 @@ services:
       SECURE_COOKIES: "true"
       WEB_APP_URL: https://unisight.dev
     depends_on:
-      db:
-        condition: service_healthy
+      db-seed:
+        condition: service_completed_successfully
     volumes:
       - uploads:/app/uploads
     networks:
