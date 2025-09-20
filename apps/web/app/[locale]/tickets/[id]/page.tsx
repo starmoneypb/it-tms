@@ -135,9 +135,9 @@ export default function TicketDetails() {
     effort: null as any
   });
 
-  function loadComments(page = 1) {
+  function loadComments(page = 1, pageSize = commentPagination.pageSize) {
     setCommentsLoading(true);
-    fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${commentPagination.pageSize}`, { credentials: "include" })
+    fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}`, { credentials: "include" })
       .then((r) => r.json())
       .then((j) => {
         setComments(j.data.comments);
@@ -850,7 +850,7 @@ export default function TicketDetails() {
                           onSelectionChange={(keys) => {
                             const newPageSize = parseInt(Array.from(keys)[0] as string);
                             setCommentPagination(prev => ({ ...prev, pageSize: newPageSize }));
-                            loadComments(1);
+                            loadComments(1, newPageSize);
                           }}
                           className="w-20"
                         >
