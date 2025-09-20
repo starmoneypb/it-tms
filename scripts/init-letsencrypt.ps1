@@ -27,32 +27,37 @@ function Write-Commands {
 
 Copy and paste these commands on your Linux VM after SSH:
 
-# 1. Prepare directories
-sudo rm -rf $DataPath
-sudo mkdir -p $DataPath/www
-sudo mkdir -p $DataPath/conf
+# 1. Download TLS parameters (Docker volumes are used, no local directories needed)
+sudo curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf -o /tmp/options-ssl-nginx.conf
+sudo curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem -o /tmp/ssl-dhparams.pem
 
-# 2. Download TLS parameters
-curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf > $DataPath/conf/options-ssl-nginx.conf
-curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem > $DataPath/conf/ssl-dhparams.pem
+# 2. Copy TLS parameters to Docker volumes
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "sh -c 'mkdir -p /etc/letsencrypt && cp /tmp/options-ssl-nginx.conf /etc/letsencrypt/ && cp /tmp/ssl-dhparams.pem /etc/letsencrypt/'" -v /tmp:/tmp certbot
 
-# 3. Create dummy certificate
-mkdir -p $DataPath/conf/live/unisight.dev
-docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "openssl req -x509 -nodes -newkey rsa:$RsaKeySize -days 1 -keyout '/etc/letsencrypt/live/unisight.dev/privkey.pem' -out '/etc/letsencrypt/live/unisight.dev/fullchain.pem' -subj '/CN=localhost'" certbot
+# 3. Create dummy certificate directory and files
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "mkdir -p /etc/letsencrypt/live/unisight.dev" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "openssl req -x509 -nodes -newkey rsa:$RsaKeySize -days 1 -keyout '/etc/letsencrypt/live/unisight.dev/privkey.pem' -out '/etc/letsencrypt/live/unisight.dev/fullchain.pem' -subj '/CN=localhost'" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "cp /etc/letsencrypt/live/unisight.dev/fullchain.pem /etc/letsencrypt/live/unisight.dev/chain.pem" certbot
 
-# 4. Start nginx
-docker-compose -f docker-compose.gcp.yml up --force-recreate -d nginx
+# 4. Start nginx with dummy certificates
+sudo docker-compose -f docker-compose.gcp.yml up --force-recreate -d nginx
 
 # 5. Delete dummy certificate
-docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "rm -rf /etc/letsencrypt/live/unisight.dev && rm -rf /etc/letsencrypt/archive/unisight.dev && rm -rf /etc/letsencrypt/renewal/unisight.dev.conf" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "rm -rf /etc/letsencrypt/live/unisight.dev && rm -rf /etc/letsencrypt/archive/unisight.dev && rm -rf /etc/letsencrypt/renewal/unisight.dev.conf" certbot
 
 # 6. Request real certificate
-docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "certbot certonly --webroot -w /var/www/certbot --email $Email -d unisight.dev -d www.unisight.dev --rsa-key-size $RsaKeySize --agree-tos --force-renewal" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "certbot certonly --webroot -w /var/www/certbot --email $Email -d unisight.dev -d www.unisight.dev --rsa-key-size $RsaKeySize --agree-tos --force-renewal" certbot
 
-# 7. Reload nginx
-docker-compose -f docker-compose.gcp.yml exec nginx nginx -s reload
+# 7. Create symlinks for nginx to find certificates (handles -0001 suffix)
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "mkdir -p /etc/letsencrypt/live/unisight.dev" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "ln -sf /etc/letsencrypt/live/unisight.dev-0001/fullchain.pem /etc/letsencrypt/live/unisight.dev/fullchain.pem" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "ln -sf /etc/letsencrypt/live/unisight.dev-0001/privkey.pem /etc/letsencrypt/live/unisight.dev/privkey.pem" certbot
+sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "ln -sf /etc/letsencrypt/live/unisight.dev-0001/fullchain.pem /etc/letsencrypt/live/unisight.dev/chain.pem" certbot
 
-# 8. Verify HTTPS
+# 8. Reload nginx with real certificates
+sudo docker-compose -f docker-compose.gcp.yml exec nginx nginx -s reload
+
+# 9. Verify HTTPS
 curl -I https://unisight.dev/healthz
 
 ===============================================

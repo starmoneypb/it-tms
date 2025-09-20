@@ -151,18 +151,30 @@ This comprehensive guide will walk you through deploying your IT-TMS application
 
 ### Step 5: Initialize SSL Certificates
 
-1. **Update email in SSL script:**
-   ```bash
-   # Edit the email address in the script
-   sudo nano scripts/init-letsencrypt.sh
-   # Change: email="admin@unisight.dev" to your actual email
+1. **Generate SSL setup commands (run locally on Windows):**
+   ```powershell
+   # From project root on your Windows machine
+   .\scripts\init-letsencrypt.ps1
    ```
 
-2. **Run SSL initialization:**
+2. **Execute the generated commands on your Linux VM:**
+   The PowerShell script will output commands to run on your VM. SSH into your VM and execute them:
    ```bash
-   chmod +x scripts/init-letsencrypt.sh
-   sudo ./scripts/init-letsencrypt.sh
+   # SSH into your VM
+   gcloud compute ssh unisight-dev-vm --zone=asia-southeast1-b
+   
+   # Navigate to project directory
+   cd /opt/unisight
+   
+   # Run the commands output by the PowerShell script
+   # (The script handles Docker volumes, dummy certificates, and real certificate generation)
    ```
+
+3. **Key points about the SSL setup:**
+   - Uses Docker named volumes instead of bind mounts
+   - Creates dummy certificates first to allow nginx to start
+   - Handles the `-0001` certificate suffix issue automatically
+   - Ensures nginx uses standard ports 80/443 for Let's Encrypt validation
 
 3. **Verify HTTPS:**
    ```bash
@@ -317,18 +329,86 @@ dig @8.8.8.8 unisight.dev
 ```
 
 #### 2. SSL Certificate Issues
-```bash
-# Check certificate status
-docker-compose -f docker-compose.gcp.yml logs certbot
 
-# Re-run SSL initialization
-sudo ./scripts/init-letsencrypt.sh
+**Common SSL Issues and Solutions:**
 
-# Check nginx configuration
-docker-compose -f docker-compose.gcp.yml exec nginx nginx -t
-```
+1. **"Connection refused" during certificate request:**
+   ```bash
+   # Check if nginx is running on correct ports
+   sudo docker ps
+   
+   # Ensure ports 80/443 are mapped correctly
+   grep -A 3 "ports:" docker-compose.gcp.yml
+   
+   # Should show:
+   # - "80:80"
+   # - "443:443"
+   ```
 
-#### 3. Application Not Starting
+2. **Nginx fails to start with SSL certificate errors:**
+   ```bash
+   # Check nginx logs
+   sudo docker logs <nginx-container-id>
+   
+   # Create missing dummy certificates
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "mkdir -p /etc/letsencrypt/live/unisight.dev" certbot
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "openssl req -x509 -nodes -newkey rsa:4096 -days 1 -keyout '/etc/letsencrypt/live/unisight.dev/privkey.pem' -out '/etc/letsencrypt/live/unisight.dev/fullchain.pem' -subj '/CN=localhost'" certbot
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "cp /etc/letsencrypt/live/unisight.dev/fullchain.pem /etc/letsencrypt/live/unisight.dev/chain.pem" certbot
+   ```
+
+3. **Certificate saved with -0001 suffix:**
+   ```bash
+   # Create symlinks to expected paths
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "mkdir -p /etc/letsencrypt/live/unisight.dev" certbot
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "ln -sf /etc/letsencrypt/live/unisight.dev-0001/fullchain.pem /etc/letsencrypt/live/unisight.dev/fullchain.pem" certbot
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "ln -sf /etc/letsencrypt/live/unisight.dev-0001/privkey.pem /etc/letsencrypt/live/unisight.dev/privkey.pem" certbot
+   sudo docker-compose -f docker-compose.gcp.yml run --rm --entrypoint "ln -sf /etc/letsencrypt/live/unisight.dev-0001/fullchain.pem /etc/letsencrypt/live/unisight.dev/chain.pem" certbot
+   
+   # Reload nginx
+   sudo docker-compose -f docker-compose.gcp.yml exec nginx nginx -s reload
+   ```
+
+4. **General SSL troubleshooting:**
+   ```bash
+   # Check certificate status
+   docker-compose -f docker-compose.gcp.yml logs certbot
+   
+   # Check nginx configuration
+   docker-compose -f docker-compose.gcp.yml exec nginx nginx -t
+   
+   # Re-run SSL initialization
+   # Use the PowerShell script to generate fresh commands
+   ```
+
+#### 3. API Connectivity Issues
+
+**"CSP violation" or "localhost:8080" errors:**
+
+1. **Check environment variables:**
+   ```bash
+   # Verify web container has correct API URL
+   sudo docker-compose -f docker-compose.gcp.yml exec web printenv | grep NEXT_PUBLIC_API_URL
+   
+   # Should show: NEXT_PUBLIC_API_URL=https://unisight.dev
+   ```
+
+2. **Rebuild web container if needed:**
+   ```bash
+   # Next.js bakes environment variables at build time
+   sudo docker-compose -f docker-compose.gcp.yml stop web
+   sudo docker-compose -f docker-compose.gcp.yml build --no-cache web
+   sudo docker-compose -f docker-compose.gcp.yml up -d web
+   ```
+
+3. **Check nginx API routing:**
+   ```bash
+   # Test API endpoint directly
+   curl -I https://unisight.dev/api/v1/me
+   
+   # Should return 401 Unauthorized (not 404 or 502)
+   ```
+
+#### 4. Application Not Starting
 ```bash
 # Check service health
 docker-compose -f docker-compose.gcp.yml ps

@@ -8,9 +8,9 @@ import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@
 import { useTranslations, useLocale } from 'next-intl';
 import { LanguageToggle } from './LanguageToggle';
 
-// Use current hostname with port 8000 for production-like environment
-const API = typeof window !== 'undefined' 
-  ? `${window.location.protocol}//${window.location.hostname}:8000`
+// Use relative URLs for production-like environment behind reverse proxy
+const API = typeof window !== 'undefined' && window.location.port === '8000'
+  ? '' // Use relative URLs when accessed through port 8000 (production-like)
   : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 export function Navigation() {
