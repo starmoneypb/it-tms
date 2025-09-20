@@ -64,7 +64,7 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 
 	where := strings.Join(clauses, " AND ")
 	sql := fmt.Sprintf(`SELECT 
-		t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.created_at, t.updated_at, t.closed_at,
+		t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.effort_data, t.effort_score, t.created_at, t.updated_at, t.closed_at,
 		(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE %s ORDER BY 
 		CASE t.priority 
@@ -86,11 +86,12 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 	items := []models.Ticket{}
 	for rows.Next() {
 		var t models.Ticket
-		var details []byte
+		var details, effortData []byte
 		var latestComment *string
-		err := rows.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment)
+		err := rows.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &effortData, &t.EffortScore, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment)
 		if err != nil { return nil, 0, err }
 		json.Unmarshal(details, &t.Details)
+		json.Unmarshal(effortData, &t.EffortData)
 		t.LatestComment = latestComment
 		
 		// Fetch assignees for this ticket

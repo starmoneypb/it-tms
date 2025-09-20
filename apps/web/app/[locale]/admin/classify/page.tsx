@@ -49,9 +49,20 @@ export default function ClassifyPage() {
     }
   };
 
-  const handleViewDetails = (ticket: Ticket) => {
+  const handleViewDetails = async (ticket: Ticket) => {
     setSelectedTicket(ticket);
     onOpen();
+    
+    // Fetch fresh ticket data to ensure effort score is up to date
+    try {
+      const response = await fetch(`${API}/api/v1/tickets/${ticket.id}`, { credentials: "include" });
+      if (response.ok) {
+        const result = await response.json();
+        setSelectedTicket(result.data.ticket);
+      }
+    } catch (error) {
+      console.error('Failed to fetch fresh ticket data:', error);
+    }
   };
 
   function load() {
