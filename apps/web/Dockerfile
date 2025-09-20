@@ -25,8 +25,15 @@ COPY packages ./packages
 WORKDIR /app/apps/web
 # Ensure all dependencies are available for build
 RUN pnpm install --frozen-lockfile
+# Backup public directory before build (Next.js might modify it)
+RUN cp -r public public-backup 2>/dev/null || echo "No public directory to backup"
 # Build with environment variables
 RUN pnpm run build
+# Restore public directory if it was lost during build
+RUN [ -d public ] || ([ -d public-backup ] && cp -r public-backup public) || echo "No public directory found"
+
+# Verify public directory exists after build
+RUN ls -la public/ || echo "Warning: public directory not found"
 
 # Run stage
 FROM node:20-alpine
@@ -49,6 +56,7 @@ COPY --chown=nextjs:nodejs packages/ui/package.json ./packages/ui/
 
 # Copy built files and static assets
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
+# Copy public directory if it exists (Next.js might generate it during build)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 # Ensure the nextjs user has write permissions to /app
