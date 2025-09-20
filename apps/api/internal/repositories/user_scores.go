@@ -47,26 +47,49 @@ func (r *UserScoresRepo) GetUserRankingsWithDateFilter(ctx context.Context, limi
 	var query string
 	var args []interface{}
 	
-	if month != nil && year != nil {
+	if year != nil {
 		// Filter by ticket creation date
-		query = `
-			SELECT 
-				u.id,
-				u.name,
-				u.email,
-				u.role,
-				u.profile_picture,
-				COALESCE(SUM(us.points), 0) as total_points,
-				COUNT(us.ticket_id) as tickets_completed,
-				ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(us.points), 0) DESC, u.name ASC) as rank
-			FROM users u
-			LEFT JOIN user_scores us ON u.id = us.user_id
-			LEFT JOIN tickets t ON us.ticket_id = t.id
-			WHERE t.id IS NULL OR (EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2)
-			GROUP BY u.id, u.name, u.email, u.role
-			ORDER BY total_points DESC, u.name ASC
-			LIMIT $3`
-		args = []interface{}{*month, *year, limit}
+		if month != nil {
+			// Both month and year filtering
+			query = `
+				SELECT 
+					u.id,
+					u.name,
+					u.email,
+					u.role,
+					u.profile_picture,
+					COALESCE(SUM(us.points), 0) as total_points,
+					COUNT(us.ticket_id) as tickets_completed,
+					ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(us.points), 0) DESC, u.name ASC) as rank
+				FROM users u
+				LEFT JOIN user_scores us ON u.id = us.user_id
+				LEFT JOIN tickets t ON us.ticket_id = t.id
+				WHERE t.id IS NULL OR (EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2)
+				GROUP BY u.id, u.name, u.email, u.role
+				ORDER BY total_points DESC, u.name ASC
+				LIMIT $3`
+			args = []interface{}{*month, *year, limit}
+		} else {
+			// Year-only filtering
+			query = `
+				SELECT 
+					u.id,
+					u.name,
+					u.email,
+					u.role,
+					u.profile_picture,
+					COALESCE(SUM(us.points), 0) as total_points,
+					COUNT(us.ticket_id) as tickets_completed,
+					ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(us.points), 0) DESC, u.name ASC) as rank
+				FROM users u
+				LEFT JOIN user_scores us ON u.id = us.user_id
+				LEFT JOIN tickets t ON us.ticket_id = t.id
+				WHERE t.id IS NULL OR EXTRACT(YEAR FROM t.created_at) = $1
+				GROUP BY u.id, u.name, u.email, u.role
+				ORDER BY total_points DESC, u.name ASC
+				LIMIT $2`
+			args = []interface{}{*year, limit}
+		}
 	} else {
 		// Use the existing view for all-time rankings
 		query = `

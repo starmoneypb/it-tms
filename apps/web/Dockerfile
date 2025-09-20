@@ -43,23 +43,26 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy workspace files
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY apps/web/package.json ./apps/web/
-COPY packages/ui/package.json ./packages/ui/
+COPY --chown=nextjs:nodejs package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY --chown=nextjs:nodejs apps/web/package.json ./apps/web/
+COPY --chown=nextjs:nodejs packages/ui/package.json ./packages/ui/
 
 # Copy built files and static assets
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
-# Install only production dependencies
-RUN pnpm install --frozen-lockfile --prod
-
-# Set secure permissions
-RUN chown -R nextjs:nodejs /app && \
-    chmod -R 755 /app
+# Ensure the nextjs user has write permissions to /app
+RUN chown nextjs:nodejs /app && chmod 755 /app
 
 # Switch to non-root user
 USER nextjs
+
+# Install only production dependencies (as nextjs user, so node_modules gets correct ownership)
+RUN pnpm install --frozen-lockfile --prod
+
+# Set specific permissions only for necessary files
+RUN chmod 644 package.json pnpm-workspace.yaml pnpm-lock.yaml && \
+    chmod 644 apps/web/package.json packages/ui/package.json
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

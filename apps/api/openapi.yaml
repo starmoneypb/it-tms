@@ -614,6 +614,9 @@ components:
             priorityCounts:
               type: object
               additionalProperties: { type: integer }
+            issueReportCounts:
+              type: object
+              additionalProperties: { type: integer }
     UserRanking:
       type: object
       properties:

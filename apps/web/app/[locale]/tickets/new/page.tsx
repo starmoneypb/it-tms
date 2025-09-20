@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox, Progress } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox } from "@heroui/react";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import { WysiwygEditor } from "@/lib/wysiwyg-editor";
 import { useAuth } from "@/lib/auth";
@@ -199,7 +199,35 @@ export default function NewTicket() {
     }
   }
 
-  const progress = ((draft.step - 1) / (steps.length - 1)) * 100;
+  // Calculate actual completion percentage based on form data
+  const calculateProgress = () => {
+    let completed = 0;
+    const totalSteps = steps.length;
+    
+    // Step 1: Issue type selection
+    if (draft.step > 1) completed += 1;
+    
+    // Step 2: Ticket details (title, description)
+    if (draft.step > 2) {
+      if (draft.title && draft.title.trim()) completed += 0.5;
+      if (draft.description && draft.description.trim()) completed += 0.5;
+    }
+    
+    // Step 3: Additional info (attachments)
+    if (draft.step > 3) completed += 1;
+    
+    // Step 4: Priority assessment (at least one selection required)
+    if (draft.step > 4) {
+      const hasPrioritySelection = draft.priority.urgency !== "none" || 
+        Object.values(draft.priority.redFlags || {}).some(Boolean) ||
+        Object.values(draft.priority.impact || {}).some(Boolean);
+      completed += hasPrioritySelection ? 1 : 0.5;
+    }
+    
+    return Math.min((completed / totalSteps) * 100, 100);
+  };
+
+  const progress = calculateProgress();
 
   return (
     <div className="container">
@@ -210,26 +238,15 @@ export default function NewTicket() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 glass p-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between w-full">
-              <h2 className="text-xl font-semibold">{t('ticketCreationWizard')}</h2>
-              <div className="text-sm text-white/60">
-                {t('stepOf', { step: draft.step, total: steps.length })}
-              </div>
-            </div>
-            <Progress 
-              value={progress} 
-              className="w-full mt-2"
-              color="primary"
-              size="sm"
-            />
+          <CardHeader className="pb-6">
+            <h2 className="text-xl font-semibold">{t('ticketCreationWizard')}</h2>
           </CardHeader>
-          <CardBody className="space-y-6">
+          <CardBody className="space-y-8">
             {draft.step === 1 && (
-              <section className="space-y-6">
+              <section className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">{t('whatTypeIssue')}</h3>
-                  <p className="text-white/70 mb-6">{t('helpsRoute')}</p>
+                  <h3 className="text-2xl font-semibold mb-3">{t('whatTypeIssue')}</h3>
+                  <p className="text-white/70 text-lg">{t('helpsRoute')}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                   <Button 
@@ -259,10 +276,10 @@ export default function NewTicket() {
             )}
 
             {draft.step === 2 && draft.isAbnormal === true && (
-              <section className="space-y-6">
+              <section className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">{t('issueReportDetails')}</h3>
-                  <p className="text-white/70 mb-6">{t('provideDetailedInfo')}</p>
+                  <h3 className="text-2xl font-semibold mb-3">{t('issueReportDetails')}</h3>
+                  <p className="text-white/70 text-lg">{t('provideDetailedInfo')}</p>
                 </div>
                 <div className="space-y-4">
                   <WysiwygEditor 
@@ -280,11 +297,11 @@ export default function NewTicket() {
                     minHeight="100px"
                   />
                 </div>
-                <div className="flex gap-3">
-                  <Button onPress={()=>setDraft({...draft, step: 3})} color="primary" size="lg">
+                <div className="flex gap-4 pt-4 border-t border-white/10">
+                  <Button onPress={()=>setDraft({...draft, step: 3})} color="primary" size="lg" className="flex-1">
                     {t('continue')}
                   </Button>
-                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg">
+                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg" className="flex-1">
                     {tCommon('back')}
                   </Button>
                 </div>
@@ -292,10 +309,10 @@ export default function NewTicket() {
             )}
 
             {draft.step === 2 && draft.isAbnormal === false && (
-              <section className="space-y-6">
+              <section className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">{t('whatTypeService')}</h3>
-                  <p className="text-white/70 mb-6">{t('selectMostAppropriate')}</p>
+                  <h3 className="text-2xl font-semibold mb-3">{t('whatTypeService')}</h3>
+                  <p className="text-white/70 text-lg">{t('selectMostAppropriate')}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
                   {canCreateTicketType("CHANGE_REQUEST_NORMAL") && (
@@ -359,17 +376,19 @@ export default function NewTicket() {
                     </Button>
                   )}
                 </div>
-                <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg">
-                  {t('back')}
-                </Button>
+                <div className="pt-4 border-t border-white/10">
+                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg" className="w-full">
+                    {t('back')}
+                  </Button>
+                </div>
               </section>
             )}
 
             {draft.step === 3 && (
-              <section className="space-y-6">
+              <section className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">{t('additionalInformation')}</h3>
-                  <p className="text-white/70 mb-6">{t('provideTitleDescription')}</p>
+                  <h3 className="text-2xl font-semibold mb-3">{t('additionalInformation')}</h3>
+                  <p className="text-white/70 text-lg">{t('provideTitleDescription')}</p>
                 </div>
                 <div className="space-y-4">
                   <Input 
@@ -412,11 +431,11 @@ export default function NewTicket() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <Button onPress={()=>setDraft({...draft, step: 4})} color="primary" size="lg">
+                <div className="flex gap-4 pt-4 border-t border-white/10">
+                  <Button onPress={()=>setDraft({...draft, step: 4})} color="primary" size="lg" className="flex-1">
                     {t('continue')}
                   </Button>
-                  <Button onPress={()=>setDraft({...draft, step: 2})} variant="flat" size="lg">
+                  <Button onPress={()=>setDraft({...draft, step: 2})} variant="flat" size="lg" className="flex-1">
                     {tCommon('back')}
                   </Button>
                 </div>
@@ -424,10 +443,10 @@ export default function NewTicket() {
             )}
 
             {draft.step === 4 && (
-              <section className="space-y-6">
+              <section className="space-y-8">
                 <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">{t('priorityAssessment')}</h3>
-                  <p className="text-white/70 mb-6">{t('helpUsPrioritize')}</p>
+                  <h3 className="text-2xl font-semibold mb-3">{t('priorityAssessment')}</h3>
+                  <p className="text-white/70 text-lg">{t('helpUsPrioritize')}</p>
                 </div>
                 
                 <div className="space-y-6">
@@ -894,13 +913,13 @@ export default function NewTicket() {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-4 pt-6 border-t border-white/10">
                   <Button 
                     onPress={submit} 
                     color="primary" 
                     size="lg"
                     isLoading={submitting}
-                    className="flex-1"
+                    className="flex-2"
                   >
                     {submitting ? t('submitting') : t('submit')}
                   </Button>
@@ -908,6 +927,7 @@ export default function NewTicket() {
                     onPress={()=>setDraft({...draft, step: 3})} 
                     variant="flat" 
                     size="lg"
+                    className="flex-1"
                   >
                     {tCommon('back')}
                   </Button>

@@ -1538,15 +1538,15 @@ func (h *Handlers) GetUserRankings(c *fiber.Ctx) error {
 		}
 	}
 	
-	// Both month and year must be provided together, or neither
-	if (month == nil) != (year == nil) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"INVALID_PARAMETERS","message":"both month and year must be provided together"}})
+	// Year can be provided alone, but if month is provided, year must also be provided
+	if month != nil && year == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"INVALID_PARAMETERS","message":"year must be provided when month is specified"}})
 	}
 	
 	var rankings []models.UserRanking
 	var err error
 	
-	if month != nil && year != nil {
+	if year != nil {
 		rankings, err = h.repo.UserScores.GetUserRankingsWithDateFilter(ctx, 10, month, year)
 	} else {
 		rankings, err = h.repo.UserScores.GetUserRankings(ctx, 10)
@@ -1596,15 +1596,15 @@ func (h *Handlers) MetricsSummary(c *fiber.Ctx) error {
 		}
 	}
 	
-	// Both month and year must be provided together, or neither
-	if (month == nil) != (year == nil) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"INVALID_PARAMETERS","message":"both month and year must be provided together"}})
+	// Year can be provided alone, but if month is provided, year must also be provided
+	if month != nil && year == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"INVALID_PARAMETERS","message":"year must be provided when month is specified"}})
 	}
 	
 	var data repositories.MetricsSummary
 	var err error
 	
-	if month != nil && year != nil {
+	if year != nil {
 		data, err = h.repo.Metrics.SummaryWithDateFilter(ctx, month, year)
 	} else {
 		data, err = h.repo.Metrics.Summary(ctx)

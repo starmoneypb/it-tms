@@ -32,7 +32,8 @@
     "noRecentActivity": "No recent activity",
     "latestComment": "Latest comment:",
     "updated": "Updated",
-    "ago": "ago"
+    "ago": "ago",
+    "complete": "Complete"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -85,9 +86,16 @@
     "noData": "No Data",
     "noDataAvailable": "No data available",
     "chartsWillAppear": "Charts will appear when tickets are created",
+    "issueReportCounts": "Issue Report Counts",
+    "totalIssueReports": "Total Issue Reports",
+    "unclassified": "Unclassified",
+    "dataCorrection": "Data Correction",
+    "emergencyChange": "Emergency Change",
+    "rejected": "Rejected",
     "filterBy": "Filter by",
     "allTime": "All Time",
     "currentMonth": "Current Month",
+    "currentYear": "Current Year",
     "selectMonth": "Select Month",
     "selectYear": "Select Year",
     "january": "January",

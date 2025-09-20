@@ -46,6 +46,7 @@ type Summary = {
   statusCounts: Record<string, number>;
   categoryCounts: Record<string, number>;
   priorityCounts: Record<string, number>;
+  issueReportCounts: Record<string, number>;
 };
 
 type UserRanking = {
@@ -126,9 +127,11 @@ export default function Dashboard() {
     try {
       // Build query string for date filtering
       const queryParams = new URLSearchParams();
-      if (!isAllTime && selectedMonth !== null && selectedYear !== null) {
-        queryParams.append('month', selectedMonth.toString());
+      if (!isAllTime && selectedYear !== null) {
         queryParams.append('year', selectedYear.toString());
+        if (selectedMonth !== null) {
+          queryParams.append('month', selectedMonth.toString());
+        }
       }
       const queryString = queryParams.toString();
       const metricsUrl = `${API}/api/v1/metrics/summary${queryString ? `?${queryString}` : ''}`;
@@ -171,7 +174,8 @@ export default function Dashboard() {
           inProgressToday: [],
           statusCounts: { 'pending': 5, 'in_progress': 3, 'completed': 12, 'canceled': 1 },
           categoryCounts: { 'ISSUE_REPORT': 8, 'SERVICE_REQUEST_GENERAL': 6, 'CHANGE_REQUEST_NORMAL': 4, 'SERVICE_REQUEST_DATA_CORRECTION': 3 },
-          priorityCounts: { 'P0': 2, 'P1': 4, 'P2': 8, 'P3': 7 }
+          priorityCounts: { 'P0': 2, 'P1': 4, 'P2': 8, 'P3': 7 },
+          issueReportCounts: { 'Unclassified': 4, 'Data Correction': 2, 'Emergency Change': 1, 'Rejected': 1 }
         };
         
         const fallbackRankings: UserRanking[] = [
@@ -239,7 +243,7 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
-  const handleFilterChange = (filterType: 'allTime' | 'currentMonth' | 'custom') => {
+  const handleFilterChange = (filterType: 'allTime' | 'currentMonth' | 'currentYear' | 'custom') => {
     if (filterType === 'allTime') {
       setIsAllTime(true);
       setSelectedMonth(null);
@@ -248,6 +252,11 @@ export default function Dashboard() {
       const now = new Date();
       setIsAllTime(false);
       setSelectedMonth(now.getMonth() + 1);
+      setSelectedYear(now.getFullYear());
+    } else if (filterType === 'currentYear') {
+      const now = new Date();
+      setIsAllTime(false);
+      setSelectedMonth(null); // Year-only filtering
       setSelectedYear(now.getFullYear());
     }
   };
@@ -314,6 +323,25 @@ export default function Dashboard() {
                   }
                 >
                   {t('currentMonth')}
+                </Button>
+                
+                <Button
+                  size="md"
+                  variant={!isAllTime && selectedMonth === null && selectedYear === new Date().getFullYear() ? "solid" : "ghost"}
+                  color={!isAllTime && selectedMonth === null && selectedYear === new Date().getFullYear() ? "primary" : "default"}
+                  onClick={() => handleFilterChange('currentYear')}
+                  className={`flex-1 transition-all duration-300 ${
+                    !isAllTime && selectedMonth === null && selectedYear === new Date().getFullYear()
+                      ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25 scale-105" 
+                      : "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/80 hover:text-white"
+                  }`}
+                  startContent={
+                    <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      !isAllTime && selectedMonth === null && selectedYear === new Date().getFullYear() ? "bg-white/90" : "bg-white/40"
+                    }`} />
+                  }
+                >
+                  {t('currentYear')}
                 </Button>
               </div>
               
@@ -403,7 +431,9 @@ export default function Dashboard() {
                     ? t('allTime').toLowerCase() 
                     : selectedMonth && selectedYear 
                       ? `${monthNames[selectedMonth - 1]} ${selectedYear}`
-                      : t('currentMonth').toLowerCase()
+                      : selectedYear && !selectedMonth
+                        ? `${selectedYear}`
+                        : t('currentMonth').toLowerCase()
                   }
                 </span>
               </div>
@@ -412,8 +442,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-3 glass p-2">
+      <div className="space-y-6">
+        {/* Active Tickets Section */}
+        <Card className="glass p-2">
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Clipboard size={20} className="text-primary-400" />
@@ -537,12 +568,16 @@ export default function Dashboard() {
           </CardBody>
         </Card>
 
-        <ChartCard title={t('statusDistribution')} data={toPie(data.statusCounts)} icon={<BarChart3 size={18} className="text-primary-400" />} />
-        <ChartCard title={t('categoryBreakdown')} data={toPie(data.categoryCounts)} icon={<FolderOpen size={18} className="text-primary-400" />} />
-        <ChartCard title={t('priorityLevels')} data={toPie(data.priorityCounts)} icon={<Zap size={18} className="text-primary-400" />} />
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <ChartCard title={t('statusDistribution')} data={toPie(data.statusCounts)} icon={<BarChart3 size={18} className="text-primary-400" />} />
+          <ChartCard title={t('categoryBreakdown')} data={toPie(data.categoryCounts)} icon={<FolderOpen size={18} className="text-primary-400" />} />
+          <ChartCard title={t('priorityLevels')} data={toPie(data.priorityCounts)} icon={<Zap size={18} className="text-primary-400" />} />
+          <IssueReportCountsCard data={data.issueReportCounts} />
+        </div>
 
         {/* User Rankings Section */}
-        <Card className="lg:col-span-3 glass p-2">
+        <Card className="glass p-2">
           <CardHeader className="pb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Trophy size={20} className="text-yellow-400" />
@@ -639,6 +674,78 @@ function ChartCard({ title, data, icon }: { title: string; data: { name: string;
       </CardHeader>
       <CardBody className="p-6">
         <ChartJsPieChart data={data} title={title} />
+      </CardBody>
+    </Card>
+  );
+}
+
+function IssueReportCountsCard({ data }: { data: Record<string, number> }) {
+  const t = useTranslations('dashboard');
+  
+  // Calculate total count
+  const totalCount = Object.values(data).reduce((sum, count) => sum + count, 0);
+  
+  // Get counts for each classification type
+  const unclassifiedCount = data['Unclassified'] || 0;
+  const dataCorrectionCount = data['Data Correction'] || 0;
+  const emergencyChangeCount = data['Emergency Change'] || 0;
+  const rejectedCount = data['Rejected'] || 0;
+  
+  // Color mapping for each classification
+  const getClassificationColor = (type: string) => {
+    switch (type) {
+      case 'Unclassified':
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+      case 'Data Correction':
+        return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+      case 'Emergency Change':
+        return 'text-red-400 bg-red-400/10 border-red-400/20';
+      case 'Rejected':
+        return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+      default:
+        return 'text-white/60 bg-white/5 border-white/10';
+    }
+  };
+  
+  return (
+    <Card className="glass p-2">
+      <CardHeader className="pb-3">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Clipboard size={18} className="text-primary-400" />
+          {t('issueReportCounts')}
+        </h3>
+      </CardHeader>
+      <CardBody className="p-6">
+        <div className="space-y-4">
+          {/* Total Count */}
+          <div className="text-center mb-6">
+            <div className="text-3xl font-bold text-primary-400 mb-1">{totalCount}</div>
+            <div className="text-sm text-white/60">{t('totalIssueReports')}</div>
+          </div>
+          
+          {/* Classification Breakdown */}
+          <div className="space-y-3">
+            <div className={`flex items-center justify-between p-3 rounded-lg border ${getClassificationColor('Unclassified')}`}>
+              <span className="font-medium">{t('unclassified')}</span>
+              <span className="text-lg font-bold">{unclassifiedCount}</span>
+            </div>
+            
+            <div className={`flex items-center justify-between p-3 rounded-lg border ${getClassificationColor('Data Correction')}`}>
+              <span className="font-medium">{t('dataCorrection')}</span>
+              <span className="text-lg font-bold">{dataCorrectionCount}</span>
+            </div>
+            
+            <div className={`flex items-center justify-between p-3 rounded-lg border ${getClassificationColor('Emergency Change')}`}>
+              <span className="font-medium">{t('emergencyChange')}</span>
+              <span className="text-lg font-bold">{emergencyChangeCount}</span>
+            </div>
+            
+            <div className={`flex items-center justify-between p-3 rounded-lg border ${getClassificationColor('Rejected')}`}>
+              <span className="font-medium">{t('rejected')}</span>
+              <span className="text-lg font-bold">{rejectedCount}</span>
+            </div>
+          </div>
+        </div>
       </CardBody>
     </Card>
   );

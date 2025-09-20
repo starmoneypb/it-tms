@@ -32,7 +32,8 @@
     "noRecentActivity": "ไม่มีกิจกรรมล่าสุด",
     "latestComment": "ความเห็นล่าสุด:",
     "updated": "อัปเดต",
-    "ago": "ที่แล้ว"
+    "ago": "ที่แล้ว",
+    "complete": "เสร็จสิ้น"
   },
   "navigation": {
     "dashboard": "แดชบอร์ด",
@@ -85,9 +86,16 @@
     "noData": "ไม่มีข้อมูล",
     "noDataAvailable": "ไม่มีข้อมูล",
     "chartsWillAppear": "กราฟจะปรากฏเมื่อมีการสร้างตั๋ว",
+    "issueReportCounts": "จำนวนรายงานปัญหา",
+    "totalIssueReports": "รายงานปัญหาทั้งหมด",
+    "unclassified": "ยังไม่ได้จำแนก",
+    "dataCorrection": "แก้ไขข้อมูล",
+    "emergencyChange": "การเปลี่ยนแปลงฉุกเฉิน",
+    "rejected": "ถูกปฏิเสธ",
     "filterBy": "กรองตาม",
     "allTime": "ทั้งหมด",
     "currentMonth": "เดือนปัจจุบัน",
+    "currentYear": "ปีปัจจุบัน",
     "selectMonth": "เลือกเดือน",
     "selectYear": "เลือกปี",
     "january": "มกราคม",

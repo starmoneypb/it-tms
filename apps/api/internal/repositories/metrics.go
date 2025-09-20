@@ -10,10 +10,11 @@ import (
 type MetricsRepo struct{ pool *pgxpool.Pool }
 
 type MetricsSummary struct {
-	InProgressToday []TicketSummary     `json:"inProgressToday"`
-	StatusCounts    map[string]int      `json:"statusCounts"`
-	CategoryCounts  map[string]int      `json:"categoryCounts"`
-	PriorityCounts  map[string]int      `json:"priorityCounts"`
+	InProgressToday    []TicketSummary     `json:"inProgressToday"`
+	StatusCounts       map[string]int      `json:"statusCounts"`
+	CategoryCounts     map[string]int      `json:"categoryCounts"`
+	PriorityCounts     map[string]int      `json:"priorityCounts"`
+	IssueReportCounts  map[string]int      `json:"issueReportCounts"`
 }
 
 type AssigneeSummary struct {
@@ -42,6 +43,7 @@ func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, yea
 	res.StatusCounts = map[string]int{}
 	res.CategoryCounts = map[string]int{}
 	res.PriorityCounts = map[string]int{}
+	res.IssueReportCounts = map[string]int{}
 	res.InProgressToday = []TicketSummary{} // Initialize as empty slice to avoid null
 
 	// In progress tickets (all currently active ones, not just updated today)
@@ -129,9 +131,16 @@ func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, yea
 	// Build date filter condition
 	dateFilter := ""
 	var args []interface{}
-	if month != nil && year != nil {
-		dateFilter = " WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2"
-		args = []interface{}{*month, *year}
+	if year != nil {
+		if month != nil {
+			// Both month and year filtering
+			dateFilter = " WHERE EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2"
+			args = []interface{}{*month, *year}
+		} else {
+			// Year-only filtering
+			dateFilter = " WHERE EXTRACT(YEAR FROM created_at) = $1"
+			args = []interface{}{*year}
+		}
 	}
 
 	// Status counts
@@ -140,6 +149,42 @@ func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, yea
 	r.countIntoWithDateFilter(ctx, `SELECT COALESCE(resolved_type::text, initial_type::text), COUNT(*) FROM tickets`+dateFilter+` GROUP BY COALESCE(resolved_type::text, initial_type::text)`, args, res.CategoryCounts)
 	// Priority counts
 	r.countIntoWithDateFilter(ctx, `SELECT priority, COUNT(*) FROM tickets`+dateFilter+` GROUP BY priority`, args, res.PriorityCounts)
+
+	// Issue Report counts breakdown
+	issueReportDateFilter := ""
+	issueReportArgs := []interface{}{}
+	if year != nil {
+		if month != nil {
+			// Both month and year filtering
+			issueReportDateFilter = " AND EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2"
+			issueReportArgs = []interface{}{*month, *year}
+		} else {
+			// Year-only filtering
+			issueReportDateFilter = " AND EXTRACT(YEAR FROM created_at) = $1"
+			issueReportArgs = []interface{}{*year}
+		}
+	}
+	
+	r.countIntoWithDateFilter(ctx, `
+		SELECT 
+			CASE 
+				WHEN status = 'canceled' THEN 'Rejected'
+				WHEN resolved_type IS NULL THEN 'Unclassified'
+				WHEN resolved_type = 'DATA_CORRECTION' THEN 'Data Correction'
+				WHEN resolved_type = 'EMERGENCY_CHANGE' THEN 'Emergency Change'
+				ELSE 'Other'
+			END as classification,
+			COUNT(*)
+		FROM tickets
+		WHERE initial_type = 'ISSUE_REPORT'`+issueReportDateFilter+`
+		GROUP BY 
+			CASE 
+				WHEN status = 'canceled' THEN 'Rejected'
+				WHEN resolved_type IS NULL THEN 'Unclassified'
+				WHEN resolved_type = 'DATA_CORRECTION' THEN 'Data Correction'
+				WHEN resolved_type = 'EMERGENCY_CHANGE' THEN 'Emergency Change'
+				ELSE 'Other'
+			END`, issueReportArgs, res.IssueReportCounts)
 
 	return res, nil
 }
