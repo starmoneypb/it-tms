@@ -160,6 +160,46 @@ export default function TicketDetails() {
       .finally(() => setCommentsLoading(false));
   }
 
+  function loadCommentsWithRetry(page = 1, pageSize = commentPagination.pageSize, maxRetries = 3) {
+    let attempts = 0;
+    
+    const attemptLoad = () => {
+      attempts++;
+      setCommentsLoading(true);
+      
+      // Add cache-busting timestamp to prevent browser caching
+      const timestamp = Date.now();
+      fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}&_t=${timestamp}`, { 
+        credentials: "include",
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+        .then((r) => r.json())
+        .then((j) => {
+          setComments(j.data.comments);
+          setCommentPagination(j.data.pagination);
+          setCommentsLoading(false);
+        })
+        .catch((error) => {
+          console.error(`Failed to load comments (attempt ${attempts}):`, error);
+          
+          if (attempts < maxRetries) {
+            // Retry after increasing delay: 1s, 2s, 3s
+            setTimeout(attemptLoad, attempts * 1000);
+          } else {
+            setCommentsLoading(false);
+            console.error('Max retries reached for loading comments');
+          }
+        });
+    };
+    
+    // Start with immediate load, then retry if needed
+    attemptLoad();
+  }
+
   function load() {
     setLoading(true);
     fetch(`${API}/api/v1/tickets/${id}`, { credentials: "include" })
@@ -336,8 +376,8 @@ export default function TicketDetails() {
       // Success - reload data and exit edit mode
       setIsEditing(false);
       load();
-      // Longer delay to ensure auto-comment is processed before reloading
-      setTimeout(() => loadComments(1), 2000);
+      // Reload comments with retry mechanism to ensure auto-comment is visible
+      loadCommentsWithRetry(1);
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Failed to update ticket fields");
     } finally {
@@ -382,8 +422,8 @@ export default function TicketDetails() {
       // Success - reload data and exit edit mode
       setIsEditingContent(false);
       load();
-      // Longer delay to ensure auto-comment is processed before reloading
-      setTimeout(() => loadComments(1), 2000);
+      // Reload comments with retry mechanism to ensure auto-comment is visible
+      loadCommentsWithRetry(1);
     } catch (error) {
       setContentEditError(error instanceof Error ? error.message : "Failed to update ticket content");
     } finally {
