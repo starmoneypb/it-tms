@@ -561,5 +561,11 @@
     "enterPassword": "Enter your password",
     "signingIn": "Signing In...",
     "invalidCredentials": "Invalid credentials"
+  },
+  "celebration": {
+    "congratulations": "🎉 Congratulations! 🎉",
+    "ticketCompleted": "Ticket Completed!",
+    "ticket": "Ticket",
+    "greatWork": "Great work! Another task successfully completed."
   }
 }

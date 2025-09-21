@@ -560,5 +560,11 @@
     "enterPassword": "ใส่รหัสผ่านของคุณ",
     "signingIn": "กำลังเข้าสู่ระบบ...",
     "invalidCredentials": "ข้อมูลประจำตัวไม่ถูกต้อง"
+  },
+  "celebration": {
+    "congratulations": "🎉 ยินดีด้วย! 🎉",
+    "ticketCompleted": "ตั๋วเสร็จสิ้นแล้ว!",
+    "ticket": "ตั๋ว",
+    "greatWork": "ยอดเยี่ยม! งานอีกชิ้นหนึ่งเสร็จสิ้นแล้ว"
   }
 }

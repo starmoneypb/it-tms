@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { CheckCircle, Star, Trophy, Sparkles } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 interface TicketCompletionCelebrationProps {
   isVisible: boolean;
@@ -82,6 +83,7 @@ export default function TicketCompletionCelebration({
   ticketCode 
 }: TicketCompletionCelebrationProps) {
   const [showContent, setShowContent] = useState(false);
+  const t = useTranslations('celebration');
 
   useEffect(() => {
     if (isVisible) {
@@ -194,10 +196,10 @@ export default function TicketCompletionCelebration({
               className="mb-4"
             >
               <h2 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
-                🎉 Congratulations! 🎉
+                {t('congratulations')}
               </h2>
               <p className="text-xl text-white/90 font-semibold">
-                Ticket Completed!
+                {t('ticketCompleted')}
               </p>
             </motion.div>
 
@@ -209,7 +211,7 @@ export default function TicketCompletionCelebration({
                 transition={{ delay: 0.8, duration: 0.4 }}
                 className="mb-6 px-4 py-2 bg-white/10 rounded-xl border border-white/20"
               >
-                <p className="text-white/80 text-sm">Ticket</p>
+                <p className="text-white/80 text-sm">{t('ticket')}</p>
                 <p className="text-white font-bold text-lg">#{ticketCode}</p>
               </motion.div>
             )}
@@ -235,7 +237,7 @@ export default function TicketCompletionCelebration({
                 <Trophy className="text-yellow-400 mx-auto mb-3" size={48} />
               </motion.div>
               <p className="text-white/70 text-sm">
-                Great work! Another task successfully completed.
+                {t('greatWork')}
               </p>
             </motion.div>
 
