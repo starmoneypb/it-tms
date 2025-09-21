@@ -879,58 +879,77 @@ export default function TicketDetails() {
                   </div>
                   
                   {/* Pagination Controls */}
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-                    {/* Navigation Controls - Only show when there are multiple pages */}
-                    {commentPagination.totalPages > 1 ? (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="bordered"
-                          onPress={() => loadComments(commentPagination.page - 1)}
-                          isDisabled={!commentPagination.hasPrev || commentsLoading}
-                          isLoading={commentsLoading}
-                        >
-                          {t('previous')}
-                        </Button>
-                        <span className="text-sm text-white/70 px-3">
-                          {t('page')} {commentPagination.page} {t('of')} {commentPagination.totalPages}
+                  <div className="mt-6 pt-4 border-t border-white/10">
+                    {/* Mobile Layout - Stack vertically on small screens */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      {/* Navigation Controls - Only show when there are multiple pages */}
+                      {commentPagination.totalPages > 1 ? (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                          {/* Page Navigation Buttons */}
+                          <div className="flex items-center justify-center gap-3">
+                            <Button
+                              size="sm"
+                              variant="bordered"
+                              onPress={() => loadComments(commentPagination.page - 1)}
+                              isDisabled={!commentPagination.hasPrev || commentsLoading}
+                              isLoading={commentsLoading}
+                              className="min-w-[80px] sm:min-w-[90px]"
+                            >
+                              {t('previous')}
+                            </Button>
+                            <span className="text-sm text-white/70 px-2 sm:px-3 whitespace-nowrap">
+                              {t('page')} {commentPagination.page} {t('of')} {commentPagination.totalPages}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="bordered"
+                              onPress={() => loadComments(commentPagination.page + 1)}
+                              isDisabled={!commentPagination.hasNext || commentsLoading}
+                              isLoading={commentsLoading}
+                              className="min-w-[80px] sm:min-w-[90px]"
+                            >
+                              {t('next')}
+                            </Button>
+                          </div>
+                          
+                          {/* Total Comments Count */}
+                          <div className="text-center sm:text-left">
+                            <span className="text-sm text-white/60">
+                              {commentPagination.total} {t('comments')}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center sm:text-left">
+                          <span className="text-sm text-white/70">
+                            {commentPagination.total} {t('comments')}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Page Size Selector - Always visible */}
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <span className="text-sm text-white/60 text-center sm:text-left">
+                          {t('commentsPerPage')}:
                         </span>
-                        <Button
-                          size="sm"
-                          variant="bordered"
-                          onPress={() => loadComments(commentPagination.page + 1)}
-                          isDisabled={!commentPagination.hasNext || commentsLoading}
-                          isLoading={commentsLoading}
-                        >
-                          {t('next')}
-                        </Button>
+                        <div className="flex justify-center sm:justify-start">
+                          <Select
+                            size="sm"
+                            variant="bordered"
+                            selectedKeys={[commentPagination.pageSize.toString()]}
+                            onSelectionChange={(keys) => {
+                              const newPageSize = parseInt(Array.from(keys)[0] as string);
+                              setCommentPagination(prev => ({ ...prev, pageSize: newPageSize }));
+                              loadComments(1, newPageSize);
+                            }}
+                            className="w-20"
+                          >
+                            <SelectItem key="5">5</SelectItem>
+                            <SelectItem key="10">10</SelectItem>
+                            <SelectItem key="20">20</SelectItem>
+                          </Select>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-white/70">
-                          {commentPagination.total} {t('comments')}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {/* Page Size Selector - Always visible */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-white/60">{t('commentsPerPage')}:</span>
-                      <Select
-                        size="sm"
-                        variant="bordered"
-                        selectedKeys={[commentPagination.pageSize.toString()]}
-                        onSelectionChange={(keys) => {
-                          const newPageSize = parseInt(Array.from(keys)[0] as string);
-                          setCommentPagination(prev => ({ ...prev, pageSize: newPageSize }));
-                          loadComments(1, newPageSize);
-                        }}
-                        className="w-20"
-                      >
-                        <SelectItem key="5">5</SelectItem>
-                        <SelectItem key="10">10</SelectItem>
-                        <SelectItem key="20">20</SelectItem>
-                      </Select>
                     </div>
                   </div>
                 </>
