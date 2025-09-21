@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { locales, defaultLocale } from './i18n';
 
@@ -11,6 +11,11 @@ const intlMiddleware = createIntlMiddleware({
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Hard guard: skip middleware for static assets (any path containing a dot)
+  if (pathname.includes('.')) {
+    return NextResponse.next();
+  }
+  
   
   // Extract locale from pathname
   const segments = pathname.split('/').filter(Boolean);
