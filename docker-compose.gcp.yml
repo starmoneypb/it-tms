@@ -96,6 +96,7 @@ services:
       GO_ENV: production
       SECURE_COOKIES: "true"
       WEB_APP_URL: https://unisight.dev
+      UPLOAD_DIR: /app/uploads
     depends_on:
       db-seed:
         condition: service_completed_successfully

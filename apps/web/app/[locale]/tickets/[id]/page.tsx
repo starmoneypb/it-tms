@@ -337,7 +337,7 @@ export default function TicketDetails() {
       setIsEditing(false);
       load();
       // Longer delay to ensure auto-comment is processed before reloading
-      setTimeout(() => loadComments(1), 1000);
+      setTimeout(() => loadComments(1), 2000);
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Failed to update ticket fields");
     } finally {
@@ -383,7 +383,7 @@ export default function TicketDetails() {
       setIsEditingContent(false);
       load();
       // Longer delay to ensure auto-comment is processed before reloading
-      setTimeout(() => loadComments(1), 1000);
+      setTimeout(() => loadComments(1), 2000);
     } catch (error) {
       setContentEditError(error instanceof Error ? error.message : "Failed to update ticket content");
     } finally {

@@ -111,7 +111,9 @@ func main() {
 	signInURL := cfg.WebAppURL + "/sign-in"
 	v1.Get("/attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadAttachment)
 	v1.Get("/comment-attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadCommentAttachment)
-	v1.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {
+	
+	// Public uploads route for profile pictures (no auth required)
+	v1.Get("/uploads/*", func(c *fiber.Ctx) error {
 		// Extract the file path after /uploads/
 		filePath := c.Params("*")
 		fullPath := filepath.Join(cfg.UploadDir, filePath)
@@ -126,6 +128,17 @@ func main() {
 		// Check if file exists
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "file not found"}})
+		}
+		
+		// Set appropriate content type for images
+		if strings.HasSuffix(strings.ToLower(filePath), ".jpg") || strings.HasSuffix(strings.ToLower(filePath), ".jpeg") {
+			c.Set("Content-Type", "image/jpeg")
+		} else if strings.HasSuffix(strings.ToLower(filePath), ".png") {
+			c.Set("Content-Type", "image/png")
+		} else if strings.HasSuffix(strings.ToLower(filePath), ".gif") {
+			c.Set("Content-Type", "image/gif")
+		} else if strings.HasSuffix(strings.ToLower(filePath), ".webp") {
+			c.Set("Content-Type", "image/webp")
 		}
 		
 		return c.SendFile(fullPath)
