@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
@@ -72,7 +73,13 @@ export function Navigation() {
     return (
       <nav className="container flex items-center justify-between py-4 min-h-[80px]">
         <Link href={createLocalizedUrl("/")} className="flex items-center">
-          <img src="/logo.svg" alt="IT-TMS Logo" width={32} height={32} className="h-8 w-8" />
+          <Image
+            src="/logo.svg"
+            alt="IT-TMS Logo"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+          />
         </Link>
         <div className="flex items-center gap-6">
           <div className="animate-pulse bg-white/20 h-8 w-24 rounded"></div>
@@ -84,7 +91,13 @@ export function Navigation() {
   return (
     <nav className="container relative flex items-center justify-between py-6 min-h-[80px]">
       <Link href={createLocalizedUrl("/")} className="flex items-center">
-        <img src="/logo.svg" alt="IT-TMS Logo" width={32} height={32} className="h-8 w-8" />
+        <Image
+          src="/logo.svg"
+          alt="IT-TMS Logo"
+          width={32}
+          height={32}
+          className="h-8 w-8"
+        />
       </Link>
       
       {/* Desktop Navigation */}

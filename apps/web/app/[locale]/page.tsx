@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
 import { Ticket, BarChart3, Clipboard, LogIn } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
@@ -51,7 +52,13 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="text-center py-16">
         <div className="flex justify-center mb-6">
-          <img src="/logo.svg" alt="IT-TMS Logo" width={80} height={80} className="h-20 w-20" />
+          <Image
+            src="/logo.svg"
+            alt="IT-TMS Logo"
+            width={80}
+            height={80}
+            className="h-20 w-20"
+          />
         </div>
         <h1 className="text-5xl font-bold mb-6 gradient-text pb-6">
           {t('title')}

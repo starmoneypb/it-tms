@@ -19,6 +19,12 @@ const nextConfig = {
   },
   // Disable SWC cache to save space
   swcMinify: true,
+  // Configure images to allow SVG files
+  images: {
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
 };
 
 export default withNextIntl(nextConfig);
