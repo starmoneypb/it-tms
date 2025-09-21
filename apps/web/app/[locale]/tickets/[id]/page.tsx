@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import EffortAssessmentExplanation from "@/components/EffortAssessmentExplanation";
+import TicketCompletionCelebration from "@/components/TicketCompletionCelebration";
 import DOMPurify from "isomorphic-dompurify";
 import { useTranslations, useLocale } from 'next-intl';
 import { 
@@ -66,6 +67,7 @@ export default function TicketDetails() {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
+  const [showCelebration, setShowCelebration] = useState(false);
   
   // Ticket editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -442,7 +444,12 @@ export default function TicketDetails() {
         throw new Error(errorData.error?.message || "Failed to update status");
       }
       
-      // Success - reload data and clear status
+      // Success - check if status is completed and trigger celebration
+      if (status === "completed") {
+        setShowCelebration(true);
+      }
+      
+      // Reload data and clear status
       setStatus("");
       load();
     } catch (error) {
@@ -1659,6 +1666,13 @@ export default function TicketDetails() {
           )}
         </div>
       </div>
+
+      {/* Celebration Animation */}
+      <TicketCompletionCelebration 
+        isVisible={showCelebration}
+        onComplete={() => setShowCelebration(false)}
+        ticketCode={ticket.code}
+      />
     </div>
   );
 }

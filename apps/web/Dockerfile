@@ -59,19 +59,12 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install npm (since pnpm symlinks don't work well in standalone)
-RUN npm install -g npm@latest
-
-# Copy the standalone server and its dependencies
+# Copy the standalone server and its dependencies (includes node_modules)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 # Copy the static files to the correct location for standalone
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 # Copy public directory to root level for standalone server
 COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./public
-
-# Install production dependencies with npm (avoid pnpm symlink issues)
-# Use npm install instead of npm ci since we don't have package-lock.json (using pnpm)
-RUN npm install --omit=dev --legacy-peer-deps
 
 # Ensure the nextjs user has write permissions to /app
 RUN chown nextjs:nodejs /app && chmod 755 /app
@@ -87,4 +80,4 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]
