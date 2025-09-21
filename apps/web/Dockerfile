@@ -59,12 +59,20 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# No need to copy workspace files in standalone mode
+# Install npm (since pnpm symlinks don't work well in standalone)
+RUN npm install -g npm@latest
 
-# Copy built files and static assets
+# Copy the standalone server and its dependencies
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./apps/web/public
+# Copy the static files to the correct location for standalone
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
+# Copy public directory to root level for standalone server
+COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./public
+# Copy package-lock.json for npm ci
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package-lock.json ./
+
+# Install production dependencies with npm (avoid pnpm symlink issues)
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Ensure the nextjs user has write permissions to /app
 RUN chown nextjs:nodejs /app && chmod 755 /app
