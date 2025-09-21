@@ -111,17 +111,7 @@ func main() {
 	signInURL := cfg.WebAppURL + "/sign-in"
 	v1.Get("/attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadAttachment)
 	v1.Get("/comment-attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadCommentAttachment)
-
-	// Admin routes (require Supervisor or Manager roles)
-	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
-	admin.Post("/tickets/:id/classify", h.TicketsClassify)
-	admin.Put("/tickets/:id/red-flags", h.TicketsUpdateRedFlags)
-	admin.Put("/tickets/:id/impact-assessment", h.TicketsUpdateImpactAssessment)
-	admin.Put("/tickets/:id/urgency-timeline", h.TicketsUpdateUrgencyTimeline)
-	admin.Post("/tickets/:id/effort", h.TicketsUpdateEffort)
-
-	// Static file serving - protected with authentication
-	app.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {
+	v1.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {
 		// Extract the file path after /uploads/
 		filePath := c.Params("*")
 		fullPath := filepath.Join(cfg.UploadDir, filePath)
@@ -133,8 +123,21 @@ func main() {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "access denied"}})
 		}
 		
+		// Check if file exists
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "file not found"}})
+		}
+		
 		return c.SendFile(fullPath)
 	})
+
+	// Admin routes (require Supervisor or Manager roles)
+	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
+	admin.Post("/tickets/:id/classify", h.TicketsClassify)
+	admin.Put("/tickets/:id/red-flags", h.TicketsUpdateRedFlags)
+	admin.Put("/tickets/:id/impact-assessment", h.TicketsUpdateImpactAssessment)
+	admin.Put("/tickets/:id/urgency-timeline", h.TicketsUpdateUrgencyTimeline)
+	admin.Post("/tickets/:id/effort", h.TicketsUpdateEffort)
 	
 	// Swagger UI
 	app.Static("/swagger", "./public")

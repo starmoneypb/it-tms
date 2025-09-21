@@ -71,8 +71,8 @@ func AuthRequiredWithRedirect(secret string, signInURL string) fiber.Handler {
 		if tok == "" {
 			// Check if this is a browser request by looking at Accept header
 			accept := c.Get("Accept")
-			if strings.Contains(accept, "text/html") || strings.Contains(accept, "image/") {
-				// Browser request (HTML or image) - redirect to sign-in
+			if strings.Contains(accept, "text/html") {
+				// Browser request - redirect to sign-in
 				return c.Redirect(signInURL)
 			}
 			// API request - return JSON error
@@ -86,8 +86,8 @@ func AuthRequiredWithRedirect(secret string, signInURL string) fiber.Handler {
 			log.Warn().Err(err).Msg("invalid token")
 			// Check if this is a browser request
 			accept := c.Get("Accept")
-			if strings.Contains(accept, "text/html") || strings.Contains(accept, "image/") {
-				// Browser request (HTML or image) - redirect to sign-in
+			if strings.Contains(accept, "text/html") {
+				// Browser request - redirect to sign-in
 				return c.Redirect(signInURL)
 			}
 			// API request - return JSON error
@@ -98,8 +98,8 @@ func AuthRequiredWithRedirect(secret string, signInURL string) fiber.Handler {
 			if time.Now().After(time.Unix(int64(exp), 0)) {
 				// Check if this is a browser request
 				accept := c.Get("Accept")
-				if strings.Contains(accept, "text/html") || strings.Contains(accept, "image/") {
-					// Browser request (HTML or image) - redirect to sign-in
+				if strings.Contains(accept, "text/html") {
+					// Browser request - redirect to sign-in
 					return c.Redirect(signInURL)
 				}
 				// API request - return JSON error
