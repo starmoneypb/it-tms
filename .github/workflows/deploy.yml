@@ -50,8 +50,16 @@ jobs:
             sleep 10
             sudo docker-compose -f docker-compose.gcp.yml ps
             
-            echo 'Reloading nginx configuration...'
-            sudo docker-compose -f docker-compose.gcp.yml exec nginx nginx -s reload || echo 'Nginx reload failed, but continuing...'
+            echo 'Checking if SSL certificates exist and switching to SSL config if available...'
+            if [ -f '/etc/letsencrypt/live/unisight.dev/fullchain.pem' ]; then
+              echo 'SSL certificates found, switching to SSL configuration...'
+              sudo cp nginx/nginx-ssl.conf nginx/nginx.conf
+              sudo docker-compose -f docker-compose.gcp.yml restart nginx
+              echo 'SSL configuration activated!'
+            else
+              echo 'SSL certificates not found, running with HTTP-only configuration.'
+              echo 'To enable SSL later, run: sudo cp nginx/nginx-ssl.conf nginx/nginx.conf && sudo docker-compose -f docker-compose.gcp.yml restart nginx'
+            fi
             
             echo 'Deployment completed successfully!'
           "
