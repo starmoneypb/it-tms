@@ -33,6 +33,9 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
+# Backup public directory before build
+RUN cp -r public public-backup || echo "No public directory found"
+
 # Build with minimal cache and clean up immediately
 RUN --mount=type=cache,target=/root/.cache/pnpm \
     --mount=type=cache,target=/root/.cache/next \
@@ -42,6 +45,9 @@ RUN --mount=type=cache,target=/root/.cache/pnpm \
     rm -rf /tmp/* && \
     pnpm prune --prod && \
     find . -name "*.tsbuildinfo" -delete
+
+# Restore public directory if it was lost during build
+RUN [ -d public ] || ([ -d public-backup ] && cp -r public-backup public) || mkdir -p public
 
 # Run stage
 FROM node:20-alpine
@@ -64,7 +70,17 @@ COPY --chown=nextjs:nodejs packages/ui/package.json ./packages/ui/
 
 # Copy built files and static assets
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+# Ensure public directory exists and copy if available from builder
+RUN mkdir -p ./apps/web/public
+RUN --mount=from=builder,source=/app/apps/web,target=/tmp/builder-source \
+    if [ -d /tmp/builder-source/public ]; then \
+      echo "Copying public directory from builder..."; \
+      cp -r /tmp/builder-source/public/* ./apps/web/public/ 2>/dev/null || echo "Public directory is empty"; \
+    else \
+      echo "No public directory found in builder stage"; \
+    fi && \
+    chown -R nextjs:nodejs ./apps/web/public
 
 # Ensure the nextjs user has write permissions to /app
 RUN chown nextjs:nodejs /app && chmod 755 /app
