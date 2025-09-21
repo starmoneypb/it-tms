@@ -19,8 +19,6 @@ func main() {
 	if err != nil { panic(err) }
 	defer pool.Close()
 
-	_, _ = pool.Exec(ctx, `DELETE FROM users`)
-	
 	users := []struct{
 		Name, Email, Role, Password string
 	}{
@@ -34,11 +32,24 @@ func main() {
 		{"สิริพรภา แฝงนาคำ", "siripornpa@demo.com", "User", "Password!1"},
 		{"ธีรัช นาคสุทธิ์", "teerat@demo.com", "User", "Password!1"},
 	}
+	
+	fmt.Println("Seeding users (only if they don't exist)...")
 	for _, u := range users {
 		hash, _ := bcrypt.GenerateFromPassword([]byte(u.Password), 12)
-		_, _ = pool.Exec(ctx, `INSERT INTO users (name, email, role, password_hash) 
-								VALUES ($1,$2,$3,$4)`,
+		result, err := pool.Exec(ctx, `INSERT INTO users (name, email, role, password_hash) 
+								VALUES ($1,$2,$3,$4)
+								ON CONFLICT (email) DO NOTHING`,
 			u.Name, u.Email, u.Role, string(hash))
+		if err != nil {
+			fmt.Printf("Error seeding user %s: %v\n", u.Email, err)
+		} else {
+			rowsAffected := result.RowsAffected()
+			if rowsAffected > 0 {
+				fmt.Printf("✓ Created user: %s (%s)\n", u.Name, u.Email)
+			} else {
+				fmt.Printf("- User already exists: %s (%s)\n", u.Name, u.Email)
+			}
+		}
 	}
 
 	// Clear existing tickets and related data
