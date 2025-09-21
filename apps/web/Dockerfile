@@ -23,6 +23,9 @@ RUN pnpm install --frozen-lockfile && \
 COPY apps/web ./apps/web
 COPY packages ./packages
 
+# Preserve public directory before build (Next.js standalone doesn't include it)
+RUN cp -r ./apps/web/public ./public-backup
+
 # Build the web app
 WORKDIR /app/apps/web
 # Build with environment variables
@@ -61,7 +64,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Copy built files and static assets
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./apps/web/public
 
 # Ensure the nextjs user has write permissions to /app
 RUN chown nextjs:nodejs /app && chmod 755 /app
