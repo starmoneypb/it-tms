@@ -46,7 +46,14 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Only match routes that need locale processing - exclude ALL static assets
-    '/((?!api|_next|favicon|logo|.*\\..*).+)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     * - Any path with a file extension (static assets)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\..*).*)',
   ],
 };

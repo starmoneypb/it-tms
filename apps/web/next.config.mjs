@@ -11,6 +11,8 @@ const nextConfig = {
   trailingSlash: false,
   // Configure asset prefix for production
   assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  // Enable standalone output for Docker optimization
+  output: 'standalone',
 };
 
 export default withNextIntl(nextConfig);
