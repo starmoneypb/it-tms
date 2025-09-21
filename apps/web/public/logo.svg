@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="IT Ticket Management Symbolic Logo">
+  <title>IT Ticket Management Symbolic Logo</title>
+  <defs>
+    <!-- Modern gradient; change stops to rebrand -->
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+
+    <!-- Mask builds a minimalist ticket shape with a cut-out check mark -->
+    <mask id="ticketMask" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <!-- Everything starts invisible -->
+      <rect x="0" y="0" width="256" height="256" fill="black"/>
+      <!-- Ticket base -->
+      <rect x="48" y="48" width="160" height="160" rx="36" ry="36" fill="white"/>
+      <!-- Side notches (semi-circular cuts) -->
+      <circle cx="48" cy="128" r="24" fill="black"/>
+      <circle cx="208" cy="128" r="24" fill="black"/>
+      <!-- Check mark cut-out to symbolize resolution -->
+      <path d="M92 134 L116 158 L168 104" fill="none" stroke="black" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <!-- Render the logo with the mask -->
+  <rect x="0" y="0" width="256" height="256" fill="url(#g)" mask="url(#ticketMask)"/>
+</svg>
