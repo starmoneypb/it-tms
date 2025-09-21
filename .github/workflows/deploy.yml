@@ -1,0 +1,68 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  VM_ZONE: asia-southeast1-b
+  VM_NAME: unisight-dev-vm
+  DEPLOY_DIR: /opt/unisight
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: 'latest'
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Deploy to VM
+        run: |
+          echo "Starting deployment to production..."
+          
+          # SSH into VM and run deployment commands
+          gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="
+            set -e
+            echo 'Navigating to deployment directory...'
+            cd ${{ env.DEPLOY_DIR }}
+            
+            echo 'Pulling latest changes from main branch...'
+            sudo git pull origin main
+            
+            echo 'Building and deploying with docker-compose...'
+            sudo docker-compose -f docker-compose.gcp.yml build --no-cache web
+            
+            echo 'Starting services...'
+            sudo docker-compose -f docker-compose.gcp.yml up -d
+            
+            echo 'Checking service health...'
+            sleep 10
+            sudo docker-compose -f docker-compose.gcp.yml ps
+            
+            echo 'Reloading nginx configuration...'
+            sudo docker-compose -f docker-compose.gcp.yml exec nginx nginx -s reload || echo 'Nginx reload failed, but continuing...'
+            
+            echo 'Deployment completed successfully!'
+          "
+      
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment health..."
+          gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="
+            cd ${{ env.DEPLOY_DIR }}
+            echo 'Checking service status...'
+            sudo docker-compose -f docker-compose.gcp.yml ps
+            echo 'Checking container logs for any errors...'
+            sudo docker-compose -f docker-compose.gcp.yml logs --tail=20 web api
+          "
