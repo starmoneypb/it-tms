@@ -80,4 +80,4 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "server.js"]
