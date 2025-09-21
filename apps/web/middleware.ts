@@ -51,9 +51,10 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
+     * - uploads (upload directory - handled by nginx)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      * - Any path with a file extension (static assets)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\..*).*)',
+    '/((?!api|_next/static|_next/image|uploads|favicon.ico|sitemap.xml|robots.txt|.*\\..*).*)',
   ],
 };
