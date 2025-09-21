@@ -61,10 +61,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy the standalone server and its dependencies (includes node_modules)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-# Copy the static files to the correct location for standalone
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
-# Copy public directory to root level for standalone server
-COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./public
+# Copy the static files to the apps/web location where the server expects them
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+# Copy public directory to the apps/web location where the server expects them
+COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./apps/web/public
 
 # Ensure the nextjs user has write permissions to /app
 RUN chown nextjs:nodejs /app && chmod 755 /app
