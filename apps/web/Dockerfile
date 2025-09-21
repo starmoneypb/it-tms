@@ -34,12 +34,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Build with minimal cache and clean up immediately
-RUN --mount=type=cache,target=/tmp/buildcache \
-    TMPDIR=/tmp/buildcache pnpm run build && \
+RUN --mount=type=cache,target=/root/.cache/pnpm \
+    --mount=type=cache,target=/root/.cache/next \
+    pnpm run build && \
     rm -rf .next/cache && \
     rm -rf node_modules/.cache && \
     rm -rf /tmp/* && \
-    rm -rf /root/.cache && \
     pnpm prune --prod && \
     find . -name "*.tsbuildinfo" -delete
 
