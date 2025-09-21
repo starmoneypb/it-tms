@@ -324,6 +324,7 @@ export default function TicketDetails() {
       // Success - reload data and exit edit mode
       setIsEditing(false);
       load();
+      loadComments(1); // Reload comments to show auto-comment
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Failed to update ticket fields");
     } finally {
@@ -368,6 +369,7 @@ export default function TicketDetails() {
       // Success - reload data and exit edit mode
       setIsEditingContent(false);
       load();
+      loadComments(1); // Reload comments to show auto-comment
     } catch (error) {
       setContentEditError(error instanceof Error ? error.message : "Failed to update ticket content");
     } finally {
