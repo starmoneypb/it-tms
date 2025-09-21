@@ -17,8 +17,7 @@ const nextConfig = {
   typescript: {
     tsconfigPath: './tsconfig.json',
   },
-  // Disable SWC cache to save space
-  swcMinify: true,
+  // SWC minification is enabled by default in Next.js 15
   // Configure images to allow SVG files
   images: {
     dangerouslyAllowSVG: true,
