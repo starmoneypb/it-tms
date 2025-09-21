@@ -15,7 +15,9 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/ui/package.json ./packages/ui/
 
 # Install workspace dependencies (including dev dependencies needed for build)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile && \
+    rm -rf /root/.cache && \
+    rm -rf /tmp/*
 
 # Copy source files
 COPY apps/web ./apps/web
@@ -26,12 +28,20 @@ WORKDIR /app/apps/web
 # Build with environment variables
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-RUN pnpm run build
 
-# Clean up build artifacts to save space
-RUN rm -rf node_modules/.cache && \
+# Disable TypeScript incremental compilation to save space
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
+# Build with minimal cache and clean up immediately
+RUN --mount=type=cache,target=/tmp/buildcache \
+    TMPDIR=/tmp/buildcache pnpm run build && \
     rm -rf .next/cache && \
-    pnpm prune --prod
+    rm -rf node_modules/.cache && \
+    rm -rf /tmp/* && \
+    rm -rf /root/.cache && \
+    pnpm prune --prod && \
+    find . -name "*.tsbuildinfo" -delete
 
 # Run stage
 FROM node:20-alpine

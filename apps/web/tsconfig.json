@@ -20,7 +20,7 @@
       "dom.iterable",
       "esnext"
     ],
-    "incremental": true,
+    "incremental": false,
     "esModuleInterop": true,
     "isolatedModules": true,
     "plugins": [
