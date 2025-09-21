@@ -43,23 +43,42 @@ jobs:
             echo 'Building and deploying with docker-compose...'
             sudo docker-compose -f docker-compose.gcp.yml build --no-cache web
             
-            echo 'Starting services...'
-            sudo docker-compose -f docker-compose.gcp.yml up -d
+            echo 'Starting core services first (without nginx)...'
+            sudo docker-compose -f docker-compose.gcp.yml up -d db db-migrate db-seed api web
+            
+            echo 'Waiting for services to be ready...'
+            sleep 15
+            
+            echo 'Checking SSL certificates...'
+            if [ ! -f '/etc/letsencrypt/live/unisight.dev/fullchain.pem' ]; then
+              echo 'SSL certificates not found, generating new ones...'
+              
+              # Start nginx with HTTP-only config temporarily
+              sudo cp nginx/nginx.conf nginx/nginx.conf.temp
+              sudo docker-compose -f docker-compose.gcp.yml up -d nginx
+              
+              # Wait for nginx to be ready
+              sleep 10
+              
+              # Generate SSL certificates
+              echo 'Requesting SSL certificate from Let'\''s Encrypt...'
+              sudo docker run --rm -v certbot-etc:/etc/letsencrypt -v certbot-var:/var/lib/letsencrypt -v certbot-www:/var/www/certbot certbot/certbot certonly --webroot -w /var/www/certbot -d unisight.dev -d www.unisight.dev --email admin@unisight.dev --agree-tos --non-interactive --expand
+              
+              if [ -f '/etc/letsencrypt/live/unisight.dev/fullchain.pem' ]; then
+                echo 'SSL certificates generated successfully!'
+              else
+                echo 'SSL certificate generation failed, continuing with HTTP-only...'
+              fi
+            else
+              echo 'SSL certificates already exist!'
+            fi
+            
+            echo 'Starting nginx with final configuration...'
+            sudo docker-compose -f docker-compose.gcp.yml up -d nginx
             
             echo 'Checking service health...'
             sleep 10
             sudo docker-compose -f docker-compose.gcp.yml ps
-            
-            echo 'Checking if SSL certificates exist and switching to SSL config if available...'
-            if [ -f '/etc/letsencrypt/live/unisight.dev/fullchain.pem' ]; then
-              echo 'SSL certificates found, switching to SSL configuration...'
-              sudo cp nginx/nginx-ssl.conf nginx/nginx.conf
-              sudo docker-compose -f docker-compose.gcp.yml restart nginx
-              echo 'SSL configuration activated!'
-            else
-              echo 'SSL certificates not found, running with HTTP-only configuration.'
-              echo 'To enable SSL later, run: sudo cp nginx/nginx-ssl.conf nginx/nginx.conf && sudo docker-compose -f docker-compose.gcp.yml restart nginx'
-            fi
             
             echo 'Deployment completed successfully!'
           "
