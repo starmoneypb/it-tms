@@ -68,11 +68,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 # Copy public directory to root level for standalone server
 COPY --from=builder --chown=nextjs:nodejs /app/public-backup ./public
-# Copy package-lock.json for npm ci
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package-lock.json ./
 
 # Install production dependencies with npm (avoid pnpm symlink issues)
-RUN npm ci --omit=dev --legacy-peer-deps
+# Use npm install instead of npm ci since we don't have package-lock.json (using pnpm)
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Ensure the nextjs user has write permissions to /app
 RUN chown nextjs:nodejs /app && chmod 755 /app
