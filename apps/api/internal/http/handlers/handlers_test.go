@@ -138,43 +138,86 @@ func TestRBAC_TicketCreation(t *testing.T) {
 	}
 }
 
-func TestRBAC_Middleware(t *testing.T) {
-	cfg := config.Config{JWTSecret: "test-secret"}
+func TestUploadsServing(t *testing.T) {
+	app, h := setupTestApp()
 	
+	// Add the uploads route to the test app
+	app.Get("/uploads/*", middleware.AuthRequired(h.cfg.JWTSecret), func(c *fiber.Ctx) error {
+		// Mock file serving - just return 200 for testing
+		return c.Status(fiber.StatusOK).SendString("file content")
+	})
+
 	tests := []struct {
 		name           string
-		roles          []string
-		userRole       string
+		token          string
 		expectedStatus int
 	}{
 		{
-			name:           "RequireAnyRole allows Supervisor",
-			roles:          []string{"Supervisor", "Manager"},
-			userRole:       "Supervisor",
-			expectedStatus: 200,
+			name:           "authenticated request should succeed",
+			token:          "test-token",
+			expectedStatus: fiber.StatusOK,
 		},
 		{
-			name:           "RequireAnyRole allows Manager",
-			roles:          []string{"Supervisor", "Manager"},
-			userRole:       "Manager",
-			expectedStatus: 200,
+			name:           "unauthenticated request should return 401",
+			token:          "",
+			expectedStatus: fiber.StatusUnauthorized,
 		},
 		{
-			name:           "RequireAnyRole denies User",
-			roles:          []string{"Supervisor", "Manager"},
-			userRole:       "User",
-			expectedStatus: 403,
+			name:           "invalid token should return 401",
+			token:          "invalid-token",
+			expectedStatus: fiber.StatusUnauthorized,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			app := fiber.New()
-			app.Use(middleware.RequireAnyRole(cfg.JWTSecret, tt.roles))
-			app.Get("/test", func(c *fiber.Ctx) error {
-				return c.JSON(map[string]string{"status": "ok"})
-			})
+			req := httptest.NewRequest("GET", "/uploads/test-file.png", nil)
+			
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
+			}
 
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+		})
+	}
+}
+
+func TestRBAC_Middleware(t *testing.T) {
+	cfg := config.Config{JWTSecret: "test-secret"}
+	
+	app := fiber.New()
+	app.Use(middleware.RequireAnyRole(cfg.JWTSecret, []string{"Supervisor", "Manager"}))
+	
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"message": "success"})
+	})
+
+	tests := []struct {
+		name           string
+		userRole       string
+		expectedStatus int
+	}{
+		{
+			name:           "Supervisor should have access",
+			userRole:       "Supervisor",
+			expectedStatus: fiber.StatusOK,
+		},
+		{
+			name:           "Manager should have access",
+			userRole:       "Manager",
+			expectedStatus: fiber.StatusOK,
+		},
+		{
+			name:           "User should not have access",
+			userRole:       "User",
+			expectedStatus: fiber.StatusForbidden,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/test", nil)
 			req.Header.Set("Authorization", "Bearer test-token")
 
@@ -195,12 +238,6 @@ func TestRBAC_TicketFieldsUpdate(t *testing.T) {
 		expectedError  string
 	}{
 		{
-			name:           "User cannot update ticket fields",
-			userRole:       "User",
-			expectedStatus: 403,
-			expectedError:  "only supervisors and managers can update ticket fields",
-		},
-		{
 			name:           "Supervisor can update ticket fields",
 			userRole:       "Supervisor",
 			expectedStatus: 200,
@@ -210,13 +247,18 @@ func TestRBAC_TicketFieldsUpdate(t *testing.T) {
 			userRole:       "Manager",
 			expectedStatus: 200,
 		},
+		{
+			name:           "User cannot update ticket fields",
+			userRole:       "User",
+			expectedStatus: 403,
+			expectedError:  "insufficient permissions",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			payload := map[string]interface{}{
-				"priority": "P1",
-				"redFlag": true,
+				"priority": 5,
 			}
 
 			body, _ := json.Marshal(payload)

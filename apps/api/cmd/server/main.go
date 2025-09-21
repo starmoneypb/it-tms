@@ -120,8 +120,8 @@ func main() {
 	admin.Put("/tickets/:id/urgency-timeline", h.TicketsUpdateUrgencyTimeline)
 	admin.Post("/tickets/:id/effort", h.TicketsUpdateEffort)
 
-	// Static file serving - protected with authentication
-	app.Get("/uploads/*", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {
+	// Static file serving - protected with authentication (no redirect for images)
+	app.Get("/uploads/*", middleware.AuthRequired(cfg.JWTSecret), func(c *fiber.Ctx) error {
 		// Extract the file path after /uploads/
 		filePath := c.Params("*")
 		fullPath := filepath.Join(cfg.UploadDir, filePath)
