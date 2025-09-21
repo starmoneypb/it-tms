@@ -139,7 +139,15 @@ export default function TicketDetails() {
 
   function loadComments(page = 1, pageSize = commentPagination.pageSize) {
     setCommentsLoading(true);
-    fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}`, { credentials: "include" })
+    // Add cache-busting timestamp to prevent browser caching
+    const timestamp = Date.now();
+    fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}&_t=${timestamp}`, { 
+      credentials: "include",
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    })
       .then((r) => r.json())
       .then((j) => {
         setComments(j.data.comments);
@@ -324,7 +332,8 @@ export default function TicketDetails() {
       // Success - reload data and exit edit mode
       setIsEditing(false);
       load();
-      loadComments(1); // Reload comments to show auto-comment
+      // Small delay to ensure auto-comment is processed before reloading
+      setTimeout(() => loadComments(1), 500);
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Failed to update ticket fields");
     } finally {
@@ -369,7 +378,8 @@ export default function TicketDetails() {
       // Success - reload data and exit edit mode
       setIsEditingContent(false);
       load();
-      loadComments(1); // Reload comments to show auto-comment
+      // Small delay to ensure auto-comment is processed before reloading
+      setTimeout(() => loadComments(1), 500);
     } catch (error) {
       setContentEditError(error instanceof Error ? error.message : "Failed to update ticket content");
     } finally {

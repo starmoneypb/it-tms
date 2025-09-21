@@ -943,6 +943,11 @@ func (h *Handlers) TicketsGetComments(c *fiber.Ctx) error {
 	if pageSize <= 0 { pageSize = 10 }
 	if pageSize > 50 { pageSize = 50 }
 	
+	// Set no-cache headers to prevent caching
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+	
 	ctx := context.Background()
 	comments, total, err := h.repo.Tickets.GetCommentsPaginated(ctx, id, page, pageSize)
 	if err != nil {
