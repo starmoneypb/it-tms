@@ -28,6 +28,8 @@ RUN pnpm install --frozen-lockfile
 # Backup public directory before build (Next.js might modify it)
 RUN cp -r public public-backup 2>/dev/null || echo "No public directory to backup"
 # Build with environment variables
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN pnpm run build
 # Restore public directory if it was lost during build
 RUN [ -d public ] || ([ -d public-backup ] && cp -r public-backup public) || mkdir -p public

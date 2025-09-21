@@ -126,10 +126,11 @@ services:
     build:
       context: .
       dockerfile: ./apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://unisight.dev/api
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: https://unisight.dev
       NEXT_TELEMETRY_DISABLED: 1
     depends_on:
       api:
