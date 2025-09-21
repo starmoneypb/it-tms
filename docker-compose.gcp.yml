@@ -66,6 +66,7 @@ services:
       target: builder
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      GO_ENV: production
     depends_on:
       db-migrate:
         condition: service_completed_successfully

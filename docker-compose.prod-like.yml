@@ -56,6 +56,7 @@ services:
       target: builder
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-secure_postgres_password}@db:5432/${POSTGRES_DB:-it_tms}?sslmode=disable
+      GO_ENV: production
     depends_on:
       db-migrate:
         condition: service_completed_successfully

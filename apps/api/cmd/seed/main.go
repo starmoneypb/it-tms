@@ -52,14 +52,24 @@ func main() {
 		}
 	}
 
-	// Clear existing tickets and related data
-	_, _ = pool.Exec(ctx, `DELETE FROM user_scores`)
-	_, _ = pool.Exec(ctx, `DELETE FROM audit_logs`)
-	_, _ = pool.Exec(ctx, `DELETE FROM comment_attachments`)
-	_, _ = pool.Exec(ctx, `DELETE FROM comments`)
-	_, _ = pool.Exec(ctx, `DELETE FROM ticket_assignments`)
-	_, _ = pool.Exec(ctx, `DELETE FROM attachments`)
-	_, _ = pool.Exec(ctx, `DELETE FROM tickets`)
+	// SAFETY CHECK: Only clear tickets in development environment
+	// NEVER delete tickets in production!
+	goEnv := env("GO_ENV", "development")
+	if goEnv == "production" {
+		fmt.Println("⚠️  PRODUCTION ENVIRONMENT DETECTED - Skipping ticket deletion!")
+		fmt.Println("   Only users will be seeded, existing tickets will be preserved.")
+	} else {
+		fmt.Println("🧹 Development environment - Clearing existing tickets...")
+		// Clear existing tickets and related data (DEVELOPMENT ONLY)
+		_, _ = pool.Exec(ctx, `DELETE FROM user_scores`)
+		_, _ = pool.Exec(ctx, `DELETE FROM audit_logs`)
+		_, _ = pool.Exec(ctx, `DELETE FROM comment_attachments`)
+		_, _ = pool.Exec(ctx, `DELETE FROM comments`)
+		_, _ = pool.Exec(ctx, `DELETE FROM ticket_assignments`)
+		_, _ = pool.Exec(ctx, `DELETE FROM attachments`)
+		_, _ = pool.Exec(ctx, `DELETE FROM tickets`)
+		fmt.Println("✅ Tickets cleared for development")
+	}
 	
 	// Note: All ticket creation logic has been disabled per user request
 	// Only users will be seeded, no tickets will be created

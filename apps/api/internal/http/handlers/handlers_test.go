@@ -141,30 +141,41 @@ func TestRBAC_TicketCreation(t *testing.T) {
 func TestUploadsServing(t *testing.T) {
 	app, h := setupTestApp()
 	
-	// Add the uploads route to the test app
-	app.Get("/uploads/*", middleware.AuthRequired(h.cfg.JWTSecret), func(c *fiber.Ctx) error {
+	// Add the uploads route to the test app with redirect middleware
+	signInURL := h.cfg.WebAppURL + "/sign-in"
+	app.Get("/uploads/*", middleware.AuthRequiredWithRedirect(h.cfg.JWTSecret, signInURL), func(c *fiber.Ctx) error {
 		// Mock file serving - just return 200 for testing
 		return c.Status(fiber.StatusOK).SendString("file content")
 	})
 
 	tests := []struct {
 		name           string
-		token          string
+		hasAuth        bool
+		acceptHeader   string
 		expectedStatus int
 	}{
 		{
-			name:           "authenticated request should succeed",
-			token:          "test-token",
-			expectedStatus: fiber.StatusOK,
+			name:           "unauthenticated HTML request should redirect",
+			hasAuth:        false,
+			acceptHeader:   "text/html",
+			expectedStatus: fiber.StatusFound, // 302 redirect
 		},
 		{
-			name:           "unauthenticated request should return 401",
-			token:          "",
+			name:           "unauthenticated image request should redirect",
+			hasAuth:        false,
+			acceptHeader:   "image/png",
+			expectedStatus: fiber.StatusFound, // 302 redirect
+		},
+		{
+			name:           "unauthenticated API request should return 401",
+			hasAuth:        false,
+			acceptHeader:   "application/json",
 			expectedStatus: fiber.StatusUnauthorized,
 		},
 		{
 			name:           "invalid token should return 401",
-			token:          "invalid-token",
+			hasAuth:        true,
+			acceptHeader:   "application/json",
 			expectedStatus: fiber.StatusUnauthorized,
 		},
 	}
@@ -172,9 +183,10 @@ func TestUploadsServing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/uploads/test-file.png", nil)
+			req.Header.Set("Accept", tt.acceptHeader)
 			
-			if tt.token != "" {
-				req.Header.Set("Authorization", "Bearer "+tt.token)
+			if tt.hasAuth {
+				req.Header.Set("Authorization", "Bearer invalid-token")
 			}
 
 			resp, err := app.Test(req)
