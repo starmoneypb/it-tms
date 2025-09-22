@@ -198,14 +198,12 @@ func (h *Handlers) UsersSearch(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"search failed"}})
 	}
 	
-	// Convert profile picture paths to URLs and remove password hashes
+	// Prepare user data and remove password hashes
 	var result []fiber.Map
 	for _, user := range users {
 		var profilePictureURL *string
 		if user.ProfilePicture != nil && *user.ProfilePicture != "" {
-			filename := filepath.Base(*user.ProfilePicture)
-			url := fmt.Sprintf("/uploads/%s", filename)
-			profilePictureURL = &url
+			profilePictureURL = user.ProfilePicture
 		}
 		
 		result = append(result, fiber.Map{
