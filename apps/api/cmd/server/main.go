@@ -27,7 +27,7 @@ func main() {
 
 	// Logger
 	logger.Init()
-	log.Info().Msg("Starting IT-TMS API")
+	log.Info().Msg("Starting UniSight API")
 
 	// DB
 	ctx := context.Background()
