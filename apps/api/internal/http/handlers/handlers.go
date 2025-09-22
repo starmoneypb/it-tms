@@ -1695,8 +1695,18 @@ func (h *Handlers) convertProfilePictureToURL(profilePicture *string) *string {
 	if profilePicture == nil || *profilePicture == "" {
 		return nil
 	}
-	// Profile picture URLs are already in the correct format (/profile-pictures/{id}/download)
-	// No conversion needed
+	
+	// Debug logging to track profile picture URL format
+	log.Printf("Debug: Profile picture URL from database: %s", *profilePicture)
+	
+	// Profile picture URLs should be in the correct format (/profile-pictures/{id}/download)
+	// If they're not, it means there's old data that needs cleaning
+	if !strings.HasPrefix(*profilePicture, "/profile-pictures/") {
+		log.Printf("Warning: Found old profile picture format: %s", *profilePicture)
+		// Return nil for old format URLs to show fallback avatar
+		return nil
+	}
+	
 	return profilePicture
 }
 
