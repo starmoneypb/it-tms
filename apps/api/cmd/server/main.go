@@ -93,7 +93,8 @@ func main() {
 	// Socket.IO proxy to handle Socket.IO requests
 	app.All("/socket.io/*", func(c *fiber.Ctx) error {
 		// Proxy Socket.IO requests to the Socket.IO server
-		return proxy.Forward("http://localhost:8081")(c)
+		// In Docker, use the service name 'api' instead of localhost
+		return proxy.Forward("http://api:8081")(c)
 	})
 
 	// API v1 routes with CORS

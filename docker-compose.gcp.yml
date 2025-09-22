@@ -109,6 +109,9 @@ services:
         condition: service_completed_successfully
     networks:
       - app-network
+    expose:
+      - "8080"
+      - "8081"
     deploy:
       resources:
         limits:
@@ -135,7 +138,7 @@ services:
       dockerfile: ./apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://unisight.dev
-        NEXT_PUBLIC_WS_URL: wss://unisight.dev/ws
+        NEXT_PUBLIC_SOCKET_URL: https://unisight.dev
     restart: unless-stopped
     environment:
       NODE_ENV: production
