@@ -44,7 +44,7 @@ jobs:
             sudo cp env.gcp .env
             
             echo 'Injecting GCS credentials from GitHub secret...'
-            echo 'GOOGLE_APPLICATION_CREDENTIALS_JSON='"'"'${{ secrets.GCP_SA_KEY }}'"'"'' | sudo tee -a .env
+            echo \"GOOGLE_APPLICATION_CREDENTIALS_JSON='${{ secrets.GCP_SA_KEY }}'\" | sudo tee -a .env
             
             echo 'Building and deploying with docker-compose...'
             sudo docker-compose -f docker-compose.gcp.yml build --no-cache web
