@@ -129,6 +129,7 @@ services:
       dockerfile: ./apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://unisight.dev
+        NEXT_PUBLIC_WS_URL: wss://unisight.dev/ws
     restart: unless-stopped
     environment:
       NODE_ENV: production

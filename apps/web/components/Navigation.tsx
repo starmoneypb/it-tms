@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
+import { useNotifications } from "../lib/notifications";
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
 import { useTranslations, useLocale } from 'next-intl';
 import { LanguageToggle } from './LanguageToggle';
@@ -15,6 +16,7 @@ const API = typeof window !== 'undefined' && window.location.port === '8000'
 
 export function Navigation() {
   const { user, isLoading, signOut, hasAnyRole } = useAuth();
+  const { unreadCount, markAsRead } = useNotifications();
   const t = useTranslations('navigation');
   const locale = useLocale();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -111,9 +113,15 @@ export function Navigation() {
         </Link>
         <Link 
           href={createLocalizedUrl("/tickets")} 
-          className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+          className="text-sm font-medium text-white/80 hover:text-white transition-colors relative"
+          onClick={() => markAsRead()}
         >
           {t('tickets')}
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </Link>
         {user && (
           <Link 
@@ -227,10 +235,18 @@ export function Navigation() {
             </Link>
             <Link 
               href={createLocalizedUrl("/tickets")} 
-              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
-              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 relative"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                markAsRead();
+              }}
             >
               {t('tickets')}
+              {unreadCount > 0 && (
+                <span className="absolute right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
             {user && (
               <Link 

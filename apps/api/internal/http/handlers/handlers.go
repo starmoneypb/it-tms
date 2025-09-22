@@ -26,6 +26,7 @@ import (
 	"github.com/it-tms/apps/api/internal/effort"
 	"github.com/it-tms/apps/api/internal/repositories"
 	"github.com/it-tms/apps/api/internal/storage"
+	"github.com/it-tms/apps/api/internal/websocket"
 	"github.com/it-tms/apps/api/pkg/config"
 )
 
@@ -34,14 +35,16 @@ type Handlers struct {
 	pool    *pgxpool.Pool
 	repo    *repositories.Repo
 	storage *storage.StorageService
+	wsHub   *websocket.Hub
 }
 
-func New(pool *pgxpool.Pool, cfg config.Config, storageService *storage.StorageService) *Handlers {
+func New(pool *pgxpool.Pool, cfg config.Config, storageService *storage.StorageService, wsHub *websocket.Hub) *Handlers {
 	return &Handlers{
 		cfg:     cfg,
 		pool:    pool,
 		repo:    repositories.New(pool),
 		storage: storageService,
+		wsHub:   wsHub,
 	}
 }
 
@@ -338,6 +341,12 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to create"}})
 	}
 	h.repo.Audits.Insert(ctx, t.ID, createdBy, "create_ticket", nil, t)
+	
+	// Send WebSocket notification to all connected clients except the creator
+	if h.wsHub != nil {
+		h.wsHub.NotifyTicketCreated(&t, createdBy)
+	}
+	
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(t))
 }
 
@@ -757,6 +766,21 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
             }
             h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 		}
+		
+		// Send WebSocket notifications to newly assigned users
+		if h.wsHub != nil && err == nil {
+			// Find newly assigned users
+			currentAssigneeMap := make(map[string]bool)
+			for _, assignee := range currentAssignees {
+				currentAssigneeMap[assignee.ID] = true
+			}
+			
+			for _, assignee := range newAssignees {
+				if !currentAssigneeMap[assignee.ID] {
+					h.wsHub.NotifyTicketAssigned(id, assignee.ID, &ticket)
+				}
+			}
+		}
 	}
 	
 	h.repo.Audits.Insert(ctx, id, &userID, "assign", nil, body)
@@ -833,6 +857,13 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 			} else {
 				// No assignees left - remove all points for this ticket
 				h.repo.UserScores.RemoveAllPointsForTicket(ctx, id)
+			}
+		}
+		
+		// Send WebSocket notifications to unassigned users
+		if h.wsHub != nil && err == nil {
+			for _, unassigneeID := range body.AssigneeIDs {
+				h.wsHub.NotifyTicketUnassigned(id, unassigneeID, &ticket)
 			}
 		}
 	}

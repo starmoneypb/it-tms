@@ -24,7 +24,7 @@ func setupTestApp() (*fiber.App, *Handlers) {
 
 	// Create mock pool (in real tests, you'd use a test database)
 	pool := &pgxpool.Pool{}
-	h := New(pool, cfg)
+	h := New(pool, cfg, nil, nil)
 
 	app := fiber.New()
 	app.Use(middleware.AuthOptional(cfg.JWTSecret))

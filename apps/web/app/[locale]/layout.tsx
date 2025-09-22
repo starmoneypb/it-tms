@@ -3,7 +3,9 @@ import { getMessages } from 'next-intl/server';
 import { ReactNode } from 'react';
 import { HeroUIProvider } from "@heroui/react";
 import { AuthProvider } from "../../lib/auth";
+import { NotificationProvider } from "../../lib/notifications";
 import { Navigation } from "../../components/Navigation";
+import { NotificationToast } from "../../components/NotificationToast";
 import { locales } from "../../i18n";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 
@@ -45,15 +47,18 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages} locale={locale}>
       <HeroUIProvider>
         <AuthProvider>
-          <div 
-            className={locale === 'th' ? ibmPlexSansThai.className : undefined}
-            lang={locale}
-          >
-            <header className="sticky top-0 z-50 glass border-b border-white/10">
-              <Navigation />
-            </header>
-            <main className="min-h-screen py-8">{children}</main>
-          </div>
+          <NotificationProvider>
+            <div 
+              className={locale === 'th' ? ibmPlexSansThai.className : undefined}
+              lang={locale}
+            >
+              <header className="sticky top-0 z-50 glass border-b border-white/10">
+                <Navigation />
+              </header>
+              <main className="min-h-screen py-8">{children}</main>
+              <NotificationToast />
+            </div>
+          </NotificationProvider>
         </AuthProvider>
       </HeroUIProvider>
     </NextIntlClientProvider>

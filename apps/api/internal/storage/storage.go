@@ -102,14 +102,20 @@ func (s *StorageService) GetSignedURL(ctx context.Context, objectName string, ex
 	// Get bucket handle
 	bucket := s.client.Bucket(s.bucketName)
 	
-	// Generate signed URL using bucket method
+	// Try to generate signed URL using bucket method
 	url, err := bucket.SignedURL(objectName, &storage.SignedURLOptions{
 		Scheme:  storage.SigningSchemeV4,
 		Method:  "GET",
 		Expires: time.Now().Add(expiration),
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to generate signed URL: %w", err)
+		log.Printf("Failed to generate signed URL for %s, trying public URL: %v", objectName, err)
+		
+		// Fallback to public URL if signed URL generation fails
+		// This requires the bucket to be publicly readable
+		publicURL := s.GetPublicURL(objectName)
+		log.Printf("Using public URL as fallback: %s", publicURL)
+		return publicURL, nil
 	}
 	
 	return url, nil

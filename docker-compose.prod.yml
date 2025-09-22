@@ -72,6 +72,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
       NEXT_TELEMETRY_DISABLED: 1
     restart: unless-stopped
     # Remove port exposure in production (use reverse proxy)

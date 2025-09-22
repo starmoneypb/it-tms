@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/websocket/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -15,6 +16,7 @@ import (
 	"github.com/it-tms/apps/api/internal/http/handlers"
 	"github.com/it-tms/apps/api/internal/http/middleware"
 	"github.com/it-tms/apps/api/internal/storage"
+	wshub "github.com/it-tms/apps/api/internal/websocket"
 	"github.com/it-tms/apps/api/pkg/config"
 	"github.com/it-tms/apps/api/pkg/logger"
 )
@@ -81,8 +83,12 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// Initialize WebSocket hub
+	wsHub := wshub.NewHub()
+	go wsHub.Run()
+
 	// Initialize handlers
-	h := handlers.New(pool, cfg, storageService)
+	h := handlers.New(pool, cfg, storageService, wsHub)
 
 	// Health endpoint
 	app.Get("/healthz", func(c *fiber.Ctx) error {
@@ -91,6 +97,26 @@ func main() {
 			"time":   time.Now(),
 		})
 	})
+
+	// WebSocket route
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		// IsWebSocketUpgrade returns true if the client
+		// requested upgrade to the WebSocket protocol.
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+
+	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
+		// Get user ID from query parameter (for authenticated users)
+		var userID *string
+		if uid := c.Query("userId"); uid != "" {
+			userID = &uid
+		}
+		wsHub.HandleWebSocket(c, userID)
+	}))
 
 	// API v1 routes
 	v1 := app.Group("/api/v1")
