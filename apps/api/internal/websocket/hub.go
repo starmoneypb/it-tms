@@ -105,12 +105,8 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
-	// Start Socket.IO server on port 8081
-	go func() {
-		if err := h.server.Serve(); err != nil {
-			log.Fatal().Err(err).Msg("Socket.IO server failed to start")
-		}
-	}()
+	// Socket.IO server will be served by the main HTTP server
+	// No need to start a separate server
 }
 
 func (h *Hub) GetServer() *socketio.Server {
