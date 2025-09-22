@@ -168,6 +168,7 @@ export default function NewTicket() {
         const errorData = await res.text();
         console.error("Failed to create ticket:", errorData);
         alert(t('failedToSubmit'));
+        setSubmitting(false);
         return;
       }
       
@@ -194,12 +195,12 @@ export default function NewTicket() {
         }
       }
       
-      // Redirect after all uploads are complete
+      // Keep loading state active during redirect to prevent duplicate submissions
+      // Don't call setSubmitting(false) on success since we're redirecting
       window.location.href = `/${locale}/tickets/${ticketId}`;
     } catch (error) {
       console.error("Error submitting ticket:", error);
       alert(t('failedToSubmit'));
-    } finally {
       setSubmitting(false);
     }
   }

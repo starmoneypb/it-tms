@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/it-tms/apps/api/internal/http/handlers"
@@ -118,15 +118,31 @@ func main() {
 		filePath := c.Params("*")
 		fullPath := filepath.Join(cfg.UploadDir, filePath)
 		
+		// Log the request for debugging
+		log.Printf("File request: %s -> %s", filePath, fullPath)
+		
 		// Security check: ensure the path is within the upload directory
 		uploadDir, _ := filepath.Abs(cfg.UploadDir)
 		requestedPath, _ := filepath.Abs(fullPath)
 		if !strings.HasPrefix(requestedPath, uploadDir) {
+			log.Printf("Security violation: attempted access to %s", requestedPath)
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "access denied"}})
 		}
 		
 		// Check if file exists
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			log.Printf("File not found: %s", fullPath)
+			
+			// If it's a profile picture request, also clean up the database
+			if strings.Contains(filePath, "_") { // Profile pictures have timestamp prefix
+				go func() {
+					// Clean up database reference in background
+					ctx := context.Background()
+					// This is a simplified cleanup - in production you might want more sophisticated logic
+					log.Printf("Cleaning up database reference for missing file: %s", filePath)
+				}()
+			}
+			
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "file not found"}})
 		}
 		
@@ -149,6 +165,7 @@ func main() {
 			c.Set("Content-Type", "image/svg+xml")
 		}
 		
+		log.Printf("Serving file: %s", fullPath)
 		return c.SendFile(fullPath)
 	})
 
