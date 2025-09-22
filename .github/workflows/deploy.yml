@@ -45,17 +45,14 @@ jobs:
           sudo cp env.gcp .env
           EOF
           
-          # Create a base64 encoded credentials file to avoid GitHub Actions masking issues
-          echo '${{ secrets.GCP_SA_KEY }}' | base64 -w 0 > gcp_creds_b64.txt
-          
-          # Add the GCS credentials injection to the script using base64 decoding
+          # Add the GCS credentials injection to the script using Google Cloud Secret Manager
           echo "" >> deploy_script.sh
-          echo "echo 'Injecting GCS credentials from GitHub secret...'" >> deploy_script.sh
-          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$(cat ~/gcp_creds_b64.txt | base64 -d)" | sudo tee -a .env > /dev/null' >> deploy_script.sh
+          echo "echo 'Retrieving GCS credentials from Secret Manager...'" >> deploy_script.sh
+          echo 'GCS_CREDS=$(gcloud secrets versions access latest --secret="gcs-service-account-key" --project="unisight-472720")' >> deploy_script.sh
+          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$GCS_CREDS" | sudo tee -a .env > /dev/null' >> deploy_script.sh
           
-          # Copy script and credentials file to VM and execute it
+          # Copy script to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
-          gcloud compute scp gcp_creds_b64.txt ${{ env.VM_NAME }}:~/gcp_creds_b64.txt --zone=${{ env.VM_ZONE }}
           gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="chmod +x ~/deploy_script.sh && ~/deploy_script.sh"
           
           # Continue with the rest of the deployment
@@ -118,11 +115,11 @@ jobs:
             fi
             
             # Clean up temporary files
-            rm -f ~/deploy_script.sh ~/gcp_creds_b64.txt
+            rm -f ~/deploy_script.sh
           "
           
           # Clean up local temporary files
-          rm -f deploy_script.sh gcp_creds_b64.txt
+          rm -f deploy_script.sh
       
       - name: Verify deployment
         run: |
