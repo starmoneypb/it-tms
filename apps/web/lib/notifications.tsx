@@ -67,11 +67,22 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       console.log('Attempting WebSocket connection to:', wsUrl);
       setConnectionStatus('connecting');
+      
+      // Add connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.CONNECTING) {
+          console.error('WebSocket connection timeout');
+          wsRef.current.close();
+          setConnectionStatus('error');
+        }
+      }, 10000); // 10 second timeout
+      
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log('WebSocket connected successfully');
+        clearTimeout(connectionTimeout);
         setIsConnected(true);
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
@@ -128,6 +139,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
+        clearTimeout(connectionTimeout);
         setIsConnected(false);
         setConnectionStatus('disconnected');
         wsRef.current = null;
@@ -155,6 +167,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        clearTimeout(connectionTimeout);
         setIsConnected(false);
         setConnectionStatus('error');
       };

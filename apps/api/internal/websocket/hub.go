@@ -200,13 +200,23 @@ func (h *Hub) NotifyTicketUnassigned(ticketID string, unassignedUserID string, t
 }
 
 func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
+	log.Info().Str("userID", func() string {
+		if userID != nil {
+			return *userID
+		}
+		return "anonymous"
+	}()).Msg("WebSocket connection attempt")
+
 	client := &Client{
 		conn:   c,
 		userID: userID,
 		send:   make(chan []byte, 256),
 	}
 
-	h.register <- client
+	// Register client in a goroutine to avoid blocking
+	go func() {
+		h.register <- client
+	}()
 
 	// Start goroutines for reading and writing
 	go client.writePump(h)
@@ -215,7 +225,17 @@ func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
 
 func (c *Client) readPump(h *Hub) {
 	defer func() {
-		h.unregister <- c
+		log.Info().Str("userID", func() string {
+			if c.userID != nil {
+				return *c.userID
+			}
+			return "anonymous"
+		}()).Msg("WebSocket readPump exiting")
+		
+		// Unregister client in a goroutine to avoid blocking
+		go func() {
+			h.unregister <- c
+		}()
 		c.conn.Close()
 	}()
 
@@ -224,6 +244,12 @@ func (c *Client) readPump(h *Hub) {
 	c.conn.SetPongHandler(func(string) error {
 		// Reset read deadline when pong is received
 		c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
+		log.Debug().Str("userID", func() string {
+			if c.userID != nil {
+				return *c.userID
+			}
+			return "anonymous"
+		}()).Msg("WebSocket pong received")
 		return nil
 	})
 
@@ -231,17 +257,41 @@ func (c *Client) readPump(h *Hub) {
 		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error().Err(err).Msg("WebSocket read error")
+				log.Error().Err(err).Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket read error")
+			} else {
+				log.Debug().Err(err).Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket connection closed")
 			}
 			break
 		}
 
 		// Handle ping messages from client
 		if messageType == websocket.TextMessage && string(message) == "ping" {
+			log.Debug().Str("userID", func() string {
+				if c.userID != nil {
+					return *c.userID
+				}
+				return "anonymous"
+			}()).Msg("WebSocket ping received from client")
+			
 			// Send pong response
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.TextMessage, []byte("pong")); err != nil {
-				log.Error().Err(err).Msg("WebSocket pong write error")
+				log.Error().Err(err).Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket pong write error")
 				break
 			}
 		}
@@ -252,6 +302,12 @@ func (c *Client) writePump(h *Hub) {
 	// Send ping every 30 seconds to keep connection alive
 	ticker := time.NewTicker(30 * time.Second)
 	defer func() {
+		log.Info().Str("userID", func() string {
+			if c.userID != nil {
+				return *c.userID
+			}
+			return "anonymous"
+		}()).Msg("WebSocket writePump exiting")
 		ticker.Stop()
 		c.conn.Close()
 	}()
@@ -261,21 +317,43 @@ func (c *Client) writePump(h *Hub) {
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if !ok {
+				log.Debug().Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket send channel closed")
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Error().Err(err).Msg("WebSocket write error")
+				log.Error().Err(err).Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket write error")
 				return
 			}
 
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Error().Err(err).Msg("WebSocket ping error")
+				log.Error().Err(err).Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket ping error")
 				return
 			}
+			log.Debug().Str("userID", func() string {
+				if c.userID != nil {
+					return *c.userID
+				}
+				return "anonymous"
+			}()).Msg("WebSocket ping sent to client")
 		}
 	}
 }
