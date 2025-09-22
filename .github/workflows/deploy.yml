@@ -33,21 +33,22 @@ jobs:
           
           # Create temporary script to avoid command line parsing issues with JSON
           cat > deploy_script.sh << 'SCRIPT_EOF'
-          set -e
-          echo 'Navigating to deployment directory...'
-          cd ${{ env.DEPLOY_DIR }}
-          
-          echo 'Pulling latest changes from main branch...'
-          sudo git pull origin main
-          
-          echo 'Setting up environment file...'
-          sudo cp env.gcp .env
-          
-          echo 'Injecting GCS credentials from GitHub secret...'
-          cat >> .env << 'JSON_EOF'
-GOOGLE_APPLICATION_CREDENTIALS_JSON=${{ secrets.GCP_SA_KEY }}
-JSON_EOF
+#!/bin/bash
+set -e
+echo 'Navigating to deployment directory...'
+cd /opt/unisight
+
+echo 'Pulling latest changes from main branch...'
+sudo git pull origin main
+
+echo 'Setting up environment file...'
+sudo cp env.gcp .env
 SCRIPT_EOF
+          
+          # Add the GCS credentials injection to the script
+          echo "" >> deploy_script.sh
+          echo "echo 'Injecting GCS credentials from GitHub secret...'" >> deploy_script.sh
+          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON='"'"'${{ secrets.GCP_SA_KEY }}'"'"'" >> .env' >> deploy_script.sh
           
           # Copy script to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
