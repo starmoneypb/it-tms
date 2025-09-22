@@ -245,7 +245,7 @@ export default function ProfilePage() {
           <CardBody className="space-y-4">
             <div className="flex items-center gap-6">
               <Avatar
-                src={profile.profilePicture ? `${API}${profile.profilePicture}` : undefined}
+                src={profile.profilePicture ? `${API}/api/v1${profile.profilePicture}` : undefined}
                 name={profile.name}
                 className="w-20 h-20 text-lg"
                 classNames={{

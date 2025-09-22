@@ -164,7 +164,7 @@ export default function UserSearchSelect({
                       <Avatar
                         alt={item.data.name}
                         className="w-4 h-4"
-                        src={`${API}${item.data.profilePicture}`}
+                        src={`${API}/api/v1${item.data.profilePicture}`}
                       />
                     ) : undefined
                   }
@@ -199,7 +199,7 @@ export default function UserSearchSelect({
                 <Avatar
                   alt={user.name}
                   className="w-8 h-8"
-                  src={user.profilePicture ? `${API}${user.profilePicture}` : undefined}
+                  src={user.profilePicture ? `${API}/api/v1${user.profilePicture}` : undefined}
                   name={user.name.charAt(0).toUpperCase()}
                 />
                 <div className="flex flex-col">

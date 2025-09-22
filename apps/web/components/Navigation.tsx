@@ -147,12 +147,12 @@ export function Navigation() {
               >
                 {user.profilePicture ? (
                   <img 
-                    src={`${API}${user.profilePicture}`} 
+                    src={`${API}/api/v1${user.profilePicture}`} 
                     alt={user.name}
                     className="w-10 h-10 rounded-full ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2 object-cover"
                     onError={(e) => {
                       // Hide image if it fails to load and show fallback
-                      console.warn('Failed to load profile picture:', `${API}${user.profilePicture}`);
+                      console.warn('Failed to load profile picture:', `${API}/api/v1${user.profilePicture}`);
                       e.currentTarget.style.display = 'none';
                       // Show the fallback avatar
                       const fallback = e.currentTarget.nextElementSibling as HTMLElement;
@@ -270,11 +270,11 @@ export function Navigation() {
                 <div className="glass px-4 py-3 text-sm text-white/90 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 backdrop-blur-md">
                   {user.profilePicture ? (
                     <img 
-                      src={`${API}${user.profilePicture}`} 
+                      src={`${API}/api/v1${user.profilePicture}`} 
                       alt={user.name}
                       className="w-8 h-8 rounded-full ring-2 ring-white/20 object-cover"
                       onError={(e) => { 
-                        console.warn('Failed to load profile picture (mobile):', `${API}${user.profilePicture}`);
+                        console.warn('Failed to load profile picture (mobile):', `${API}/api/v1${user.profilePicture}`);
                         e.currentTarget.style.display = 'none';
                         const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                         if (fallback) fallback.style.display = 'flex';
