@@ -50,13 +50,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastPongRef = useRef<number>(Date.now());
   const isManualClose = useRef(false);
 
   const connect = () => {
+    // Prevent multiple simultaneous connections
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
       return;
+    }
+
+    // Clean up any existing connection
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
     try {
@@ -86,20 +91,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         setIsConnected(true);
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
-        lastPongRef.current = Date.now();
-        
-        // Start heartbeat to detect connection issues
-        startHeartbeat();
       };
 
       ws.onmessage = (event) => {
         try {
-          // Handle pong messages for heartbeat
-          if (event.data === 'pong') {
-            lastPongRef.current = Date.now();
-            return;
-          }
-
           const notification: Notification = JSON.parse(event.data);
           console.log('Received notification:', notification);
           
@@ -143,10 +138,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         setIsConnected(false);
         setConnectionStatus('disconnected');
         wsRef.current = null;
-        stopHeartbeat();
 
         // Only reconnect if it's not a manual close and not a normal closure
-        if (!isManualClose.current && event.code !== 1000 && event.code !== 1001) {
+        // Also avoid reconnecting on 1006 (abnormal closure) to prevent infinite loops
+        if (!isManualClose.current && event.code !== 1000 && event.code !== 1001 && event.code !== 1006) {
           // Reconnect with exponential backoff, max 10 attempts
           if (reconnectAttempts.current < 10) {
             const baseDelay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000); // Max 30 seconds
@@ -155,13 +150,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             
             console.log(`Reconnecting in ${Math.round(delay)}ms... (attempt ${reconnectAttempts.current + 1})`);
             reconnectTimeoutRef.current = setTimeout(() => {
-              reconnectAttempts.current++;
-              connect();
+              // Only reconnect if we're still in a disconnected state
+              if (connectionStatus === 'disconnected' || connectionStatus === 'error') {
+                reconnectAttempts.current++;
+                connect();
+              }
             }, delay);
           } else {
             console.log('Max reconnection attempts reached. Stopping reconnection.');
             setConnectionStatus('error');
           }
+        } else if (event.code === 1006) {
+          // For 1006 errors, wait longer before attempting reconnection
+          console.log('Abnormal closure detected, waiting before reconnection...');
+          setConnectionStatus('error');
         }
       };
 
@@ -170,6 +172,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         clearTimeout(connectionTimeout);
         setIsConnected(false);
         setConnectionStatus('error');
+        
+        // Close the connection on error to trigger reconnection logic
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
@@ -178,35 +185,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   };
 
-  const startHeartbeat = () => {
-    stopHeartbeat(); // Clear any existing heartbeat
-    
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        // Check if we received a pong recently (within 60 seconds)
-        const timeSinceLastPong = Date.now() - lastPongRef.current;
-        if (timeSinceLastPong > 60000) {
-          console.log('No pong received in 60 seconds, closing connection');
-          wsRef.current.close();
-          return;
-        }
-        
-        // Send ping
-        try {
-          wsRef.current.send('ping');
-        } catch (error) {
-          console.error('Failed to send ping:', error);
-        }
-      }
-    }, 30000); // Send ping every 30 seconds
-  };
-
-  const stopHeartbeat = () => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-  };
 
   const disconnect = () => {
     isManualClose.current = true;
@@ -215,8 +193,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
-    stopHeartbeat();
     
     if (wsRef.current) {
       wsRef.current.close();

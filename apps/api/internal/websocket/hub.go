@@ -236,6 +236,9 @@ func (c *Client) readPump(h *Hub) {
 		go func() {
 			h.unregister <- c
 		}()
+		
+		// Close connection gracefully
+		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		c.conn.Close()
 	}()
 
@@ -254,7 +257,7 @@ func (c *Client) readPump(h *Hub) {
 	})
 
 	for {
-		messageType, message, err := c.conn.ReadMessage()
+		_, _, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Error().Err(err).Str("userID", func() string {
@@ -273,28 +276,6 @@ func (c *Client) readPump(h *Hub) {
 			}
 			break
 		}
-
-		// Handle ping messages from client
-		if messageType == websocket.TextMessage && string(message) == "ping" {
-			log.Debug().Str("userID", func() string {
-				if c.userID != nil {
-					return *c.userID
-				}
-				return "anonymous"
-			}()).Msg("WebSocket ping received from client")
-			
-			// Send pong response
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.TextMessage, []byte("pong")); err != nil {
-				log.Error().Err(err).Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket pong write error")
-				break
-			}
-		}
 	}
 }
 
@@ -309,6 +290,9 @@ func (c *Client) writePump(h *Hub) {
 			return "anonymous"
 		}()).Msg("WebSocket writePump exiting")
 		ticker.Stop()
+		
+		// Close connection gracefully
+		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		c.conn.Close()
 	}()
 
