@@ -51,7 +51,7 @@ jobs:
           # Add the GCS credentials injection to the script using the file
           echo "" >> deploy_script.sh
           echo "echo 'Injecting GCS credentials from GitHub secret...'" >> deploy_script.sh
-          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$(cat ~/gcp_creds.json)" >> .env' >> deploy_script.sh
+          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$(cat ~/gcp_creds.json)" | sudo tee -a .env > /dev/null' >> deploy_script.sh
           
           # Copy script and credentials file to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
