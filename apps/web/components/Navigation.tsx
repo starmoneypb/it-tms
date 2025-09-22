@@ -258,7 +258,7 @@ export function Navigation() {
                 <span className="text-sm font-medium text-white/70">{t('language')}</span>
               </div>
               <div className="glass bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-md">
-                <LanguageToggle />
+                <LanguageToggle variant="mobile" />
               </div>
             </div>
           </div>

@@ -6,7 +6,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { locales } from '../i18n';
 
-export function LanguageToggle() {
+interface LanguageToggleProps {
+  variant?: 'desktop' | 'mobile';
+}
+
+export function LanguageToggle({ variant = 'desktop' }: LanguageToggleProps) {
   const t = useTranslations('language');
   const locale = useLocale();
   const router = useRouter();
@@ -45,14 +49,28 @@ export function LanguageToggle() {
     return locale === 'th' ? t('thai') : t('english');
   };
 
+  const getButtonStyles = () => {
+    const baseStyles = "glass text-white/90 hover:text-white hover:bg-white/10 border border-white/20 backdrop-blur-md transition-all duration-300 hover:border-white/30";
+    
+    if (variant === 'mobile') {
+      return `${baseStyles} w-full justify-start rounded-xl min-h-[48px] px-4`;
+    }
+    
+    // Desktop styles - compact and centered
+    return `${baseStyles} rounded-lg`;
+  };
+
+  const getButtonSize = () => variant === 'mobile' ? 'md' : 'sm';
+  const getIconSize = () => variant === 'mobile' ? 18 : 16;
+
   return (
     <Dropdown>
       <DropdownTrigger>
         <Button
           variant="ghost"
-          size="md"
-          className="w-full justify-start glass text-white/90 hover:text-white hover:bg-white/10 rounded-xl border border-white/20 backdrop-blur-md transition-all duration-300 hover:border-white/30 min-h-[48px] px-4"
-          startContent={<Globe size={18} />}
+          size={getButtonSize()}
+          className={getButtonStyles()}
+          startContent={<Globe size={getIconSize()} />}
         >
           {getCurrentLanguageLabel()}
         </Button>
