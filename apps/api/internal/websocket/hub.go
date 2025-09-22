@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"net/http"
 	"sync"
 	"time"
 
@@ -105,8 +106,16 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
-	// Socket.IO server will be served by the main HTTP server
-	// No need to start a separate server
+	// Start Socket.IO server on port 8081
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/socket.io/", h.server)
+		
+		log.Info().Msg("Starting Socket.IO server on port 8081")
+		if err := http.ListenAndServe(":8081", mux); err != nil {
+			log.Fatal().Err(err).Msg("Socket.IO server failed to start")
+		}
+	}()
 }
 
 func (h *Hub) GetServer() *socketio.Server {

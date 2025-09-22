@@ -90,11 +90,10 @@ func main() {
 		})
 	})
 
-	// Socket.IO handler - serve Socket.IO directly
+	// Socket.IO proxy to handle Socket.IO requests
 	app.All("/socket.io/*", func(c *fiber.Ctx) error {
-		// Handle Socket.IO requests directly
-		wsHub.GetServer().ServeHTTP(c.Response().BodyWriter(), c.Request())
-		return nil
+		// Proxy Socket.IO requests to the Socket.IO server
+		return proxy.Forward("http://localhost:8081")(c)
 	})
 
 	// API v1 routes with CORS
