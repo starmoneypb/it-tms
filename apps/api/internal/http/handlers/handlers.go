@@ -1266,10 +1266,11 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"file too large (max 5MB)"}})
 	}
 
-	// Ensure upload directory exists
-	if err := os.MkdirAll(h.cfg.UploadDir, 0755); err != nil {
-		log.Printf("Profile picture upload - failed to create upload directory: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"upload directory error"}})
+	// Log storage service status
+	if h.storage == nil {
+		log.Printf("Profile picture upload - GCS not configured, will use local storage fallback for user %s", userID)
+	} else {
+		log.Printf("Profile picture upload - GCS is configured for user %s", userID)
 	}
 
 	// Save file
@@ -1279,20 +1280,24 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"upload failed"}})
 	}
 
+	log.Printf("Profile picture upload - file saved at path: %s", path)
+
 	// Store profile picture metadata in database (like comment attachments)
 	ctx := context.Background()
 	profilePictureID, err := h.repo.Users.AddProfilePicture(ctx, userID, file.Filename, contentType, file.Size, path)
 	if err != nil {
 		log.Printf("Profile picture upload - failed to store metadata for user %s: %v", userID, err)
 		// Clean up uploaded file if database storage fails
-		os.Remove(path)
+		if h.storage == nil {
+			os.Remove(path) // Only try to remove local files
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"database storage failed"}})
 	}
 
 	// Return profile picture ID for download endpoint (like comment attachments)
 	profilePictureURL := fmt.Sprintf("/profile-pictures/%s/download", profilePictureID)
 
-	log.Printf("Profile picture uploaded successfully for user %s: %s", userID, profilePictureID)
+	log.Printf("Profile picture uploaded successfully for user %s: %s (URL: %s)", userID, profilePictureID, profilePictureURL)
 	return c.JSON(h.envelope(fiber.Map{"profilePicture": profilePictureURL}))
 }
 
