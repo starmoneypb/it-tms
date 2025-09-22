@@ -32,18 +32,18 @@ jobs:
           echo "Starting deployment to production..."
           
           # Create temporary script to avoid command line parsing issues with JSON
-          cat > deploy_script.sh << 'SCRIPT_EOF'
-#!/bin/bash
-set -e
-echo 'Navigating to deployment directory...'
-cd /opt/unisight
-
-echo 'Pulling latest changes from main branch...'
-sudo git pull origin main
-
-echo 'Setting up environment file...'
-sudo cp env.gcp .env
-SCRIPT_EOF
+          cat > deploy_script.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          echo 'Navigating to deployment directory...'
+          cd /opt/unisight
+          
+          echo 'Pulling latest changes from main branch...'
+          sudo git pull origin main
+          
+          echo 'Setting up environment file...'
+          sudo cp env.gcp .env
+          EOF
           
           # Add the GCS credentials injection to the script
           echo "" >> deploy_script.sh
