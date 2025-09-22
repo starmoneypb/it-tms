@@ -151,3 +151,7 @@ apps/api/uploads/*
 
 # Local development
 .local
+unisight-472720-f2fa16e4d501.json
+
+# Service account keys
+*.json
