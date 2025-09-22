@@ -1063,26 +1063,20 @@ func (h *Handlers) DownloadAttachment(c *fiber.Ctx) error {
 	}
 	
 	// Check if GCS storage is available
-	if h.storage != nil {
-		// Generate signed URL for GCS object
-		signedURL, err := h.storage.GetSignedURL(ctx, attachment.Path, 1*time.Hour)
-		if err != nil {
-			log.Printf("Failed to generate signed URL for attachment %s: %v", attachmentID, err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
-		}
-		
-		// Redirect to signed URL
-		return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
+	// Require GCS storage - no local fallback
+	if h.storage == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"storage service not configured"}})
 	}
 	
-	// Fallback to local file serving if GCS is not configured
-	log.Printf("Warning: GCS not configured, serving file from local storage")
+	// Generate signed URL for GCS object
+	signedURL, err := h.storage.GetSignedURL(ctx, attachment.Path, 1*time.Hour)
+	if err != nil {
+		log.Printf("Failed to generate signed URL for attachment %s: %v", attachmentID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
+	}
 	
-	// Set appropriate headers
-	c.Set("Content-Type", attachment.MIME)
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
-	
-	return c.SendFile(attachment.Path)
+	// Redirect to signed URL
+	return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
 }
 
 func (h *Handlers) DownloadCommentAttachment(c *fiber.Ctx) error {
@@ -1098,26 +1092,20 @@ func (h *Handlers) DownloadCommentAttachment(c *fiber.Ctx) error {
 	}
 	
 	// Check if GCS storage is available
-	if h.storage != nil {
-		// Generate signed URL for GCS object
-		signedURL, err := h.storage.GetSignedURL(ctx, attachment.Path, 1*time.Hour)
-		if err != nil {
-			log.Printf("Failed to generate signed URL for comment attachment %s: %v", attachmentID, err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
-		}
-		
-		// Redirect to signed URL
-		return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
+	// Require GCS storage - no local fallback
+	if h.storage == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"storage service not configured"}})
 	}
 	
-	// Fallback to local file serving if GCS is not configured
-	log.Printf("Warning: GCS not configured, serving file from local storage")
+	// Generate signed URL for GCS object
+	signedURL, err := h.storage.GetSignedURL(ctx, attachment.Path, 1*time.Hour)
+	if err != nil {
+		log.Printf("Failed to generate signed URL for comment attachment %s: %v", attachmentID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
+	}
 	
-	// Set appropriate headers
-	c.Set("Content-Type", attachment.MIME)
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
-	
-	return c.SendFile(attachment.Path)
+	// Redirect to signed URL
+	return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
 }
 
 func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {
@@ -1133,50 +1121,21 @@ func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {
 		contentType = "application/octet-stream"
 	}
 	
-	// Check if GCS storage is available
-	if h.storage != nil {
-		// Upload to Google Cloud Storage
-		ctx := context.Background()
-		result, err := h.storage.UploadFile(ctx, f, fh.Filename, contentType)
-		if err != nil {
-			log.Printf("Failed to upload file to GCS: %v", err)
-			return "", err
-		}
-		
-		log.Printf("File uploaded to GCS: %s -> %s", fh.Filename, result.Path)
-		return result.Path, nil
+	// Require GCS storage - no local fallback
+	if h.storage == nil {
+		return "", fmt.Errorf("GCS storage service not configured")
 	}
 	
-	// Fallback to local filesystem if GCS is not configured
-	log.Printf("Warning: GCS not configured, falling back to local storage")
-	
-	// Sanitize filename: replace spaces and special characters
-	originalName := filepath.Base(fh.Filename)
-	sanitizedName := strings.ReplaceAll(originalName, " ", "_")
-	sanitizedName = strings.ReplaceAll(sanitizedName, "(", "")
-	sanitizedName = strings.ReplaceAll(sanitizedName, ")", "")
-	
-	// Create secure filename with timestamp
-	name := fmt.Sprintf("%d_%s", time.Now().UnixNano(), sanitizedName)
-	dst := filepath.Join(h.cfg.UploadDir, name)
-	
-	log.Printf("Saving upload: %s -> %s", originalName, name)
-	
-	os.MkdirAll(h.cfg.UploadDir, 0o755)
-	out, err := os.Create(dst)
-	if err != nil { 
-		log.Printf("Failed to create file %s: %v", dst, err)
-		return "", err 
-	}
-	defer out.Close()
-	
-	if _, err := io.Copy(out, f); err != nil { 
-		log.Printf("Failed to copy file content to %s: %v", dst, err)
-		return "", err 
+	// Upload to Google Cloud Storage
+	ctx := context.Background()
+	result, err := h.storage.UploadFile(ctx, f, fh.Filename, contentType)
+	if err != nil {
+		log.Printf("Failed to upload file to GCS: %v", err)
+		return "", err
 	}
 	
-	log.Printf("Successfully saved file: %s", dst)
-	return dst, nil
+	log.Printf("File uploaded to GCS: %s -> %s", fh.Filename, result.Path)
+	return result.Path, nil
 }
 
 // Signed URL (HMAC) generator
@@ -1312,32 +1271,20 @@ func (h *Handlers) DownloadProfilePicture(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get profile picture"}})
 	}
 	
-	// Check if GCS storage is available
-	if h.storage != nil {
-		// Generate signed URL for GCS object (longer expiration for profile pictures)
-		signedURL, err := h.storage.GetSignedURL(ctx, profilePicture.Path, 24*time.Hour)
-		if err != nil {
-			log.Printf("Failed to generate signed URL for profile picture %s: %v", profilePictureID, err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
-		}
-		
-		// Redirect to signed URL
-		return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
+	// Require GCS storage - no local fallback
+	if h.storage == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"storage service not configured"}})
 	}
 	
-	// Fallback to local file serving if GCS is not configured
-	log.Printf("Warning: GCS not configured, serving file from local storage")
+	// Generate signed URL for GCS object (longer expiration for profile pictures)
+	signedURL, err := h.storage.GetSignedURL(ctx, profilePicture.Path, 24*time.Hour)
+	if err != nil {
+		log.Printf("Failed to generate signed URL for profile picture %s: %v", profilePictureID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
+	}
 	
-	// Set appropriate headers for image serving
-	c.Set("Content-Type", profilePicture.MIME)
-	c.Set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
-	
-	// Add CORS headers for image serving
-	c.Set("Access-Control-Allow-Origin", "*")
-	c.Set("Access-Control-Allow-Methods", "GET")
-	c.Set("Access-Control-Allow-Headers", "Content-Type")
-	
-	return c.SendFile(profilePicture.Path)
+	// Redirect to signed URL
+	return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
 }
 
 // -------------------- Classification --------------------
