@@ -122,6 +122,14 @@ func main() {
 		return c.Next()
 	})
 
+	// Parse allowed origins into slice
+	var origins []string
+	if allowedWSOrigins != "" {
+		for _, o := range strings.Split(allowedWSOrigins, ",") {
+			origins = append(origins, strings.TrimSpace(o))
+		}
+	}
+
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		// Get user ID from query parameter (for authenticated users)
 		var userID *string
@@ -142,18 +150,9 @@ func main() {
 		
 		wsHub.HandleWebSocket(c, userID)
 	}, websocket.Config{
-		CheckOrigin: func(ctx *fiber.Ctx) bool {
-			origin := ctx.Get("Origin")
-			if origin == "" {
-				return true
-			}
-			for _, o := range strings.Split(allowedWSOrigins, ",") {
-				if strings.TrimSpace(o) == origin {
-					return true
-				}
-			}
-			return false
-		},
+		Origins: origins,
+		HandshakeTimeout: 10 * time.Second,
+		EnableCompression: true,
 	}))
 
 	// WebSocket health check endpoint
