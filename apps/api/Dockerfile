@@ -34,9 +34,6 @@ RUN chown -R app:app /app && \
     chmod +x /app/server
 
 ENV PORT=8080
-ENV UPLOAD_DIR=uploads
-
-RUN mkdir -p /app/uploads && chown -R app:app /app/uploads && chmod 755 /app/uploads
 
 # Switch to non-root user
 USER app

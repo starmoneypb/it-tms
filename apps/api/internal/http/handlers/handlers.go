@@ -26,17 +26,24 @@ import (
 	"github.com/it-tms/apps/api/internal/priority"
 	"github.com/it-tms/apps/api/internal/effort"
 	"github.com/it-tms/apps/api/internal/repositories"
+	"github.com/it-tms/apps/api/internal/storage"
 	"github.com/it-tms/apps/api/pkg/config"
 )
 
 type Handlers struct {
-	cfg  config.Config
-	pool *pgxpool.Pool
-	repo *repositories.Repo
+	cfg     config.Config
+	pool    *pgxpool.Pool
+	repo    *repositories.Repo
+	storage *storage.StorageService
 }
 
-func New(pool *pgxpool.Pool, cfg config.Config) *Handlers {
-	return &Handlers{cfg: cfg, pool: pool, repo: repositories.New(pool)}
+func New(pool *pgxpool.Pool, cfg config.Config, storageService *storage.StorageService) *Handlers {
+	return &Handlers{
+		cfg:     cfg,
+		pool:    pool,
+		repo:    repositories.New(pool),
+		storage: storageService,
+	}
 }
 
 func (h *Handlers) envelope(data any) any {
@@ -1059,11 +1066,15 @@ func (h *Handlers) DownloadAttachment(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get attachment"}})
 	}
 	
-	// Set appropriate headers for download
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
-	c.Set("Content-Type", attachment.MIME)
+	// Generate signed URL for GCS object
+	signedURL, err := h.storage.GetSignedURL(ctx, attachment.Path, 1*time.Hour)
+	if err != nil {
+		log.Printf("Failed to generate signed URL for attachment %s: %v", attachmentID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
+	}
 	
-	return c.SendFile(attachment.Path)
+	// Redirect to signed URL
+	return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
 }
 
 func (h *Handlers) DownloadCommentAttachment(c *fiber.Ctx) error {
@@ -1078,18 +1089,42 @@ func (h *Handlers) DownloadCommentAttachment(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get attachment"}})
 	}
 	
-	// Set appropriate headers for download
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
-	c.Set("Content-Type", attachment.MIME)
+	// Generate signed URL for GCS object
+	signedURL, err := h.storage.GetSignedURL(ctx, attachment.Path, 1*time.Hour)
+	if err != nil {
+		log.Printf("Failed to generate signed URL for comment attachment %s: %v", attachmentID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
+	}
 	
-	return c.SendFile(attachment.Path)
+	// Redirect to signed URL
+	return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
 }
 
 func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {
 	f, err := fh.Open()
-	if err != nil { return "", err }
+	if err != nil { 
+		return "", err 
+	}
 	defer f.Close()
 	
+<<<<<<< HEAD
+	// Get content type
+	contentType := fh.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	
+	// Upload to Google Cloud Storage
+	ctx := context.Background()
+	result, err := h.storage.UploadFile(ctx, f, fh.Filename, contentType)
+	if err != nil {
+		log.Printf("Failed to upload file to GCS: %v", err)
+		return "", err
+	}
+	
+	log.Printf("File uploaded to GCS: %s -> %s", fh.Filename, result.Path)
+	return result.Path, nil
+=======
 	// Sanitize filename: replace spaces and special characters
 	originalName := filepath.Base(fh.Filename)
 	sanitizedName := strings.ReplaceAll(originalName, " ", "_")
@@ -1117,6 +1152,7 @@ func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {
 	
 	log.Printf("Successfully saved file: %s", dst)
 	return dst, nil
+>>>>>>> 504186c8243db3b2388cf3d9a431ee0814d8cb2c
 }
 
 // Signed URL (HMAC) generator
@@ -1249,6 +1285,17 @@ func (h *Handlers) DownloadProfilePicture(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get profile picture"}})
 	}
 	
+<<<<<<< HEAD
+	// Generate signed URL for GCS object (longer expiration for profile pictures)
+	signedURL, err := h.storage.GetSignedURL(ctx, profilePicture.Path, 24*time.Hour)
+	if err != nil {
+		log.Printf("Failed to generate signed URL for profile picture %s: %v", profilePictureID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to generate download URL"}})
+	}
+	
+	// Redirect to signed URL
+	return c.Redirect(signedURL, fiber.StatusTemporaryRedirect)
+=======
 	// Set appropriate headers for image serving
 	c.Set("Content-Type", profilePicture.MIME)
 	c.Set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
@@ -1259,6 +1306,7 @@ func (h *Handlers) DownloadProfilePicture(c *fiber.Ctx) error {
 	c.Set("Access-Control-Allow-Headers", "Content-Type")
 	
 	return c.SendFile(profilePicture.Path)
+>>>>>>> 504186c8243db3b2388cf3d9a431ee0814d8cb2c
 }
 
 // -------------------- Classification --------------------

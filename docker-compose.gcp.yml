@@ -96,12 +96,12 @@ services:
       GO_ENV: production
       SECURE_COOKIES: "true"
       WEB_APP_URL: https://unisight.dev
-      UPLOAD_DIR: /app/uploads
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
+      GCS_PROJECT_ID: ${GCS_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${GOOGLE_APPLICATION_CREDENTIALS_JSON}
     depends_on:
       db-seed:
         condition: service_completed_successfully
-    volumes:
-      - uploads:/app/uploads
     networks:
       - app-network
     deploy:
@@ -209,8 +209,11 @@ networks:
 volumes:
   pgdata:
     driver: local
+<<<<<<< HEAD
+=======
   uploads:
     driver: local
+>>>>>>> 504186c8243db3b2388cf3d9a431ee0814d8cb2c
   certbot-etc:
     driver: local
   certbot-var:

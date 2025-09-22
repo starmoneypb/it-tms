@@ -16,6 +16,8 @@ type Config struct {
 	UploadDir          string
 	SecureCookies      bool
 	WebAppURL          string
+	GCSBucketName      string
+	GCSProjectID       string
 }
 
 func Load() Config {
@@ -30,6 +32,8 @@ func Load() Config {
 		UploadDir:          get("UPLOAD_DIR", "uploads"),
 		SecureCookies:      secure,
 		WebAppURL:          get("WEB_APP_URL", "http://localhost:3000"),
+		GCSBucketName:      get("GCS_BUCKET_NAME", ""),
+		GCSProjectID:       get("GCS_PROJECT_ID", ""),
 	}
 }
 

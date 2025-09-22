@@ -6,8 +6,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,6 +15,7 @@ import (
 
 	"github.com/it-tms/apps/api/internal/http/handlers"
 	"github.com/it-tms/apps/api/internal/http/middleware"
+	"github.com/it-tms/apps/api/internal/storage"
 	"github.com/it-tms/apps/api/pkg/config"
 	"github.com/it-tms/apps/api/pkg/logger"
 )
@@ -42,6 +41,26 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to ping db")
 	}
 
+	// Initialize Google Cloud Storage service
+	var storageService *storage.StorageService
+	if cfg.GCSBucketName != "" && cfg.GCSProjectID != "" {
+		var err error
+		// Check if credentials are provided via environment variable
+		if credentialsJSON := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON"); credentialsJSON != "" {
+			storageService, err = storage.NewStorageServiceWithCredentials(cfg.GCSBucketName, cfg.GCSProjectID, credentialsJSON)
+		} else {
+			// Use default credentials (service account key file or metadata service)
+			storageService, err = storage.NewStorageService(cfg.GCSBucketName, cfg.GCSProjectID)
+		}
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to initialize GCS storage service")
+		}
+		defer storageService.Close()
+		log.Info().Msg("GCS storage service initialized")
+	} else {
+		log.Warn().Msg("GCS configuration missing - file uploads will fail")
+	}
+
 	// Fiber app
 	app := fiber.New(fiber.Config{
 		AppName:      "IT-TMS API",
@@ -64,7 +83,7 @@ func main() {
 	}))
 
 	// Initialize handlers
-	h := handlers.New(pool, cfg)
+	h := handlers.New(pool, cfg, storageService)
 
 	// Health endpoint
 	app.Get("/healthz", func(c *fiber.Ctx) error {
@@ -116,6 +135,8 @@ func main() {
 	// Profile picture download (public access for images)
 	v1.Get("/profile-pictures/:profilePictureId/download", h.DownloadProfilePicture)
 	
+<<<<<<< HEAD
+=======
 	// Public uploads route for profile pictures (no auth required)
 	v1.Get("/uploads/*", func(c *fiber.Ctx) error {
 		// Extract the file path after /uploads/
@@ -190,6 +211,7 @@ func main() {
 		log.Printf("Serving file: %s", fullPath)
 		return c.SendFile(fullPath)
 	})
+>>>>>>> 504186c8243db3b2388cf3d9a431ee0814d8cb2c
 
 	// Admin routes (require Supervisor or Manager roles)
 	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
