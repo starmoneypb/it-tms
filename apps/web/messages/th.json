@@ -368,7 +368,8 @@
     "created": "สร้างเมื่อ",
     "updated": "อัปเดตเมื่อ",
     "close": "ปิด",
-    "noEffortDataAvailable": "ไม่มีข้อมูลการประเมินความพยายาม"
+    "noEffortDataAvailable": "ไม่มีข้อมูลการประเมินความพยายาม",
+    "redFlag": "สัญญาณเตือน"
   },
   "ticketDetails": {
     "title": "รายละเอียดตั๋ว",

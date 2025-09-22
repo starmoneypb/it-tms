@@ -369,7 +369,8 @@
     "created": "Created",
     "updated": "Updated",
     "close": "Close",
-    "noEffortDataAvailable": "No effort assessment data available"
+    "noEffortDataAvailable": "No effort assessment data available",
+    "redFlag": "Red Flag"
   },
   "ticketDetails": {
     "title": "Ticket Details",
