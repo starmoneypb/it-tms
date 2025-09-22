@@ -99,26 +99,6 @@ func main() {
 		})
 	})
 
-	// WebSocket route
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		// Log WebSocket upgrade attempts
-		log.Info().
-			Str("method", c.Method()).
-			Str("path", c.Path()).
-			Str("userAgent", c.Get("User-Agent")).
-			Str("origin", c.Get("Origin")).
-			Bool("isWebSocketUpgrade", websocket.IsWebSocketUpgrade(c)).
-			Msg("WebSocket upgrade attempt")
-		
-		// IsWebSocketUpgrade returns true if the client
-		// requested upgrade to the WebSocket protocol.
-		if websocket.IsWebSocketUpgrade(c) {
-			c.Locals("allowed", true)
-			return c.Next()
-		}
-		return fiber.ErrUpgradeRequired
-	})
-
 	// Allowed WS origins (comma-separated via env: e.g., "https://unisight.dev,https://www.unisight.dev,http://localhost:3000")
 	allowedWSOrigins := viper.GetString("WS_ALLOWED_ORIGINS")
 	// Fallback defaults if env is empty
@@ -126,23 +106,19 @@ func main() {
 		allowedWSOrigins = "https://unisight.dev,https://www.unisight.dev,http://localhost:3000,http://localhost:8000"
 	}
 
-	// Origin validation middleware for WebSocket
+	// Debug middleware for WebSocket requests
 	app.Use("/ws", func(c *fiber.Ctx) error {
-		origin := c.Get("Origin")
-		if origin != "" {
-			// Check if origin is in allowed list
-			allowed := false
-			for _, o := range strings.Split(allowedWSOrigins, ",") {
-				if strings.TrimSpace(o) == origin {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
-				log.Warn().Str("origin", origin).Msg("WebSocket connection rejected due to invalid origin")
-				return c.Status(403).JSON(fiber.Map{"error": "Origin not allowed"})
-			}
-		}
+		log.Info().
+			Str("method", c.Method()).
+			Str("path", c.Path()).
+			Str("upgrade", c.Get("Upgrade")).
+			Str("connection", c.Get("Connection")).
+			Str("sec-websocket-version", c.Get("Sec-WebSocket-Version")).
+			Str("sec-websocket-key", c.Get("Sec-WebSocket-Key")).
+			Str("origin", c.Get("Origin")).
+			Str("host", c.Get("Host")).
+			Str("x-forwarded-proto", c.Get("X-Forwarded-Proto")).
+			Msg("WS request arrived at API")
 		return c.Next()
 	})
 
@@ -165,7 +141,27 @@ func main() {
 			Msg("WebSocket connection established")
 		
 		wsHub.HandleWebSocket(c, userID)
+	}, websocket.Config{
+		CheckOrigin: func(ctx *fiber.Ctx) bool {
+			origin := ctx.Get("Origin")
+			if origin == "" {
+				return true
+			}
+			for _, o := range strings.Split(allowedWSOrigins, ",") {
+				if strings.TrimSpace(o) == origin {
+					return true
+				}
+			}
+			return false
+		},
 	}))
+
+	// WebSocket health check endpoint
+	app.Get("/ws/healthz", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "ok",
+		})
+	})
 
 	// API v1 routes
 	v1 := app.Group("/api/v1")
