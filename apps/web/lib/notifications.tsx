@@ -119,6 +119,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       ws.onmessage = (event) => {
         try {
+          // Handle non-JSON messages (like the initial "hello" message)
+          if (event.data === 'hello') {
+            console.log('Received WebSocket handshake confirmation');
+            return;
+          }
+          
           const notification: Notification = JSON.parse(event.data);
           console.log('Received notification:', notification);
           
@@ -152,7 +158,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             );
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('Error parsing WebSocket message:', error, 'Data:', event.data);
         }
       };
 
