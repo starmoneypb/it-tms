@@ -157,7 +157,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       };
 
       ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        console.log('WebSocket disconnected:', event.code, event.reason, 'wasClean:', event.wasClean);
         setIsConnected(false);
         setConnectionStatus('disconnected');
         wsRef.current = null;
@@ -192,10 +192,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         setIsConnected(false);
         setConnectionStatus('error');
         
-        // Close the connection on error to trigger reconnection logic
-        if (wsRef.current) {
-          wsRef.current.close();
-        }
+        // Don't explicitly close here - let onclose handle reconnection
+        // Explicit close() can cause 1006 errors during handshake
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);

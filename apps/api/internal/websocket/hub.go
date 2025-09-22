@@ -214,7 +214,7 @@ func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
 	}
 
 	// Set initial connection settings
-	c.SetReadLimit(512)
+	c.SetReadLimit(4096)
 	c.SetReadDeadline(time.Now().Add(60 * time.Second))
 	c.SetPongHandler(func(string) error {
 		c.SetReadDeadline(time.Now().Add(60 * time.Second))

@@ -140,11 +140,16 @@ func main() {
 			Str("remoteAddr", c.RemoteAddr().String()).
 			Msg("WebSocket connection established")
 		
+		// Immediately send a small text frame to validate data path
+		if err := c.WriteMessage(websocket.TextMessage, []byte("hello")); err != nil {
+			log.Error().Err(err).Msg("Failed to send initial WebSocket message")
+		}
+		
 		wsHub.HandleWebSocket(c, userID)
 	}, websocket.Config{
 		Origins: origins,
 		HandshakeTimeout: 10 * time.Second,
-		EnableCompression: true,
+		EnableCompression: false,
 	}))
 
 	// WebSocket health check endpoint
