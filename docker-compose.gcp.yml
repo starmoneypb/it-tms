@@ -209,8 +209,6 @@ networks:
 volumes:
   pgdata:
     driver: local
-  uploads:
-    driver: local
   certbot-etc:
     driver: local
   certbot-var:
