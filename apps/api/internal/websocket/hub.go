@@ -36,6 +36,8 @@ type Client struct {
 	room    string  // room name for targeted notifications
 	send    chan Notification
 	hub     *Hub
+	closed  bool
+	mu      sync.Mutex
 }
 
 type Hub struct {
@@ -54,6 +56,17 @@ func NewHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		rooms:      make(map[string]map[*Client]bool),
+	}
+}
+
+// safeCloseSend safely closes the client's send channel
+func (c *Client) safeCloseSend() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	
+	if !c.closed {
+		c.closed = true
+		close(c.send)
 	}
 }
 
@@ -84,7 +97,7 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.send)
+				client.safeCloseSend()
 				
 				// Remove from room if userID is specified
 				if client.userID != nil {
@@ -111,7 +124,7 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- notification:
 				default:
-					close(client.send)
+					client.safeCloseSend()
 					delete(h.clients, client)
 				}
 			}
@@ -145,8 +158,14 @@ func (h *Hub) HandleWebSocket(c *websocket.Conn) {
 }
 
 func (c *Client) readPump() {
+	c.mu.Lock()
+	shouldUnregister := !c.closed
+	c.mu.Unlock()
+
 	defer func() {
-		c.hub.unregister <- c
+		if shouldUnregister {
+			c.hub.unregister <- c
+		}
 		c.conn.Close()
 	}()
 
@@ -178,12 +197,18 @@ func (c *Client) readPump() {
 
 			// Handle join message
 			if message.Type == "join" && message.UserID != "" {
+				// Update client info
 				c.userID = &message.UserID
 				c.room = message.UserID
 				
-				// Re-register with room
-				c.hub.unregister <- c
-				c.hub.register <- c
+				// Add to room without re-registering
+				c.hub.mu.Lock()
+				roomName := *c.userID
+				if c.hub.rooms[roomName] == nil {
+					c.hub.rooms[roomName] = make(map[*Client]bool)
+				}
+				c.hub.rooms[roomName][c] = true
+				c.hub.mu.Unlock()
 				
 				log.Info().
 					Str("userID", message.UserID).
