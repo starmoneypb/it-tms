@@ -31,20 +31,32 @@ jobs:
         run: |
           echo "Starting deployment to production..."
           
-          # SSH into VM and run deployment commands
+          # Create temporary script to avoid command line parsing issues with JSON
+          cat > deploy_script.sh << 'SCRIPT_EOF'
+          set -e
+          echo 'Navigating to deployment directory...'
+          cd ${{ env.DEPLOY_DIR }}
+          
+          echo 'Pulling latest changes from main branch...'
+          sudo git pull origin main
+          
+          echo 'Setting up environment file...'
+          sudo cp env.gcp .env
+          
+          echo 'Injecting GCS credentials from GitHub secret...'
+          cat >> .env << 'JSON_EOF'
+GOOGLE_APPLICATION_CREDENTIALS_JSON=${{ secrets.GCP_SA_KEY }}
+JSON_EOF
+SCRIPT_EOF
+          
+          # Copy script to VM and execute it
+          gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
+          gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="chmod +x ~/deploy_script.sh && ~/deploy_script.sh"
+          
+          # Continue with the rest of the deployment
           gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="
             set -e
-            echo 'Navigating to deployment directory...'
             cd ${{ env.DEPLOY_DIR }}
-            
-            echo 'Pulling latest changes from main branch...'
-            sudo git pull origin main
-            
-            echo 'Setting up environment file...'
-            sudo cp env.gcp .env
-            
-            echo 'Injecting GCS credentials from GitHub secret...'
-            printf 'GOOGLE_APPLICATION_CREDENTIALS_JSON=%s\n' '${{ secrets.GCP_SA_KEY }}' | sudo tee -a .env
             
             echo 'Building and deploying with docker-compose...'
             sudo docker-compose -f docker-compose.gcp.yml build --no-cache web
@@ -99,7 +111,13 @@ jobs:
               echo '⚠️  SSL certificate generation failed - your site is accessible via HTTP only'
               echo '   To enable SSL manually, run the certificate generation command on your VM'
             fi
+            
+            # Clean up temporary script
+            rm -f ~/deploy_script.sh
           "
+          
+          # Clean up local temporary script
+          rm -f deploy_script.sh
       
       - name: Verify deployment
         run: |
