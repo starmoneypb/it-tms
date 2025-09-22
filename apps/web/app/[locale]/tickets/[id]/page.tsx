@@ -1060,7 +1060,8 @@ export default function TicketDetails() {
             </Card>
           )}
 
-          {canAssignTicket(true) && (
+          {/* Assignment Management - Full access for Supervisors/Managers */}
+          {canAssignTicket() && (
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1167,6 +1168,39 @@ export default function TicketDetails() {
                     </Button>
                   </div>
                 )}
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Self-Assignment for regular Users (only if not already assigned and not Supervisor/Manager) */}
+          {!canAssignTicket() && user && user.role === "User" && 
+           !data.ticket.assignees?.some((assignee: any) => assignee.id === user.id) && (
+            <Card className="glass">
+              <CardHeader className="pb-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Users size={18} className="text-primary-400" />
+                  {t('assignToMe')}
+                </h3>
+              </CardHeader>
+              <CardBody>
+                <Button 
+                  color="secondary" 
+                  variant="flat"
+                  onPress={async () => {
+                    await fetch(`${API}/api/v1/tickets/${id}/assign`, {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ self: true }),
+                    });
+                    load();
+                    // Reload comments with retry mechanism to ensure auto-comment is visible
+                    loadCommentsWithRetry(1);
+                  }}
+                  className="w-full"
+                >
+                  {t('assignToMe')}
+                </Button>
               </CardBody>
             </Card>
           )}
