@@ -66,13 +66,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const connect = () => {
     // Prevent multiple simultaneous connections
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket connection already in progress, skipping');
       return;
     }
 
     // Clean up any existing connection
     if (wsRef.current) {
+      console.log('Closing existing WebSocket connection');
+      isManualClose.current = true;
       wsRef.current.close();
       wsRef.current = null;
+      isManualClose.current = false;
     }
 
     try {
@@ -240,9 +244,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Connect/disconnect based on user authentication
   useEffect(() => {
+    console.log('User changed, reconnecting WebSocket:', user?.id || 'anonymous');
     connect();
 
     return () => {
+      console.log('Cleaning up WebSocket connection');
       disconnect();
     };
   }, [user?.id]); // Reconnect when user changes
