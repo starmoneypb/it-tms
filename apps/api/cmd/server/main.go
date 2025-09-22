@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/websocket/v2"
+	"github.com/gofiber/fiber/v2/middleware/proxy"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -76,7 +75,7 @@ func main() {
 		},
 	})
 
-	// Initialize WebSocket hub
+	// Initialize Socket.IO hub
 	wsHub := wshub.NewHub()
 	go wsHub.Run()
 
@@ -91,72 +90,10 @@ func main() {
 		})
 	})
 
-	// Allowed WS origins (comma-separated via env: e.g., "https://unisight.dev,https://www.unisight.dev,http://localhost:3000")
-	allowedWSOrigins := viper.GetString("WS_ALLOWED_ORIGINS")
-	// Fallback defaults if env is empty
-	if allowedWSOrigins == "" {
-		allowedWSOrigins = "https://unisight.dev,https://www.unisight.dev,http://localhost:3000,http://localhost:8000"
-	}
-
-	// Debug middleware for WebSocket requests
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		log.Info().
-			Str("method", c.Method()).
-			Str("path", c.Path()).
-			Str("upgrade", c.Get("Upgrade")).
-			Str("connection", c.Get("Connection")).
-			Str("sec-websocket-version", c.Get("Sec-WebSocket-Version")).
-			Str("sec-websocket-key", c.Get("Sec-WebSocket-Key")).
-			Str("origin", c.Get("Origin")).
-			Str("host", c.Get("Host")).
-			Str("x-forwarded-proto", c.Get("X-Forwarded-Proto")).
-			Msg("WS request arrived at API")
-		return c.Next()
-	})
-
-	// Parse allowed origins into slice
-	var origins []string
-	if allowedWSOrigins != "" {
-		for _, o := range strings.Split(allowedWSOrigins, ",") {
-			origins = append(origins, strings.TrimSpace(o))
-		}
-	}
-
-	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
-		// Get user ID from query parameter (for authenticated users)
-		var userID *string
-		if uid := c.Query("userId"); uid != "" {
-			userID = &uid
-		}
-		
-		// Log successful WebSocket upgrade
-		log.Info().
-			Str("userID", func() string {
-				if userID != nil {
-					return *userID
-				}
-				return "anonymous"
-			}()).
-			Str("remoteAddr", c.RemoteAddr().String()).
-			Msg("WebSocket connection established")
-		
-		// Immediately send a small text frame to validate data path
-		if err := c.WriteMessage(websocket.TextMessage, []byte("hello")); err != nil {
-			log.Error().Err(err).Msg("Failed to send initial WebSocket message")
-		}
-		
-		wsHub.HandleWebSocket(c, userID)
-	}, websocket.Config{
-		Origins: origins,
-		HandshakeTimeout: 10 * time.Second,
-		EnableCompression: false,
-	}))
-
-	// WebSocket health check endpoint
-	app.Get("/ws/healthz", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status": "ok",
-		})
+	// Socket.IO proxy to handle Socket.IO requests
+	app.All("/socket.io/*", func(c *fiber.Ctx) error {
+		// Proxy Socket.IO requests to the Socket.IO server
+		return proxy.Forward("http://localhost:8081")(c)
 	})
 
 	// API v1 routes with CORS

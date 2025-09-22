@@ -1,23 +1,23 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { useAuth } from './auth';
 
-// Derive same-origin WS URL in prod; keep localhost override for dev-on-8000
-const resolveWsUrl = () => {
+// Derive same-origin Socket.IO URL in prod; keep localhost override for dev-on-8000
+const resolveSocketIOUrl = () => {
   if (typeof window === 'undefined') {
     // SSR fallback; client will re-evaluate on mount
-    return process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+    return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080';
   }
   // Local docker: proxy through 8000
   if (window.location.hostname === 'localhost' && window.location.port === '8000') {
-    return 'ws://localhost:8000/ws';
+    return 'http://localhost:8000';
   }
-  // Same-origin in prod: https://host -> wss://host/ws
-  const wsOrigin = window.location.origin.replace(/^http/, 'ws');
-  return `${wsOrigin}/ws`;
+  // Same-origin in prod: https://host -> https://host
+  return window.location.origin;
 };
-const WS_URL = resolveWsUrl();
+const SOCKET_URL = resolveSocketIOUrl();
 
 export interface Notification {
   type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned';
@@ -58,74 +58,63 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
-  const wsRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const isManualClose = useRef(false);
 
   const connect = () => {
     // Prevent multiple simultaneous connections
-    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log('WebSocket connection already in progress, skipping');
+    if (socketRef.current?.connected) {
+      console.log('Socket.IO connection already established, skipping');
       return;
     }
 
     // Clean up any existing connection
-    if (wsRef.current) {
-      console.log('Closing existing WebSocket connection');
+    if (socketRef.current) {
+      console.log('Closing existing Socket.IO connection');
       isManualClose.current = true;
-      wsRef.current.close();
-      wsRef.current = null;
+      socketRef.current.disconnect();
+      socketRef.current = null;
       isManualClose.current = false;
       
       // Wait a bit for the connection to fully close
       setTimeout(() => {
-        if (wsRef.current === null) {
+        if (socketRef.current === null) {
           console.log('Previous connection closed, proceeding with new connection');
         }
       }, 100);
     }
 
     try {
-      // Add user ID as query parameter if user is authenticated
-      const wsUrl = user?.id 
-        ? `${resolveWsUrl()}?userId=${encodeURIComponent(user.id)}`
-        : resolveWsUrl();
-
-      console.log('Attempting WebSocket connection to:', wsUrl);
+      console.log('Attempting Socket.IO connection to:', SOCKET_URL);
       console.log('User ID:', user?.id);
       console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
       setConnectionStatus('connecting');
       
-      // NOTE: do NOT forcibly close a socket that's still CONNECTING.
-      // Premature client-side close causes 1006 and prevents successful handshakes behind TLS/proxy.
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        forceNew: true,
+      });
       
-      // Add a small delay to ensure the connection is properly established
-      setTimeout(() => {
-        if (wsRef.current?.readyState === WebSocket.CONNECTING) {
-          console.log('WebSocket still connecting, waiting...');
-        }
-      }, 50);
-
-      ws.onopen = () => {
-        console.log('WebSocket connected successfully');
+      socketRef.current = socket;
+      
+      socket.on('connect', () => {
+        console.log('Socket.IO connected successfully');
         setIsConnected(true);
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
-      };
+        
+        // Join user-specific room if authenticated
+        if (user?.id) {
+          socket.emit('join', user.id);
+        }
+      });
 
-      ws.onmessage = (event) => {
+      socket.on('notification', (data: string) => {
         try {
-          // Handle non-JSON messages (like the initial "hello" message)
-          if (event.data === 'hello') {
-            console.log('Received WebSocket handshake confirmation');
-            return;
-          }
-          
-          const notification: Notification = JSON.parse(event.data);
+          const notification: Notification = JSON.parse(data);
           console.log('Received notification:', notification);
           
           setNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep last 50 notifications
@@ -158,18 +147,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             );
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error, 'Data:', event.data);
+          console.error('Error parsing Socket.IO notification:', error, 'Data:', data);
         }
-      };
+      });
 
-      ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason, 'wasClean:', event.wasClean);
+      socket.on('disconnect', (reason: string) => {
+        console.log('Socket.IO disconnected:', reason);
         setIsConnected(false);
         setConnectionStatus('disconnected');
-        wsRef.current = null;
+        socketRef.current = null;
 
-        // Reconnect on all abnormal closures, including 1006 (common behind proxies)
-        if (!isManualClose.current && event.code !== 1000 && event.code !== 1001) {
+        // Reconnect on all disconnections except manual close
+        if (!isManualClose.current && reason !== 'io client disconnect') {
           // Reconnect with exponential backoff, max 10 attempts
           if (reconnectAttempts.current < 10) {
             const baseDelay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000); // Max 30 seconds
@@ -189,25 +178,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             setConnectionStatus('error');
           }
         }
-      };
+      });
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        console.error('WebSocket readyState:', wsRef.current?.readyState);
-        console.error('WebSocket URL:', wsUrl);
+      socket.on('connect_error', (error: Error) => {
+        console.error('Socket.IO connection error:', error);
         setIsConnected(false);
         setConnectionStatus('error');
-        
-        // Don't explicitly close here - let onclose handle reconnection
-        // Explicit close() can cause 1006 errors during handshake
-      };
+      });
+
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      console.error('Failed to create Socket.IO connection:', error);
       setIsConnected(false);
       setConnectionStatus('error');
     }
   };
-
 
   const disconnect = () => {
     isManualClose.current = true;
@@ -217,9 +201,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       reconnectTimeoutRef.current = null;
     }
     
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
     setIsConnected(false);
     setConnectionStatus('disconnected');
@@ -262,7 +246,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Connect/disconnect based on user authentication
   useEffect(() => {
-    console.log('User changed, reconnecting WebSocket:', user?.id || 'anonymous');
+    console.log('User changed, reconnecting Socket.IO:', user?.id || 'anonymous');
     
     // Add a small delay to prevent race conditions
     const timeoutId = setTimeout(() => {
@@ -270,7 +254,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }, 100);
 
     return () => {
-      console.log('Cleaning up WebSocket connection');
+      console.log('Cleaning up Socket.IO connection');
       clearTimeout(timeoutId);
       disconnect();
     };

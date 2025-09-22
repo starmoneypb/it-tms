@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofiber/websocket/v2"
 	"github.com/rs/zerolog/log"
+	socketio "github.com/googollee/go-socket.io"
 
 	"github.com/it-tms/apps/api/internal/models"
 )
@@ -31,69 +31,90 @@ type Notification struct {
 }
 
 type Client struct {
-	conn   *websocket.Conn
-	userID *string // nil for anonymous users
-	send   chan []byte
+	socket  socketio.Conn
+	userID  *string // nil for anonymous users
+	room    string  // room name for targeted notifications
 }
 
 type Hub struct {
-	clients    map[*Client]bool
-	broadcast  chan []byte
-	register   chan *Client
-	unregister chan *Client
-	mu         sync.RWMutex
+	server  *socketio.Server
+	clients map[string]*Client // socket ID -> client mapping
+	mu      sync.RWMutex
 }
 
 func NewHub() *Hub {
-	return &Hub{
-		clients:    make(map[*Client]bool),
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
+	server := socketio.NewServer(nil)
+	
+	hub := &Hub{
+		server:  server,
+		clients: make(map[string]*Client),
 	}
+
+	// Set up Socket.IO event handlers
+	server.OnConnect("/", func(s socketio.Conn) error {
+		log.Info().Str("socketID", s.ID()).Msg("Socket.IO client connected")
+		return nil
+	})
+
+	server.OnEvent("/", "join", func(s socketio.Conn, userID string) {
+		hub.mu.Lock()
+		defer hub.mu.Unlock()
+		
+		client := &Client{
+			socket: s,
+			userID: &userID,
+			room:   userID,
+		}
+		hub.clients[s.ID()] = client
+		
+		// Join user-specific room for targeted notifications
+		s.Join(userID)
+		
+		log.Info().
+			Str("socketID", s.ID()).
+			Str("userID", userID).
+			Msg("Socket.IO client joined user room")
+	})
+
+	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
+		hub.mu.Lock()
+		defer hub.mu.Unlock()
+		
+		if client, exists := hub.clients[s.ID()]; exists {
+			if client.userID != nil {
+				log.Info().
+					Str("socketID", s.ID()).
+					Str("userID", *client.userID).
+					Str("reason", reason).
+					Msg("Socket.IO client disconnected")
+			} else {
+				log.Info().
+					Str("socketID", s.ID()).
+					Str("reason", reason).
+					Msg("Socket.IO anonymous client disconnected")
+			}
+			delete(hub.clients, s.ID())
+		}
+	})
+
+	server.OnError("/", func(s socketio.Conn, e error) {
+		log.Error().Err(e).Str("socketID", s.ID()).Msg("Socket.IO error")
+	})
+
+	return hub
 }
 
 func (h *Hub) Run() {
-	for {
-		select {
-		case client := <-h.register:
-			h.mu.Lock()
-			h.clients[client] = true
-			h.mu.Unlock()
-			log.Info().Str("userID", func() string {
-				if client.userID != nil {
-					return *client.userID
-				}
-				return "anonymous"
-			}()).Msg("WebSocket client connected")
-
-		case client := <-h.unregister:
-			h.mu.Lock()
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.send)
-			}
-			h.mu.Unlock()
-			log.Info().Str("userID", func() string {
-				if client.userID != nil {
-					return *client.userID
-				}
-				return "anonymous"
-			}()).Msg("WebSocket client disconnected")
-
-		case message := <-h.broadcast:
-			h.mu.RLock()
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					delete(h.clients, client)
-					close(client.send)
-				}
-			}
-			h.mu.RUnlock()
+	// Start Socket.IO server on port 8081
+	go func() {
+		if err := h.server.Serve(); err != nil {
+			log.Fatal().Err(err).Msg("Socket.IO server failed to start")
 		}
-	}
+	}()
+}
+
+func (h *Hub) GetServer() *socketio.Server {
+	return h.server
 }
 
 // NotifyTicketCreated sends notification to all connected clients except the creator
@@ -115,19 +136,14 @@ func (h *Hub) NotifyTicketCreated(ticket *models.Ticket, creatorID *string) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	for client := range h.clients {
+	// Broadcast to all connected clients except the creator
+	for _, client := range h.clients {
 		// Skip sending to the creator
 		if creatorID != nil && client.userID != nil && *client.userID == *creatorID {
 			continue
 		}
 
-		select {
-		case client.send <- data:
-		default:
-			// Client's send channel is full, remove it
-			delete(h.clients, client)
-			close(client.send)
-		}
+		client.socket.Emit("notification", string(data))
 	}
 }
 
@@ -148,21 +164,8 @@ func (h *Hub) NotifyTicketAssigned(ticketID string, assignedUserID string, ticke
 		return
 	}
 
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	for client := range h.clients {
-		// Only send to the assigned user
-		if client.userID != nil && *client.userID == assignedUserID {
-			select {
-			case client.send <- data:
-			default:
-				// Client's send channel is full, remove it
-				delete(h.clients, client)
-				close(client.send)
-			}
-		}
-	}
+	// Send to specific user room
+	h.server.BroadcastToRoom("/", assignedUserID, "notification", string(data))
 }
 
 // NotifyTicketUnassigned sends notification to the specific unassigned user
@@ -182,197 +185,6 @@ func (h *Hub) NotifyTicketUnassigned(ticketID string, unassignedUserID string, t
 		return
 	}
 
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	for client := range h.clients {
-		// Only send to the unassigned user
-		if client.userID != nil && *client.userID == unassignedUserID {
-			select {
-			case client.send <- data:
-			default:
-				// Client's send channel is full, remove it
-				delete(h.clients, client)
-				close(client.send)
-			}
-		}
-	}
-}
-
-func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
-	log.Info().Str("userID", func() string {
-		if userID != nil {
-			return *userID
-		}
-		return "anonymous"
-	}()).Msg("WebSocket connection attempt")
-
-	// Validate connection
-	if c == nil {
-		log.Error().Msg("WebSocket connection is nil")
-		return
-	}
-
-	// Set initial connection settings
-	c.SetReadLimit(4096)
-	c.SetReadDeadline(time.Now().Add(60 * time.Second))
-	c.SetPongHandler(func(string) error {
-		c.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
-
-	client := &Client{
-		conn:   c,
-		userID: userID,
-		send:   make(chan []byte, 256),
-	}
-
-	// Register client synchronously first
-	h.register <- client
-
-	// Start goroutines for reading and writing
-	go client.writePump(h)
-	go client.readPump(h)
-}
-
-func (c *Client) readPump(h *Hub) {
-	defer func() {
-		log.Info().Str("userID", func() string {
-			if c.userID != nil {
-				return *c.userID
-			}
-			return "anonymous"
-		}()).Msg("WebSocket readPump exiting")
-		
-		// Unregister client synchronously
-		h.unregister <- c
-		
-		// Close connection gracefully if it's still valid
-		if c.conn != nil {
-			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			c.conn.Close()
-		}
-	}()
-
-	// Set initial read deadline to 70 seconds (longer than ping interval)
-	if c.conn != nil {
-		c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
-	}
-
-	for {
-		if c.conn == nil {
-			log.Debug().Str("userID", func() string {
-				if c.userID != nil {
-					return *c.userID
-				}
-				return "anonymous"
-			}()).Msg("WebSocket connection is nil, exiting readPump")
-			break
-		}
-
-		_, _, err := c.conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error().Err(err).Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket read error")
-			} else {
-				log.Debug().Err(err).Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket connection closed")
-			}
-			break
-		}
-	}
-}
-
-func (c *Client) writePump(h *Hub) {
-	// Send ping every 30 seconds to keep connection alive
-	ticker := time.NewTicker(30 * time.Second)
-	defer func() {
-		log.Info().Str("userID", func() string {
-			if c.userID != nil {
-				return *c.userID
-			}
-			return "anonymous"
-		}()).Msg("WebSocket writePump exiting")
-		ticker.Stop()
-		
-		// Close connection gracefully if it's still valid
-		if c.conn != nil {
-			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			c.conn.Close()
-		}
-	}()
-
-	for {
-		select {
-		case message, ok := <-c.send:
-			if c.conn == nil {
-				log.Debug().Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket connection is nil, exiting writePump")
-				return
-			}
-
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if !ok {
-				log.Debug().Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket send channel closed")
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Error().Err(err).Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket write error")
-				return
-			}
-
-		case <-ticker.C:
-			if c.conn == nil {
-				log.Debug().Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket connection is nil, exiting writePump")
-				return
-			}
-
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Error().Err(err).Str("userID", func() string {
-					if c.userID != nil {
-						return *c.userID
-					}
-					return "anonymous"
-				}()).Msg("WebSocket ping error")
-				return
-			}
-			log.Debug().Str("userID", func() string {
-				if c.userID != nil {
-					return *c.userID
-				}
-				return "anonymous"
-			}()).Msg("WebSocket ping sent to client")
-		}
-	}
+	// Send to specific user room
+	h.server.BroadcastToRoom("/", unassignedUserID, "notification", string(data))
 }
