@@ -76,14 +76,6 @@ func main() {
 		},
 	})
 
-	// Middleware
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.CORSAllowedOrigins,
-		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,Upgrade,Connection,Sec-WebSocket-Key,Sec-WebSocket-Version,Sec-WebSocket-Extensions",
-		AllowCredentials: true,
-	}))
-
 	// Initialize WebSocket hub
 	wsHub := wshub.NewHub()
 	go wsHub.Run()
@@ -162,8 +154,13 @@ func main() {
 		})
 	})
 
-	// API v1 routes
-	v1 := app.Group("/api/v1")
+	// API v1 routes with CORS
+	v1 := app.Group("/api/v1", cors.New(cors.Config{
+		AllowOrigins:     cfg.CORSAllowedOrigins,
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,Upgrade,Connection,Sec-WebSocket-Key,Sec-WebSocket-Version,Sec-WebSocket-Extensions",
+		AllowCredentials: true,
+	}))
 
 	// Auth routes
 	auth := v1.Group("/auth")
