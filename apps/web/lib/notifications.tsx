@@ -71,6 +71,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         : WS_URL;
 
       console.log('Attempting WebSocket connection to:', wsUrl);
+      console.log('User ID:', user?.id);
+      console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
       setConnectionStatus('connecting');
       
       // Add connection timeout
@@ -169,6 +171,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        console.error('WebSocket readyState:', wsRef.current?.readyState);
+        console.error('WebSocket URL:', wsUrl);
         clearTimeout(connectionTimeout);
         setIsConnected(false);
         setConnectionStatus('error');

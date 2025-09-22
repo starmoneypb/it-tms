@@ -79,7 +79,7 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CORSAllowedOrigins,
 		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,Upgrade,Connection,Sec-WebSocket-Key,Sec-WebSocket-Version,Sec-WebSocket-Extensions",
 		AllowCredentials: true,
 	}))
 
@@ -100,6 +100,15 @@ func main() {
 
 	// WebSocket route
 	app.Use("/ws", func(c *fiber.Ctx) error {
+		// Log WebSocket upgrade attempts
+		log.Info().
+			Str("method", c.Method()).
+			Str("path", c.Path()).
+			Str("userAgent", c.Get("User-Agent")).
+			Str("origin", c.Get("Origin")).
+			Bool("isWebSocketUpgrade", websocket.IsWebSocketUpgrade(c)).
+			Msg("WebSocket upgrade attempt")
+		
 		// IsWebSocketUpgrade returns true if the client
 		// requested upgrade to the WebSocket protocol.
 		if websocket.IsWebSocketUpgrade(c) {
@@ -115,6 +124,18 @@ func main() {
 		if uid := c.Query("userId"); uid != "" {
 			userID = &uid
 		}
+		
+		// Log successful WebSocket upgrade
+		log.Info().
+			Str("userID", func() string {
+				if userID != nil {
+					return *userID
+				}
+				return "anonymous"
+			}()).
+			Str("remoteAddr", c.RemoteAddr().String()).
+			Msg("WebSocket connection established")
+		
 		wsHub.HandleWebSocket(c, userID)
 	}))
 

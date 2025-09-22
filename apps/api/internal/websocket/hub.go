@@ -207,6 +207,14 @@ func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
 		return "anonymous"
 	}()).Msg("WebSocket connection attempt")
 
+	// Set initial connection settings
+	c.SetReadLimit(512)
+	c.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.SetPongHandler(func(string) error {
+		c.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	client := &Client{
 		conn:   c,
 		userID: userID,
@@ -244,17 +252,6 @@ func (c *Client) readPump(h *Hub) {
 
 	// Set initial read deadline to 70 seconds (longer than ping interval)
 	c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
-	c.conn.SetPongHandler(func(string) error {
-		// Reset read deadline when pong is received
-		c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
-		log.Debug().Str("userID", func() string {
-			if c.userID != nil {
-				return *c.userID
-			}
-			return "anonymous"
-		}()).Msg("WebSocket pong received")
-		return nil
-	})
 
 	for {
 		_, _, err := c.conn.ReadMessage()
