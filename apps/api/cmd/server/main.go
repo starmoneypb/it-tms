@@ -113,6 +113,9 @@ func main() {
 	v1.Get("/attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadAttachment)
 	v1.Get("/comment-attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadCommentAttachment)
 	
+	// Profile picture download (public access for images)
+	v1.Get("/profile-pictures/:profilePictureId/download", h.DownloadProfilePicture)
+	
 	// Public uploads route for profile pictures (no auth required)
 	v1.Get("/uploads/*", func(c *fiber.Ctx) error {
 		// Extract the file path after /uploads/

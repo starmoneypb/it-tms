@@ -1219,22 +1219,46 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"upload failed"}})
 	}
 
-	// Update user profile picture in database
+	// Store profile picture metadata in database (like comment attachments)
 	ctx := context.Background()
-	_, err = h.repo.Users.UpdateProfilePicture(ctx, userID, path)
+	profilePictureID, err := h.repo.Users.AddProfilePicture(ctx, userID, file.Filename, contentType, file.Size, path)
 	if err != nil {
-		log.Printf("Profile picture upload - failed to update database for user %s: %v", userID, err)
-		// Clean up uploaded file if database update fails
+		log.Printf("Profile picture upload - failed to store metadata for user %s: %v", userID, err)
+		// Clean up uploaded file if database storage fails
 		os.Remove(path)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"database storage failed"}})
 	}
 
-	// Convert file path to URL path for the web app
-	filename := filepath.Base(path)
-	profilePictureURL := fmt.Sprintf("/uploads/%s", filename)
+	// Return profile picture ID for download endpoint (like comment attachments)
+	profilePictureURL := fmt.Sprintf("/profile-pictures/%s/download", profilePictureID)
 
-	log.Printf("Profile picture uploaded successfully for user %s: %s", userID, filename)
+	log.Printf("Profile picture uploaded successfully for user %s: %s", userID, profilePictureID)
 	return c.JSON(h.envelope(fiber.Map{"profilePicture": profilePictureURL}))
+}
+
+// Profile picture download handler (similar to comment attachments)
+func (h *Handlers) DownloadProfilePicture(c *fiber.Ctx) error {
+	profilePictureID := c.Params("profilePictureId")
+	
+	ctx := context.Background()
+	profilePicture, err := h.repo.Users.GetProfilePictureByID(ctx, profilePictureID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"profile picture not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get profile picture"}})
+	}
+	
+	// Set appropriate headers for image serving
+	c.Set("Content-Type", profilePicture.MIME)
+	c.Set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+	
+	// Add CORS headers for image serving
+	c.Set("Access-Control-Allow-Origin", "*")
+	c.Set("Access-Control-Allow-Methods", "GET")
+	c.Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	return c.SendFile(profilePicture.Path)
 }
 
 // -------------------- Classification --------------------

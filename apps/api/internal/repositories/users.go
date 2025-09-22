@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -55,6 +56,54 @@ func (r *UserRepo) UpdateProfilePicture(ctx context.Context, id, profilePicture 
 		return models.User{}, err
 	}
 	return r.GetByID(ctx, id)
+}
+
+// Profile picture attachment methods (similar to comment attachments)
+type ProfilePicture struct {
+	ID       string `json:"id"`
+	UserID   string `json:"userId"`
+	Filename string `json:"filename"`
+	MIME     string `json:"mime"`
+	Size     int64  `json:"size"`
+	Path     string `json:"path"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (r *UserRepo) AddProfilePicture(ctx context.Context, userID, filename, mime string, size int64, path string) (string, error) {
+	var id string
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO profile_pictures (user_id, filename, mime, size, path) 
+		VALUES ($1, $2, $3, $4, $5) 
+		RETURNING id`, userID, filename, mime, size, path).Scan(&id)
+	
+	if err != nil {
+		return "", err
+	}
+	
+	// Update user's profile_picture field to point to the download URL
+	profilePictureURL := fmt.Sprintf("/profile-pictures/%s/download", id)
+	_, err = r.pool.Exec(ctx, `UPDATE users SET profile_picture=$1, updated_at=NOW() WHERE id=$2`, profilePictureURL, userID)
+	if err != nil {
+		return "", err
+	}
+	
+	return id, nil
+}
+
+func (r *UserRepo) GetProfilePictureByID(ctx context.Context, id string) (ProfilePicture, error) {
+	var pp ProfilePicture
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, user_id, filename, mime, size, path, created_at 
+		FROM profile_pictures 
+		WHERE id=$1`, id).Scan(&pp.ID, &pp.UserID, &pp.Filename, &pp.MIME, &pp.Size, &pp.Path, &pp.CreatedAt)
+	
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pp, ErrNotFound
+		}
+		return pp, err
+	}
+	return pp, nil
 }
 
 func (r *UserRepo) Search(ctx context.Context, query string, roles []string, limit int) ([]models.User, error) {
