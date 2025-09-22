@@ -23,18 +23,24 @@ else
     echo "   psql -U postgres -d it_tms < fix-profile-pictures.sql"
 fi
 
-# Step 2: Restart nginx to apply configuration changes
-echo "🔄 Restarting nginx..."
-if command -v docker &> /dev/null; then
-    if docker ps | grep -q nginx; then
-        docker exec $(docker ps | grep nginx | awk '{print $1}') nginx -t
-        docker exec $(docker ps | grep nginx | awk '{print $1}') nginx -s reload
-        echo "✅ Nginx configuration reloaded"
-    else
-        echo "⚠️  Nginx container not found"
-    fi
+# Step 2: Test and reload nginx configuration
+echo "🔄 Testing and reloading nginx configuration..."
+if [ -f "test-nginx-config.sh" ]; then
+    chmod +x test-nginx-config.sh
+    ./test-nginx-config.sh
 else
-    echo "⚠️  Docker not found. Please restart nginx manually"
+    echo "⚠️  test-nginx-config.sh not found, trying manual nginx reload..."
+    if command -v docker &> /dev/null; then
+        if docker ps | grep -q nginx; then
+            docker exec $(docker ps | grep nginx | awk '{print $1}') nginx -t
+            docker exec $(docker ps | grep nginx | awk '{print $1}') nginx -s reload
+            echo "✅ Nginx configuration reloaded"
+        else
+            echo "⚠️  Nginx container not found"
+        fi
+    else
+        echo "⚠️  Docker not found. Please restart nginx manually"
+    fi
 fi
 
 # Step 3: Restart API server to apply code changes
