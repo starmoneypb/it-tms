@@ -42,7 +42,8 @@
     "admin": "ผู้ดูแลระบบ",
     "profile": "โปรไฟล์",
     "signIn": "เข้าสู่ระบบ",
-    "signOut": "ออกจากระบบ"
+    "signOut": "ออกจากระบบ",
+    "language": "ภาษา"
   },
   "landing": {
     "title": "UniSight",

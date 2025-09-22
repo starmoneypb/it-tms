@@ -253,8 +253,13 @@ export function Navigation() {
             )}
             
             {/* Mobile Language Toggle */}
-            <div className="px-4 py-3">
-              <LanguageToggle />
+            <div className="px-4 py-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-white/70">{t('language')}</span>
+              </div>
+              <div className="glass bg-white/5 border border-white/10 rounded-xl p-3 backdrop-blur-md">
+                <LanguageToggle />
+              </div>
             </div>
           </div>
 

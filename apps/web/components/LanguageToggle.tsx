@@ -50,9 +50,9 @@ export function LanguageToggle() {
       <DropdownTrigger>
         <Button
           variant="ghost"
-          size="sm"
-          className="glass text-white/90 hover:text-white hover:bg-white/10 rounded-lg border border-white/20 backdrop-blur-md transition-all duration-300 hover:border-white/30"
-          startContent={<Globe size={16} />}
+          size="md"
+          className="w-full justify-start glass text-white/90 hover:text-white hover:bg-white/10 rounded-xl border border-white/20 backdrop-blur-md transition-all duration-300 hover:border-white/30 min-h-[48px] px-4"
+          startContent={<Globe size={18} />}
         >
           {getCurrentLanguageLabel()}
         </Button>

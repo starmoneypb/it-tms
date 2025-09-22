@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -116,10 +117,18 @@ func main() {
 	v1.Get("/uploads/*", func(c *fiber.Ctx) error {
 		// Extract the file path after /uploads/
 		filePath := c.Params("*")
-		fullPath := filepath.Join(cfg.UploadDir, filePath)
+		
+		// URL decode the file path to handle spaces and special characters
+		decodedFilePath, err := url.QueryUnescape(filePath)
+		if err != nil {
+			log.Printf("Failed to decode file path: %s, error: %v", filePath, err)
+			decodedFilePath = filePath // fallback to original
+		}
+		
+		fullPath := filepath.Join(cfg.UploadDir, decodedFilePath)
 		
 		// Log the request for debugging
-		log.Printf("File request: %s -> %s", filePath, fullPath)
+		log.Printf("File request: %s (decoded: %s) -> %s", filePath, decodedFilePath, fullPath)
 		
 		// Security check: ensure the path is within the upload directory
 		uploadDir, _ := filepath.Abs(cfg.UploadDir)
@@ -133,17 +142,27 @@ func main() {
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			log.Printf("File not found: %s", fullPath)
 			
+			// List files in upload directory for debugging
+			if files, err := os.ReadDir(cfg.UploadDir); err == nil {
+				log.Printf("Available files in upload directory:")
+				for _, file := range files {
+					if strings.Contains(file.Name(), strings.Split(decodedFilePath, "_")[0]) {
+						log.Printf("  - %s", file.Name())
+					}
+				}
+			}
+			
 			// If it's a profile picture request, also clean up the database
-			if strings.Contains(filePath, "_") { // Profile pictures have timestamp prefix
+			if strings.Contains(decodedFilePath, "_") { // Profile pictures have timestamp prefix
 				go func() {
 					// Clean up database reference in background
 					ctx := context.Background()
 					// This is a simplified cleanup - in production you might want more sophisticated logic
-					log.Printf("Cleaning up database reference for missing file: %s", filePath)
+					log.Printf("Cleaning up database reference for missing file: %s", decodedFilePath)
 				}()
 			}
 			
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "file not found"}})
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": fmt.Sprintf("file not found: %s", decodedFilePath)}})
 		}
 		
 		// Set CORS headers for image serving
@@ -153,15 +172,15 @@ func main() {
 		c.Set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
 		
 		// Set appropriate content type for images
-		if strings.HasSuffix(strings.ToLower(filePath), ".jpg") || strings.HasSuffix(strings.ToLower(filePath), ".jpeg") {
+		if strings.HasSuffix(strings.ToLower(decodedFilePath), ".jpg") || strings.HasSuffix(strings.ToLower(decodedFilePath), ".jpeg") {
 			c.Set("Content-Type", "image/jpeg")
-		} else if strings.HasSuffix(strings.ToLower(filePath), ".png") {
+		} else if strings.HasSuffix(strings.ToLower(decodedFilePath), ".png") {
 			c.Set("Content-Type", "image/png")
-		} else if strings.HasSuffix(strings.ToLower(filePath), ".gif") {
+		} else if strings.HasSuffix(strings.ToLower(decodedFilePath), ".gif") {
 			c.Set("Content-Type", "image/gif")
-		} else if strings.HasSuffix(strings.ToLower(filePath), ".webp") {
+		} else if strings.HasSuffix(strings.ToLower(decodedFilePath), ".webp") {
 			c.Set("Content-Type", "image/webp")
-		} else if strings.HasSuffix(strings.ToLower(filePath), ".svg") {
+		} else if strings.HasSuffix(strings.ToLower(decodedFilePath), ".svg") {
 			c.Set("Content-Type", "image/svg+xml")
 		}
 		

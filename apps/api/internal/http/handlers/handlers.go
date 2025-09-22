@@ -1089,14 +1089,33 @@ func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {
 	f, err := fh.Open()
 	if err != nil { return "", err }
 	defer f.Close()
-	// naive secure filename
-	name := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(fh.Filename))
+	
+	// Sanitize filename: replace spaces and special characters
+	originalName := filepath.Base(fh.Filename)
+	sanitizedName := strings.ReplaceAll(originalName, " ", "_")
+	sanitizedName = strings.ReplaceAll(sanitizedName, "(", "")
+	sanitizedName = strings.ReplaceAll(sanitizedName, ")", "")
+	
+	// Create secure filename with timestamp
+	name := fmt.Sprintf("%d_%s", time.Now().UnixNano(), sanitizedName)
 	dst := filepath.Join(h.cfg.UploadDir, name)
+	
+	log.Printf("Saving upload: %s -> %s", originalName, name)
+	
 	os.MkdirAll(h.cfg.UploadDir, 0o755)
 	out, err := os.Create(dst)
-	if err != nil { return "", err }
+	if err != nil { 
+		log.Printf("Failed to create file %s: %v", dst, err)
+		return "", err 
+	}
 	defer out.Close()
-	if _, err := io.Copy(out, f); err != nil { return "", err }
+	
+	if _, err := io.Copy(out, f); err != nil { 
+		log.Printf("Failed to copy file content to %s: %v", dst, err)
+		return "", err 
+	}
+	
+	log.Printf("Successfully saved file: %s", dst)
 	return dst, nil
 }
 
