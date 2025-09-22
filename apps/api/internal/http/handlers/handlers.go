@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -1169,22 +1170,33 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 
 	file, err := c.FormFile("profilePicture")
 	if err != nil {
+		log.Printf("Profile picture upload - no file uploaded for user %s: %v", userID, err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"no file uploaded"}})
 	}
 
 	// Validate file type
-	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+	contentType := file.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		log.Printf("Profile picture upload - invalid file type for user %s: %s", userID, contentType)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"file must be an image"}})
 	}
 
 	// Validate file size (5MB limit)
 	if file.Size > 5*1024*1024 {
+		log.Printf("Profile picture upload - file too large for user %s: %d bytes", userID, file.Size)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"file too large (max 5MB)"}})
+	}
+
+	// Ensure upload directory exists
+	if err := os.MkdirAll(h.cfg.UploadDir, 0755); err != nil {
+		log.Printf("Profile picture upload - failed to create upload directory: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"upload directory error"}})
 	}
 
 	// Save file
 	path, err := h.saveUpload(file)
 	if err != nil {
+		log.Printf("Profile picture upload - failed to save file for user %s: %v", userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"upload failed"}})
 	}
 
@@ -1192,6 +1204,9 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 	ctx := context.Background()
 	_, err = h.repo.Users.UpdateProfilePicture(ctx, userID, path)
 	if err != nil {
+		log.Printf("Profile picture upload - failed to update database for user %s: %v", userID, err)
+		// Clean up uploaded file if database update fails
+		os.Remove(path)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 
@@ -1199,6 +1214,7 @@ func (h *Handlers) ProfilePictureUpload(c *fiber.Ctx) error {
 	filename := filepath.Base(path)
 	profilePictureURL := fmt.Sprintf("/uploads/%s", filename)
 
+	log.Printf("Profile picture uploaded successfully for user %s: %s", userID, filename)
 	return c.JSON(h.envelope(fiber.Map{"profilePicture": profilePictureURL}))
 }
 

@@ -123,6 +123,9 @@ export default function NewTicket() {
   const pr = computePriority(draft.priority);
 
   async function submit() {
+    // Prevent multiple submissions
+    if (submitting) return;
+    
     setSubmitting(true);
     try {
       const initialType =
@@ -162,6 +165,8 @@ export default function NewTicket() {
       });
       
       if (!res.ok) {
+        const errorData = await res.text();
+        console.error("Failed to create ticket:", errorData);
         alert(t('failedToSubmit'));
         return;
       }
@@ -298,10 +303,10 @@ export default function NewTicket() {
                   />
                 </div>
                 <div className="flex gap-4 pt-4 border-t border-white/10">
-                  <Button onPress={()=>setDraft({...draft, step: 3})} color="primary" size="lg" className="flex-1">
+                  <Button onPress={()=>setDraft({...draft, step: 3})} color="primary" size="lg" className="flex-1" isDisabled={submitting}>
                     {t('continue')}
                   </Button>
-                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg" className="flex-1">
+                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg" className="flex-1" isDisabled={submitting}>
                     {tCommon('back')}
                   </Button>
                 </div>
@@ -377,7 +382,7 @@ export default function NewTicket() {
                   )}
                 </div>
                 <div className="pt-4 border-t border-white/10">
-                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg" className="w-full">
+                  <Button onPress={()=>setDraft({...draft, step: 1})} variant="flat" size="lg" className="w-full" isDisabled={submitting}>
                     {t('back')}
                   </Button>
                 </div>
@@ -432,10 +437,10 @@ export default function NewTicket() {
                   </div>
                 </div>
                 <div className="flex gap-4 pt-4 border-t border-white/10">
-                  <Button onPress={()=>setDraft({...draft, step: 4})} color="primary" size="lg" className="flex-1">
+                  <Button onPress={()=>setDraft({...draft, step: 4})} color="primary" size="lg" className="flex-1" isDisabled={submitting}>
                     {t('continue')}
                   </Button>
-                  <Button onPress={()=>setDraft({...draft, step: 2})} variant="flat" size="lg" className="flex-1">
+                  <Button onPress={()=>setDraft({...draft, step: 2})} variant="flat" size="lg" className="flex-1" isDisabled={submitting}>
                     {tCommon('back')}
                   </Button>
                 </div>
@@ -919,6 +924,7 @@ export default function NewTicket() {
                     color="primary" 
                     size="lg"
                     isLoading={submitting}
+                    isDisabled={submitting}
                     className="flex-2"
                   >
                     {submitting ? t('submitting') : t('submit')}
@@ -928,6 +934,7 @@ export default function NewTicket() {
                     variant="flat" 
                     size="lg"
                     className="flex-1"
+                    isDisabled={submitting}
                   >
                     {tCommon('back')}
                   </Button>

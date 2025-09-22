@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Picture Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 20px; 
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+        .info { color: #4444ff; }
+        input[type="file"] {
+            background: #333;
+            color: white;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0088ee; }
+        button:disabled { 
+            background: #666; 
+            cursor: not-allowed; 
+        }
+        .profile-pic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #0066cc;
+        }
+        .log {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Profile Picture Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>API Connection Test</h2>
+        <p>Testing connection to API server...</p>
+        <button onclick="testAPIConnection()">Test API Connection</button>
+        <div id="api-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>File Upload Test</h2>
+        <p>Test profile picture upload functionality:</p>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="testUpload()" id="uploadBtn">Upload Profile Picture</button>
+        <div id="upload-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Image Display Test</h2>
+        <p>Test profile picture display:</p>
+        <button onclick="testImageDisplay()">Test Image Display</button>
+        <div id="display-status"></div>
+        <div id="image-container"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>User Profile Test</h2>
+        <p>Test user profile endpoint:</p>
+        <button onclick="testUserProfile()">Get User Profile</button>
+        <div id="profile-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.port === '8000' ? '' : 'http://localhost:8080';
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            logDiv.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function testAPIConnection() {
+            const statusDiv = document.getElementById('api-status');
+            statusDiv.innerHTML = '<p class="info">Testing...</p>';
+            
+            try {
+                log('Testing API connection...');
+                const response = await fetch(`${API_BASE}/api/v1/me`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = '<p class="success">✓ API Connection successful</p>';
+                    log('API connection successful', 'success');
+                    log(`Response: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    statusDiv.innerHTML = `<p class="error">✗ API Connection failed (${response.status})</p>`;
+                    log(`API connection failed: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">✗ API Connection error</p>';
+                log(`API connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const statusDiv = document.getElementById('upload-status');
+            const uploadBtn = document.getElementById('uploadBtn');
+            
+            if (!fileInput.files[0]) {
+                statusDiv.innerHTML = '<p class="error">Please select a file first</p>';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            log(`Testing upload: ${file.name} (${file.type}, ${file.size} bytes)`);
+            
+            uploadBtn.disabled = true;
+            statusDiv.innerHTML = '<p class="info">Uploading...</p>';
+
+            try {
+                const formData = new FormData();
+                formData.append('profilePicture', file);
+
+                const response = await fetch(`${API_BASE}/api/v1/profile/picture`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const result = await response.json();
+                log(`Upload response: ${JSON.stringify(result, null, 2)}`);
+
+                if (response.ok) {
+                    statusDiv.innerHTML = '<p class="success">✓ Upload successful!</p>';
+                    log('Upload successful', 'success');
+                } else {
+                    statusDiv.innerHTML = `<p class="error">✗ Upload failed: ${result.error?.message || 'Unknown error'}</p>`;
+                    log(`Upload failed: ${result.error?.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">✗ Upload error</p>';
+                log(`Upload error: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+
+        async function testImageDisplay() {
+            const statusDiv = document.getElementById('display-status');
+            const imageContainer = document.getElementById('image-container');
+            
+            statusDiv.innerHTML = '<p class="info">Testing image display...</p>';
+            log('Testing image display...');
+
+            try {
+                // First get user profile to get the profile picture URL
+                const profileResponse = await fetch(`${API_BASE}/api/v1/me`, {
+                    credentials: 'include'
+                });
+
+                if (!profileResponse.ok) {
+                    throw new Error('Failed to get user profile');
+                }
+
+                const profileData = await profileResponse.json();
+                log(`User profile: ${JSON.stringify(profileData, null, 2)}`);
+
+                if (profileData.data?.profilePicture) {
+                    const imageUrl = `${API_BASE}${profileData.data.profilePicture}`;
+                    log(`Testing image URL: ${imageUrl}`);
+                    
+                    // Test if image loads
+                    const img = new Image();
+                    img.onload = () => {
+                        statusDiv.innerHTML = '<p class="success">✓ Image loads successfully</p>';
+                        imageContainer.innerHTML = `<img src="${imageUrl}" class="profile-pic" alt="Profile Picture">`;
+                        log('Image loaded successfully', 'success');
+                    };
+                    img.onerror = () => {
+                        statusDiv.innerHTML = '<p class="error">✗ Image failed to load</p>';
+                        log('Image failed to load', 'error');
+                    };
+                    img.src = imageUrl;
+                } else {
+                    statusDiv.innerHTML = '<p class="info">No profile picture set</p>';
+                    imageContainer.innerHTML = '<p>No profile picture to display</p>';
+                    log('No profile picture set');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">✗ Error testing image display</p>';
+                log(`Error testing image display: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUserProfile() {
+            const statusDiv = document.getElementById('profile-status');
+            statusDiv.innerHTML = '<p class="info">Getting user profile...</p>';
+            
+            try {
+                log('Getting user profile...');
+                const response = await fetch(`${API_BASE}/api/v1/me`, {
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                log(`Profile response: ${JSON.stringify(data, null, 2)}`);
+                
+                if (response.ok) {
+                    const profilePicture = data.data?.profilePicture;
+                    statusDiv.innerHTML = `
+                        <p class="success">✓ Profile retrieved successfully</p>
+                        <p>Name: ${data.data?.name || 'N/A'}</p>
+                        <p>Email: ${data.data?.email || 'N/A'}</p>
+                        <p>Role: ${data.data?.role || 'N/A'}</p>
+                        <p>Profile Picture: ${profilePicture || 'Not set'}</p>
+                    `;
+                    log('Profile retrieved successfully', 'success');
+                } else {
+                    statusDiv.innerHTML = `<p class="error">✗ Failed to get profile (${response.status})</p>`;
+                    log(`Failed to get profile: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">✗ Error getting profile</p>';
+                log(`Error getting profile: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-test API connection on load
+        window.onload = () => {
+            log('Profile Picture Test Tool loaded');
+            log(`API Base URL: ${API_BASE}`);
+            testAPIConnection();
+        };
+    </script>
+</body>
+</html>

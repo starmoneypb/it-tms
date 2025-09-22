@@ -149,17 +149,23 @@ export function Navigation() {
                   <img 
                     src={`${API}${user.profilePicture}`} 
                     alt={user.name}
-                    className="w-10 h-10 rounded-full ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2"
+                    className="w-10 h-10 rounded-full ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2 object-cover"
                     onError={(e) => {
-                      // Hide image if it fails to load
+                      // Hide image if it fails to load and show fallback
+                      console.warn('Failed to load profile picture:', `${API}${user.profilePicture}`);
                       e.currentTarget.style.display = 'none';
+                      // Show the fallback avatar
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
                     }}
                   />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                ) : null}
+                <div 
+                  className={`w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20 absolute left-0 top-1/2 transform -translate-y-1/2 ${user.profilePicture ? 'hidden' : 'flex'}`}
+                  style={{ display: user.profilePicture ? 'none' : 'flex' }}
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
                 <div className="flex flex-col items-start pl-12 pr-4">
                   <span className="text-sm font-medium">{user.name}</span>
                   <span className="text-xs text-white/60">{user.role}</span>
@@ -261,14 +267,21 @@ export function Navigation() {
                     <img 
                       src={`${API}${user.profilePicture}`} 
                       alt={user.name}
-                      className="w-8 h-8 rounded-full ring-2 ring-white/20"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      className="w-8 h-8 rounded-full ring-2 ring-white/20 object-cover"
+                      onError={(e) => { 
+                        console.warn('Failed to load profile picture (mobile):', `${API}${user.profilePicture}`);
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
                     />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  ) : null}
+                  <div 
+                    className={`w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20 ${user.profilePicture ? 'hidden' : 'flex'}`}
+                    style={{ display: user.profilePicture ? 'none' : 'flex' }}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
                   <div className="flex flex-col">
                     <span className="font-medium text-white">{user.name}</span>
                     <span className="text-xs text-white/60">{user.role}</span>

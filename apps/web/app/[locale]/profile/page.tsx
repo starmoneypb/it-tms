@@ -142,7 +142,7 @@ export default function ProfilePage() {
 
     // Validate file type and size
     if (!file.type.startsWith('image/')) {
-      setUploadError('Please select an image file');
+      setUploadError('Please select an image file (JPG, PNG, GIF, WebP)');
       return;
     }
 
@@ -158,27 +158,42 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('profilePicture', file);
 
+      console.log('Uploading profile picture:', file.name, file.type, file.size);
+
       const response = await fetch(`${API}/api/v1/profile/picture`, {
         method: "POST",
         credentials: "include",
         body: formData,
       });
 
+      const result = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to upload profile picture');
+        const errorMessage = result?.error?.message || 'Failed to upload profile picture';
+        console.error('Upload failed:', result);
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      console.log('Upload successful:', result);
       setProfile(prev => prev ? { ...prev, profilePicture: result.data.profilePicture } : null);
       
       // Update the auth context without page reload
       await refreshUser();
       setUploadError(null); // Clear any previous errors
+      
+      // Show success message briefly
+      const successMessage = 'Profile picture updated successfully!';
+      setUploadError(null);
+      // You could add a success state here if needed
+      
     } catch (error) {
       console.error("Error uploading profile picture:", error);
-      setUploadError('Failed to upload profile picture');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload profile picture. Please try again.';
+      setUploadError(errorMessage);
     } finally {
       setIsUploading(false);
+      // Clear the file input
+      event.target.value = '';
     }
   };
 

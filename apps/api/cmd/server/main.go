@@ -130,6 +130,12 @@ func main() {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "file not found"}})
 		}
 		
+		// Set CORS headers for image serving
+		c.Set("Access-Control-Allow-Origin", "*")
+		c.Set("Access-Control-Allow-Methods", "GET")
+		c.Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+		
 		// Set appropriate content type for images
 		if strings.HasSuffix(strings.ToLower(filePath), ".jpg") || strings.HasSuffix(strings.ToLower(filePath), ".jpeg") {
 			c.Set("Content-Type", "image/jpeg")
@@ -139,6 +145,8 @@ func main() {
 			c.Set("Content-Type", "image/gif")
 		} else if strings.HasSuffix(strings.ToLower(filePath), ".webp") {
 			c.Set("Content-Type", "image/webp")
+		} else if strings.HasSuffix(strings.ToLower(filePath), ".svg") {
+			c.Set("Content-Type", "image/svg+xml")
 		}
 		
 		return c.SendFile(fullPath)

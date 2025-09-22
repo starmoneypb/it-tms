@@ -508,6 +508,8 @@ export default function TicketDetails() {
       // Reload data and clear status
       setStatus("");
       load();
+      // Reload comments with retry mechanism to ensure auto-comment is visible
+      loadCommentsWithRetry(1);
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : "Failed to update status");
     } finally {
@@ -1098,6 +1100,8 @@ export default function TicketDetails() {
                                   body: JSON.stringify({ assigneeIds: [assignee.id] }),
                                 });
                                 load();
+                                // Reload comments with retry mechanism to ensure auto-comment is visible
+                                loadCommentsWithRetry(1);
                               }}
                               className="min-w-0 w-6 h-6 p-0"
                             >
@@ -1122,6 +1126,8 @@ export default function TicketDetails() {
                       body: JSON.stringify({ self: true }),
                     });
                     load();
+                    // Reload comments with retry mechanism to ensure auto-comment is visible
+                    loadCommentsWithRetry(1);
                   }}
                   className="w-full"
                 >
@@ -1150,6 +1156,8 @@ export default function TicketDetails() {
                           });
                           setSelectedAssignees([]);
                           load();
+                          // Reload comments with retry mechanism to ensure auto-comment is visible
+                          loadCommentsWithRetry(1);
                         }
                       }}
                       isDisabled={selectedAssignees.length === 0}
