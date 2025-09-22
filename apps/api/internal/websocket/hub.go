@@ -207,6 +207,12 @@ func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
 		return "anonymous"
 	}()).Msg("WebSocket connection attempt")
 
+	// Validate connection
+	if c == nil {
+		log.Error().Msg("WebSocket connection is nil")
+		return
+	}
+
 	// Set initial connection settings
 	c.SetReadLimit(512)
 	c.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -221,10 +227,8 @@ func (h *Hub) HandleWebSocket(c *websocket.Conn, userID *string) {
 		send:   make(chan []byte, 256),
 	}
 
-	// Register client in a goroutine to avoid blocking
-	go func() {
-		h.register <- client
-	}()
+	// Register client synchronously first
+	h.register <- client
 
 	// Start goroutines for reading and writing
 	go client.writePump(h)
@@ -240,20 +244,32 @@ func (c *Client) readPump(h *Hub) {
 			return "anonymous"
 		}()).Msg("WebSocket readPump exiting")
 		
-		// Unregister client in a goroutine to avoid blocking
-		go func() {
-			h.unregister <- c
-		}()
+		// Unregister client synchronously
+		h.unregister <- c
 		
-		// Close connection gracefully
-		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		c.conn.Close()
+		// Close connection gracefully if it's still valid
+		if c.conn != nil {
+			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			c.conn.Close()
+		}
 	}()
 
 	// Set initial read deadline to 70 seconds (longer than ping interval)
-	c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
+	if c.conn != nil {
+		c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
+	}
 
 	for {
+		if c.conn == nil {
+			log.Debug().Str("userID", func() string {
+				if c.userID != nil {
+					return *c.userID
+				}
+				return "anonymous"
+			}()).Msg("WebSocket connection is nil, exiting readPump")
+			break
+		}
+
 		_, _, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -288,14 +304,26 @@ func (c *Client) writePump(h *Hub) {
 		}()).Msg("WebSocket writePump exiting")
 		ticker.Stop()
 		
-		// Close connection gracefully
-		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		c.conn.Close()
+		// Close connection gracefully if it's still valid
+		if c.conn != nil {
+			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			c.conn.Close()
+		}
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.send:
+			if c.conn == nil {
+				log.Debug().Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket connection is nil, exiting writePump")
+				return
+			}
+
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if !ok {
 				log.Debug().Str("userID", func() string {
@@ -319,6 +347,16 @@ func (c *Client) writePump(h *Hub) {
 			}
 
 		case <-ticker.C:
+			if c.conn == nil {
+				log.Debug().Str("userID", func() string {
+					if c.userID != nil {
+						return *c.userID
+					}
+					return "anonymous"
+				}()).Msg("WebSocket connection is nil, exiting writePump")
+				return
+			}
+
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				log.Error().Err(err).Str("userID", func() string {
