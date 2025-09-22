@@ -159,12 +159,10 @@ func (h *Handlers) Me(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"user not found"}})
 	}
 	
-	// Convert profile picture path to URL
+	// Keep profile picture URL as-is (it's already in the correct format)
 	var profilePictureURL *string
 	if user.ProfilePicture != nil && *user.ProfilePicture != "" {
-		filename := filepath.Base(*user.ProfilePicture)
-		url := fmt.Sprintf("/uploads/%s", filename)
-		profilePictureURL = &url
+		profilePictureURL = user.ProfilePicture
 	}
 	
 	return c.JSON(h.envelope(fiber.Map{
@@ -1221,12 +1219,10 @@ func (h *Handlers) ProfileUpdate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 
-	// Convert profile picture path to URL format for consistency with other endpoints
+	// Keep profile picture URL as-is (it's already in the correct format)
 	var profilePictureURL *string
 	if user.ProfilePicture != nil && *user.ProfilePicture != "" {
-		filename := filepath.Base(*user.ProfilePicture)
-		url := fmt.Sprintf("/uploads/%s", filename)
-		profilePictureURL = &url
+		profilePictureURL = user.ProfilePicture
 	}
 
 	return c.JSON(h.envelope(fiber.Map{
@@ -1719,9 +1715,9 @@ func (h *Handlers) convertProfilePictureToURL(profilePicture *string) *string {
 	if profilePicture == nil || *profilePicture == "" {
 		return nil
 	}
-	filename := filepath.Base(*profilePicture)
-	url := fmt.Sprintf("/uploads/%s", filename)
-	return &url
+	// Profile picture URLs are already in the correct format (/profile-pictures/{id}/download)
+	// No conversion needed
+	return profilePicture
 }
 
 func (h *Handlers) MetricsSummary(c *fiber.Ctx) error {
