@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -118,6 +119,13 @@ func main() {
 		return fiber.ErrUpgradeRequired
 	})
 
+	// Allowed WS origins (comma-separated via env: e.g., "https://unisight.dev,https://www.unisight.dev,http://localhost:3000")
+	allowedWSOrigins := viper.GetString("WS_ALLOWED_ORIGINS")
+	// Fallback defaults if env is empty
+	if allowedWSOrigins == "" {
+		allowedWSOrigins = "https://unisight.dev,https://www.unisight.dev,http://localhost:3000,http://localhost:8000"
+	}
+
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		// Get user ID from query parameter (for authenticated users)
 		var userID *string
@@ -137,6 +145,24 @@ func main() {
 			Msg("WebSocket connection established")
 		
 		wsHub.HandleWebSocket(c, userID)
+	}, websocket.Config{
+		// Ensure upgrade is allowed for known origins (prevents 403/426 due to origin checks)
+		CheckOrigin: func(ctx *fiber.Ctx) bool {
+			origin := ctx.Get("Origin")
+			if origin == "" {
+				return true
+			}
+			for _, o := range strings.Split(allowedWSOrigins, ",") {
+				if strings.TrimSpace(o) == origin {
+					return true
+				}
+			}
+			return false
+		},
+		// Reasonable handshake timeout
+		HandshakeTimeout: 10 * time.Second,
+		// Compression is safe with modern browsers; can help large notifications
+		EnableCompression: true,
 	}))
 
 	// API v1 routes

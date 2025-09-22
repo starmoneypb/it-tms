@@ -3,10 +3,21 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { useAuth } from './auth';
 
-// Use relative URLs for production-like environment behind reverse proxy
-const WS_URL = typeof window !== 'undefined' && window.location.port === '8000'
-  ? 'ws://localhost:8000/ws' // Use direct connection when accessed through port 8000 (production-like)
-  : (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/ws");
+// Derive same-origin WS URL in prod; keep localhost override for dev-on-8000
+const resolveWsUrl = () => {
+  if (typeof window === 'undefined') {
+    // SSR fallback; client will re-evaluate on mount
+    return process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+  }
+  // Local docker: proxy through 8000
+  if (window.location.hostname === 'localhost' && window.location.port === '8000') {
+    return 'ws://localhost:8000/ws';
+  }
+  // Same-origin in prod: https://host -> wss://host/ws
+  const wsOrigin = window.location.origin.replace(/^http/, 'ws');
+  return `${wsOrigin}/ws`;
+};
+const WS_URL = resolveWsUrl();
 
 export interface Notification {
   type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned';
@@ -67,29 +78,22 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     try {
       // Add user ID as query parameter if user is authenticated
       const wsUrl = user?.id 
-        ? `${WS_URL}?userId=${encodeURIComponent(user.id)}`
-        : WS_URL;
+        ? `${resolveWsUrl()}?userId=${encodeURIComponent(user.id)}`
+        : resolveWsUrl();
 
       console.log('Attempting WebSocket connection to:', wsUrl);
       console.log('User ID:', user?.id);
       console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
       setConnectionStatus('connecting');
       
-      // Add connection timeout
-      const connectionTimeout = setTimeout(() => {
-        if (wsRef.current?.readyState === WebSocket.CONNECTING) {
-          console.error('WebSocket connection timeout');
-          wsRef.current.close();
-          setConnectionStatus('error');
-        }
-      }, 10000); // 10 second timeout
-      
+      // NOTE: do NOT forcibly close a socket that's still CONNECTING.
+      // Premature client-side close causes 1006 and prevents successful handshakes behind TLS/proxy.
+
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log('WebSocket connected successfully');
-        clearTimeout(connectionTimeout);
         setIsConnected(true);
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
@@ -136,14 +140,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
-        clearTimeout(connectionTimeout);
         setIsConnected(false);
         setConnectionStatus('disconnected');
         wsRef.current = null;
 
-        // Only reconnect if it's not a manual close and not a normal closure
-        // Also avoid reconnecting on 1006 (abnormal closure) to prevent infinite loops
-        if (!isManualClose.current && event.code !== 1000 && event.code !== 1001 && event.code !== 1006) {
+        // Reconnect on all abnormal closures, including 1006 (common behind proxies)
+        if (!isManualClose.current && event.code !== 1000 && event.code !== 1001) {
           // Reconnect with exponential backoff, max 10 attempts
           if (reconnectAttempts.current < 10) {
             const baseDelay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000); // Max 30 seconds
@@ -162,10 +164,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             console.log('Max reconnection attempts reached. Stopping reconnection.');
             setConnectionStatus('error');
           }
-        } else if (event.code === 1006) {
-          // For 1006 errors, wait longer before attempting reconnection
-          console.log('Abnormal closure detected, waiting before reconnection...');
-          setConnectionStatus('error');
         }
       };
 
@@ -173,7 +171,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         console.error('WebSocket error:', error);
         console.error('WebSocket readyState:', wsRef.current?.readyState);
         console.error('WebSocket URL:', wsUrl);
-        clearTimeout(connectionTimeout);
         setIsConnected(false);
         setConnectionStatus('error');
         
