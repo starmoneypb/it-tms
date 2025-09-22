@@ -265,15 +265,11 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"anonymous can only open issue reports"}})
 		}
 	case "User":
-		// Users can create all types except Emergency Change and Data Correction
-		if body.InitialType == models.InitialChangeRequestNormal ||
-		   body.InitialType == models.InitialServiceDataExtraction ||
-		   body.InitialType == models.InitialServiceAdvisory ||
-		   body.InitialType == models.InitialServiceGeneral {
-			// Allowed
-		} else {
+		// Users can create all types except Data Correction (Emergency Change doesn't exist in enums)
+		if body.InitialType == models.InitialServiceDataCorrection {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"insufficient permissions for this ticket type"}})
 		}
+		// All other types are allowed for Users
 	case "Supervisor", "Manager":
 		// Supervisors and Managers can create all types
 		// No restrictions
