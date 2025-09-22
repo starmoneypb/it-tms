@@ -219,9 +219,11 @@ func (c *Client) readPump(h *Hub) {
 		c.conn.Close()
 	}()
 
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	// Set initial read deadline to 70 seconds (longer than ping interval)
+	c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		// Reset read deadline when pong is received
+		c.conn.SetReadDeadline(time.Now().Add(70 * time.Second))
 		return nil
 	})
 
@@ -229,7 +231,7 @@ func (c *Client) readPump(h *Hub) {
 		_, _, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error().Err(err).Msg("WebSocket error")
+				log.Error().Err(err).Msg("WebSocket read error")
 			}
 			break
 		}
@@ -237,7 +239,8 @@ func (c *Client) readPump(h *Hub) {
 }
 
 func (c *Client) writePump(h *Hub) {
-	ticker := time.NewTicker(54 * time.Second)
+	// Send ping every 30 seconds to keep connection alive
+	ticker := time.NewTicker(30 * time.Second)
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
@@ -253,12 +256,14 @@ func (c *Client) writePump(h *Hub) {
 			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				log.Error().Err(err).Msg("WebSocket write error")
 				return
 			}
 
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Error().Err(err).Msg("WebSocket ping error")
 				return
 			}
 		}

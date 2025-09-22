@@ -64,7 +64,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
         setIsConnected(true);
         reconnectAttempts.current = 0;
       };
@@ -113,14 +113,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         setIsConnected(false);
         wsRef.current = null;
 
-        // Reconnect with exponential backoff
-        if (reconnectAttempts.current < 5) {
-          const delay = Math.pow(2, reconnectAttempts.current) * 1000;
-          console.log(`Reconnecting in ${delay}ms...`);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connect();
-          }, delay);
+        // Only reconnect if it's not a normal closure (1000) or going away (1001)
+        if (event.code !== 1000 && event.code !== 1001) {
+          // Reconnect with exponential backoff, max 10 attempts
+          if (reconnectAttempts.current < 10) {
+            const delay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000); // Max 30 seconds
+            console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts.current + 1})`);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectAttempts.current++;
+              connect();
+            }, delay);
+          } else {
+            console.log('Max reconnection attempts reached. Stopping reconnection.');
+          }
         }
       };
 
