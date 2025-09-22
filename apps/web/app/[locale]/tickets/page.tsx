@@ -326,7 +326,7 @@ export default function TicketsPage() {
                           >
                             {assignee.profilePicture ? (
                               <img
-                                src={`${API}${assignee.profilePicture}`}
+                                src={`${API}/api/v1${assignee.profilePicture}`}
                                 alt={assignee.name}
                                 className="w-full h-full object-cover"
                               />

@@ -527,7 +527,7 @@ export default function Dashboard() {
                               >
                                 {assignee.profilePicture ? (
                                   <img
-                                    src={`${API}${assignee.profilePicture}`}
+                                    src={`${API}/api/v1${assignee.profilePicture}`}
                                     alt={assignee.name}
                                     className="w-full h-full object-cover"
                                   />
@@ -609,7 +609,7 @@ export default function Dashboard() {
                     <div className="flex-shrink-0 flex items-center gap-2">
                       <div className="relative">
                         <Avatar
-                          src={user.profilePicture || undefined}
+                          src={user.profilePicture ? `${API}/api/v1${user.profilePicture}` : undefined}
                           name={user.name}
                           size="md"
                           className="w-10 h-10"
