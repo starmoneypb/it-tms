@@ -1078,7 +1078,7 @@ func (h *Handlers) DownloadAttachment(c *fiber.Ctx) error {
 	}
 	
 	// Fallback to local file serving if GCS is not configured
-	log.Warn().Msg("GCS not configured, serving file from local storage")
+	log.Printf("Warning: GCS not configured, serving file from local storage")
 	
 	// Set appropriate headers
 	c.Set("Content-Type", attachment.MIME)
@@ -1113,7 +1113,7 @@ func (h *Handlers) DownloadCommentAttachment(c *fiber.Ctx) error {
 	}
 	
 	// Fallback to local file serving if GCS is not configured
-	log.Warn().Msg("GCS not configured, serving file from local storage")
+	log.Printf("Warning: GCS not configured, serving file from local storage")
 	
 	// Set appropriate headers
 	c.Set("Content-Type", attachment.MIME)
@@ -1150,7 +1150,7 @@ func (h *Handlers) saveUpload(fh *multipart.FileHeader) (string, error) {
 	}
 	
 	// Fallback to local filesystem if GCS is not configured
-	log.Warn().Msg("GCS not configured, falling back to local storage")
+	log.Printf("Warning: GCS not configured, falling back to local storage")
 	
 	// Sanitize filename: replace spaces and special characters
 	originalName := filepath.Base(fh.Filename)
@@ -1328,7 +1328,7 @@ func (h *Handlers) DownloadProfilePicture(c *fiber.Ctx) error {
 	}
 	
 	// Fallback to local file serving if GCS is not configured
-	log.Warn().Msg("GCS not configured, serving file from local storage")
+	log.Printf("Warning: GCS not configured, serving file from local storage")
 	
 	// Set appropriate headers for image serving
 	c.Set("Content-Type", profilePicture.MIME)

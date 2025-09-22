@@ -45,17 +45,18 @@ jobs:
           sudo cp env.gcp .env
           EOF
           
-          # Export GCS credentials from VM metadata and add all deployment commands to the same script
+          # Add GCS credentials from VM metadata to .env file
           echo "" >> deploy_script.sh
           echo "echo 'Setting up GCS credentials from VM metadata...'" >> deploy_script.sh
-          echo 'export GOOGLE_APPLICATION_CREDENTIALS_JSON=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-service-account-key" -H "Metadata-Flavor: Google")' >> deploy_script.sh
-          echo 'echo "GCS credentials loaded: ${#GOOGLE_APPLICATION_CREDENTIALS_JSON} characters"' >> deploy_script.sh
+          echo 'GCS_CREDS=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-service-account-key" -H "Metadata-Flavor: Google")' >> deploy_script.sh
+          echo 'echo "GCS credentials loaded: ${#GCS_CREDS} characters"' >> deploy_script.sh
+          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$GCS_CREDS" | sudo tee -a .env > /dev/null' >> deploy_script.sh
           echo "" >> deploy_script.sh
           echo "echo 'Building and deploying with docker-compose...'" >> deploy_script.sh
-          echo 'sudo -E docker-compose -f docker-compose.gcp.yml build --no-cache web' >> deploy_script.sh
+          echo 'sudo docker-compose -f docker-compose.gcp.yml build --no-cache web' >> deploy_script.sh
           echo "" >> deploy_script.sh
           echo "echo 'Starting core services first (without nginx)...'" >> deploy_script.sh
-          echo 'sudo -E docker-compose -f docker-compose.gcp.yml up -d db db-migrate db-seed api web' >> deploy_script.sh
+          echo 'sudo docker-compose -f docker-compose.gcp.yml up -d db db-migrate db-seed api web' >> deploy_script.sh
           echo "" >> deploy_script.sh
           echo "echo 'Waiting for services to be ready...'" >> deploy_script.sh
           echo 'sleep 15' >> deploy_script.sh
@@ -63,7 +64,7 @@ jobs:
           echo "echo 'Checking SSL certificates...'" >> deploy_script.sh
           echo 'if [ ! -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh
           echo '  echo "SSL certificates not found, generating new ones..."' >> deploy_script.sh
-          echo '  sudo -E docker-compose -f docker-compose.gcp.yml stop nginx || true' >> deploy_script.sh
+          echo '  sudo docker-compose -f docker-compose.gcp.yml stop nginx || true' >> deploy_script.sh
           echo '  echo "Requesting SSL certificate from Lets Encrypt using standalone method..."' >> deploy_script.sh
           echo '  sudo docker run --rm -p 80:80 -v certbot-etc:/etc/letsencrypt -v certbot-var:/var/lib/letsencrypt certbot/certbot certonly --standalone -d unisight.dev -d www.unisight.dev --email admin@unisight.dev --agree-tos --non-interactive --expand' >> deploy_script.sh
           echo '  if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh
@@ -84,11 +85,11 @@ jobs:
           echo '  sudo cp nginx/nginx.conf nginx/nginx.conf.backup 2>/dev/null || true' >> deploy_script.sh
           echo 'fi' >> deploy_script.sh
           echo "" >> deploy_script.sh
-          echo 'sudo -E docker-compose -f docker-compose.gcp.yml up -d nginx' >> deploy_script.sh
+          echo 'sudo docker-compose -f docker-compose.gcp.yml up -d nginx' >> deploy_script.sh
           echo "" >> deploy_script.sh
           echo "echo 'Checking service health...'" >> deploy_script.sh
           echo 'sleep 10' >> deploy_script.sh
-          echo 'sudo -E docker-compose -f docker-compose.gcp.yml ps' >> deploy_script.sh
+          echo 'sudo docker-compose -f docker-compose.gcp.yml ps' >> deploy_script.sh
           echo "" >> deploy_script.sh
           echo "echo 'Deployment completed successfully!'" >> deploy_script.sh
           echo 'if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh

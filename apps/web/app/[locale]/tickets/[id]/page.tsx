@@ -1060,7 +1060,7 @@ export default function TicketDetails() {
             </Card>
           )}
 
-          {canAssignTicket() && (
+          {canAssignTicket(true) && (
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">

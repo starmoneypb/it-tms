@@ -3,14 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/url"
 	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/it-tms/apps/api/internal/http/handlers"
