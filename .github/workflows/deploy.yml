@@ -45,13 +45,17 @@ jobs:
           sudo cp env.gcp .env
           EOF
           
-          # Add the GCS credentials injection to the script  
+          # Create a temporary credentials file to avoid GitHub Actions masking issues
+          echo '${{ secrets.GCP_SA_KEY }}' > gcp_creds.json
+          
+          # Add the GCS credentials injection to the script using the file
           echo "" >> deploy_script.sh
           echo "echo 'Injecting GCS credentials from GitHub secret...'" >> deploy_script.sh
-          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON='"'"'"'"'${{ secrets.GCP_SA_KEY }}'"'"'"'"'" | sudo tee -a .env > /dev/null' >> deploy_script.sh
+          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$(cat ~/gcp_creds.json)" >> .env' >> deploy_script.sh
           
-          # Copy script to VM and execute it
+          # Copy script and credentials file to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
+          gcloud compute scp gcp_creds.json ${{ env.VM_NAME }}:~/gcp_creds.json --zone=${{ env.VM_ZONE }}
           gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="chmod +x ~/deploy_script.sh && ~/deploy_script.sh"
           
           # Continue with the rest of the deployment
@@ -113,12 +117,12 @@ jobs:
               echo '   To enable SSL manually, run the certificate generation command on your VM'
             fi
             
-            # Clean up temporary script
-            rm -f ~/deploy_script.sh
+            # Clean up temporary files
+            rm -f ~/deploy_script.sh ~/gcp_creds.json
           "
           
-          # Clean up local temporary script
-          rm -f deploy_script.sh
+          # Clean up local temporary files
+          rm -f deploy_script.sh gcp_creds.json
       
       - name: Verify deployment
         run: |
