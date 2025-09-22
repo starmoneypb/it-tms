@@ -1,16 +1,12 @@
 package websocket
 
 import (
-	"context"
 	"encoding/json"
-	"net/http"
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 	"github.com/rs/zerolog/log"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 
 	"github.com/it-tms/apps/api/internal/models"
 )
@@ -125,21 +121,10 @@ func (h *Hub) Run() {
 }
 
 // HandleWebSocket handles WebSocket connections
-func (h *Hub) HandleWebSocket(c *fiber.Ctx) error {
-	// Upgrade the connection to WebSocket
-	conn, err := websocket.Accept(c.Response().BodyWriter(), c.Request(), &websocket.AcceptOptions{
-		InsecureSkipVerify: false, // Use secure defaults
-		OriginPatterns:     []string{"*"}, // Configure this properly in production
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to upgrade connection to WebSocket")
-		return err
-	}
-	defer conn.Close(websocket.StatusInternalError, "closing connection")
-
+func (h *Hub) HandleWebSocket(c *websocket.Conn) {
 	// Create client
 	client := &Client{
-		conn:   conn,
+		conn:   c,
 		userID: nil, // Will be set when user joins
 		room:   "",
 		send:   make(chan Notification, 256),
@@ -156,87 +141,92 @@ func (h *Hub) HandleWebSocket(c *fiber.Ctx) error {
 	go client.writePump()
 	
 	// Handle client messages
-	return client.readPump()
+	client.readPump()
 }
 
-func (c *Client) readPump() error {
+func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
-		c.conn.Close(websocket.StatusNormalClosure, "")
+		c.conn.Close()
 	}()
 
-	// Set read deadline
+	// Set read message size limit
 	c.conn.SetReadLimit(512)
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
-	})
 
 	for {
-		var message struct {
-			Type   string `json:"type"`
-			UserID string `json:"userId"`
-		}
-
-		err := wsjson.Read(context.Background(), c.conn, &message)
+		messageType, messageData, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
-				websocket.CloseStatus(err) == websocket.StatusGoingAway {
-				log.Info().Msg("WebSocket client disconnected normally")
-			} else {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Error().Err(err).Msg("WebSocket read error")
+			} else {
+				log.Info().Msg("WebSocket client disconnected normally")
 			}
 			break
 		}
 
-		// Handle join message
-		if message.Type == "join" && message.UserID != "" {
-			c.userID = &message.UserID
-			c.room = message.UserID
-			
-			// Re-register with room
-			c.hub.unregister <- c
-			c.hub.register <- c
-			
-			log.Info().
-				Str("userID", message.UserID).
-				Msg("WebSocket client joined user room")
+		// Only handle text messages
+		if messageType == websocket.TextMessage {
+			var message struct {
+				Type   string `json:"type"`
+				UserID string `json:"userId"`
+			}
+
+			if err := json.Unmarshal(messageData, &message); err != nil {
+				log.Error().Err(err).Msg("Failed to parse WebSocket message")
+				continue
+			}
+
+			// Handle join message
+			if message.Type == "join" && message.UserID != "" {
+				c.userID = &message.UserID
+				c.room = message.UserID
+				
+				// Re-register with room
+				c.hub.unregister <- c
+				c.hub.register <- c
+				
+				log.Info().
+					Str("userID", message.UserID).
+					Msg("WebSocket client joined user room")
+			}
 		}
 	}
-
-	return nil
 }
 
 func (c *Client) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close(websocket.StatusNormalClosure, "")
+		c.conn.Close()
 	}()
 
 	for {
 		select {
 		case notification, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if !ok {
-				c.conn.WriteMessage(context.Background(), websocket.MessageClose, websocket.FormatCloseMessage(websocket.StatusNormalClosure, ""))
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			// Send notification as JSON
-			err := wsjson.Write(context.Background(), c.conn, map[string]interface{}{
+			message := map[string]interface{}{
 				"type": "notification",
 				"data": notification,
-			})
+			}
+			
+			data, err := json.Marshal(message)
 			if err != nil {
+				log.Error().Err(err).Msg("Failed to marshal notification")
+				continue
+			}
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
 				log.Error().Err(err).Msg("WebSocket write error")
 				return
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.Ping(context.Background()); err != nil {
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				log.Error().Err(err).Msg("WebSocket ping error")
 				return
 			}

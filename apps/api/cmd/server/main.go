@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/websocket/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -90,9 +91,7 @@ func main() {
 	})
 
 	// WebSocket endpoint
-	app.Get("/ws", func(c *fiber.Ctx) error {
-		return wsHub.HandleWebSocket(c)
-	})
+	app.Get("/ws", websocket.New(wsHub.HandleWebSocket))
 
 	// API v1 routes with CORS
 	v1 := app.Group("/api/v1", cors.New(cors.Config{
