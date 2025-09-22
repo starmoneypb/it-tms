@@ -45,11 +45,10 @@ jobs:
           sudo cp env.gcp .env
           EOF
           
-          # Add the GCS credentials injection to the script using VM metadata
+          # Export GCS credentials as environment variable for Docker Compose
           echo "" >> deploy_script.sh
-          echo "echo 'Retrieving GCS credentials from VM metadata...'" >> deploy_script.sh
-          echo 'GCS_CREDS=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-service-account-key" -H "Metadata-Flavor: Google")' >> deploy_script.sh
-          echo 'printf "GOOGLE_APPLICATION_CREDENTIALS_JSON=%s\n" "$GCS_CREDS" | sudo tee -a .env > /dev/null' >> deploy_script.sh
+          echo "echo 'Setting up GCS credentials...'" >> deploy_script.sh
+          echo 'export GOOGLE_APPLICATION_CREDENTIALS_JSON='"'"'${{ secrets.GCP_SA_KEY }}'"'"'' >> deploy_script.sh
           
           # Copy script to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
