@@ -75,10 +75,15 @@ services:
     working_dir: /workspace
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     command: >
       sh -c "
         echo 'Seeding database...';
-        go run cmd/seed/main.go;
+        timeout 300 go run cmd/seed/main.go || echo 'Seeding timed out or failed, continuing...';
         echo 'Database seeding complete!';
       "
     restart: "no"
