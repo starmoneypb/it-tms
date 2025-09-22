@@ -45,10 +45,10 @@ jobs:
           sudo cp env.gcp .env
           EOF
           
-          # Add the GCS credentials injection to the script using Google Cloud Secret Manager
+          # Add the GCS credentials injection to the script using VM metadata
           echo "" >> deploy_script.sh
-          echo "echo 'Retrieving GCS credentials from Secret Manager...'" >> deploy_script.sh
-          echo 'GCS_CREDS=$(gcloud secrets versions access latest --secret="gcs-service-account-key" --project="unisight-472720")' >> deploy_script.sh
+          echo "echo 'Retrieving GCS credentials from VM metadata...'" >> deploy_script.sh
+          echo 'GCS_CREDS=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-service-account-key" -H "Metadata-Flavor: Google")' >> deploy_script.sh
           echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=$GCS_CREDS" | sudo tee -a .env > /dev/null' >> deploy_script.sh
           
           # Copy script to VM and execute it
