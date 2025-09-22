@@ -49,8 +49,14 @@ jobs:
           echo "" >> deploy_script.sh
           echo "echo 'Using Application Default Credentials (VM service account)...'" >> deploy_script.sh
           echo "" >> deploy_script.sh
-          echo "echo 'Building and deploying with docker-compose...'" >> deploy_script.sh
-          echo 'sudo docker-compose -f docker-compose.gcp.yml build --no-cache web' >> deploy_script.sh
+          echo "echo 'Stopping existing containers...'" >> deploy_script.sh
+          echo 'sudo docker-compose -f docker-compose.gcp.yml down || true' >> deploy_script.sh
+          echo "" >> deploy_script.sh
+          echo "echo 'Cleaning Docker cache...'" >> deploy_script.sh
+          echo 'sudo docker system prune -f' >> deploy_script.sh
+          echo "" >> deploy_script.sh
+          echo "echo 'Building with no cache...'" >> deploy_script.sh
+          echo 'sudo docker-compose -f docker-compose.gcp.yml build --no-cache' >> deploy_script.sh
           echo "" >> deploy_script.sh
           echo "echo 'Starting core services first (without nginx)...'" >> deploy_script.sh
           echo 'sudo docker-compose -f docker-compose.gcp.yml up -d db db-migrate db-seed api web' >> deploy_script.sh
