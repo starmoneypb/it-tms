@@ -11,7 +11,6 @@ import (
 	"log"
 	"mime/multipart"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
