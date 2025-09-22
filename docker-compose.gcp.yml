@@ -98,6 +98,7 @@ services:
       WEB_APP_URL: https://unisight.dev
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
       GCS_PROJECT_ID: ${GCS_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${GOOGLE_APPLICATION_CREDENTIALS_JSON}
     depends_on:
       db-seed:
         condition: service_completed_successfully
