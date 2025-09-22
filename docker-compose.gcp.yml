@@ -111,7 +111,6 @@ services:
       - app-network
     expose:
       - "8080"
-      - "8081"
     deploy:
       resources:
         limits:
@@ -208,20 +207,6 @@ services:
       - app-network
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
-  # WebSocket test service
-  ws-test:
-    image: node:18-alpine
-    command: >
-      sh -c "
-        npm install -g wscat &&
-        echo 'Testing WebSocket connection to api:8080/ws...' &&
-        wscat -c ws://api:8080/ws
-      "
-    depends_on:
-      - api
-    networks:
-      - app-network
-    restart: "no"
 
 networks:
   app-network:

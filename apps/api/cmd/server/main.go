@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/proxy"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -75,7 +74,7 @@ func main() {
 		},
 	})
 
-	// Initialize Socket.IO hub
+	// Initialize WebSocket hub
 	wsHub := wshub.NewHub()
 	go wsHub.Run()
 
@@ -90,11 +89,9 @@ func main() {
 		})
 	})
 
-	// Socket.IO proxy to handle Socket.IO requests
-	app.All("/socket.io/*", func(c *fiber.Ctx) error {
-		// Proxy Socket.IO requests to the Socket.IO server
-		// In Docker, use the service name 'api' instead of localhost
-		return proxy.Forward("http://api:8081")(c)
+	// WebSocket endpoint
+	app.Get("/ws", func(c *fiber.Ctx) error {
+		return wsHub.HandleWebSocket(c)
 	})
 
 	// API v1 routes with CORS
