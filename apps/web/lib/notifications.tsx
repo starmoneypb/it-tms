@@ -32,6 +32,7 @@ interface NotificationContextType {
   markAsRead: () => void;
   clearNotifications: () => void;
   isConnected: boolean;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -45,12 +46,16 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPongRef = useRef<number>(Date.now());
+  const isManualClose = useRef(false);
 
   const connect = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
 
@@ -60,17 +65,30 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         ? `${WS_URL}?userId=${encodeURIComponent(user.id)}`
         : WS_URL;
 
+      console.log('Attempting WebSocket connection to:', wsUrl);
+      setConnectionStatus('connecting');
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log('WebSocket connected successfully');
         setIsConnected(true);
+        setConnectionStatus('connected');
         reconnectAttempts.current = 0;
+        lastPongRef.current = Date.now();
+        
+        // Start heartbeat to detect connection issues
+        startHeartbeat();
       };
 
       ws.onmessage = (event) => {
         try {
+          // Handle pong messages for heartbeat
+          if (event.data === 'pong') {
+            lastPongRef.current = Date.now();
+            return;
+          }
+
           const notification: Notification = JSON.parse(event.data);
           console.log('Received notification:', notification);
           
@@ -111,20 +129,26 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
+        setConnectionStatus('disconnected');
         wsRef.current = null;
+        stopHeartbeat();
 
-        // Only reconnect if it's not a normal closure (1000) or going away (1001)
-        if (event.code !== 1000 && event.code !== 1001) {
+        // Only reconnect if it's not a manual close and not a normal closure
+        if (!isManualClose.current && event.code !== 1000 && event.code !== 1001) {
           // Reconnect with exponential backoff, max 10 attempts
           if (reconnectAttempts.current < 10) {
-            const delay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000); // Max 30 seconds
-            console.log(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts.current + 1})`);
+            const baseDelay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000); // Max 30 seconds
+            const jitter = Math.random() * 1000; // Add jitter to prevent thundering herd
+            const delay = baseDelay + jitter;
+            
+            console.log(`Reconnecting in ${Math.round(delay)}ms... (attempt ${reconnectAttempts.current + 1})`);
             reconnectTimeoutRef.current = setTimeout(() => {
               reconnectAttempts.current++;
               connect();
             }, delay);
           } else {
             console.log('Max reconnection attempts reached. Stopping reconnection.');
+            setConnectionStatus('error');
           }
         }
       };
@@ -132,24 +156,61 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setIsConnected(false);
+        setConnectionStatus('error');
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setIsConnected(false);
+      setConnectionStatus('error');
+    }
+  };
+
+  const startHeartbeat = () => {
+    stopHeartbeat(); // Clear any existing heartbeat
+    
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // Check if we received a pong recently (within 60 seconds)
+        const timeSinceLastPong = Date.now() - lastPongRef.current;
+        if (timeSinceLastPong > 60000) {
+          console.log('No pong received in 60 seconds, closing connection');
+          wsRef.current.close();
+          return;
+        }
+        
+        // Send ping
+        try {
+          wsRef.current.send('ping');
+        } catch (error) {
+          console.error('Failed to send ping:', error);
+        }
+      }
+    }, 30000); // Send ping every 30 seconds
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
     }
   };
 
   const disconnect = () => {
+    isManualClose.current = true;
+    
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+    
+    stopHeartbeat();
     
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     setIsConnected(false);
+    setConnectionStatus('disconnected');
   };
 
   const showBrowserNotification = (title: string, body: string, ticketId: string) => {
@@ -209,6 +270,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     markAsRead,
     clearNotifications,
     isConnected,
+    connectionStatus,
   };
 
   return (

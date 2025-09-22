@@ -228,12 +228,22 @@ func (c *Client) readPump(h *Hub) {
 	})
 
 	for {
-		_, _, err := c.conn.ReadMessage()
+		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Error().Err(err).Msg("WebSocket read error")
 			}
 			break
+		}
+
+		// Handle ping messages from client
+		if messageType == websocket.TextMessage && string(message) == "ping" {
+			// Send pong response
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.TextMessage, []byte("pong")); err != nil {
+				log.Error().Err(err).Msg("WebSocket pong write error")
+				break
+			}
 		}
 	}
 }
