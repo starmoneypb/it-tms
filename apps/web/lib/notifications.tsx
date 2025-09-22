@@ -77,6 +77,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       wsRef.current.close();
       wsRef.current = null;
       isManualClose.current = false;
+      
+      // Wait a bit for the connection to fully close
+      setTimeout(() => {
+        if (wsRef.current === null) {
+          console.log('Previous connection closed, proceeding with new connection');
+        }
+      }, 100);
     }
 
     try {
@@ -95,6 +102,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      
+      // Add a small delay to ensure the connection is properly established
+      setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.CONNECTING) {
+          console.log('WebSocket still connecting, waiting...');
+        }
+      }, 50);
 
       ws.onopen = () => {
         console.log('WebSocket connected successfully');
@@ -245,10 +259,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   // Connect/disconnect based on user authentication
   useEffect(() => {
     console.log('User changed, reconnecting WebSocket:', user?.id || 'anonymous');
-    connect();
+    
+    // Add a small delay to prevent race conditions
+    const timeoutId = setTimeout(() => {
+      connect();
+    }, 100);
 
     return () => {
       console.log('Cleaning up WebSocket connection');
+      clearTimeout(timeoutId);
       disconnect();
     };
   }, [user?.id]); // Reconnect when user changes
