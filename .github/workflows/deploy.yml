@@ -45,10 +45,10 @@ jobs:
           sudo cp env.gcp .env
           EOF
           
-          # Add the GCS credentials injection to the script
+          # Add the GCS credentials injection to the script  
           echo "" >> deploy_script.sh
           echo "echo 'Injecting GCS credentials from GitHub secret...'" >> deploy_script.sh
-          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON='"'"'${{ secrets.GCP_SA_KEY }}'"'"'" | sudo tee -a .env > /dev/null' >> deploy_script.sh
+          echo 'echo "GOOGLE_APPLICATION_CREDENTIALS_JSON='"'"'"'"'${{ secrets.GCP_SA_KEY }}'"'"'"'"'" | sudo tee -a .env > /dev/null' >> deploy_script.sh
           
           # Copy script to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
