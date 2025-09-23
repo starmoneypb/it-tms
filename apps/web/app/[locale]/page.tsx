@@ -163,7 +163,7 @@ export default function Landing() {
                 href={`/${locale}/tickets/new`} 
                 color="primary" 
                 size="lg"
-                className="px-12 py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-blue-500/25 group"
+                className="px-12 py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-blue-500/25 group min-w-[200px]"
               >
                 <Rocket className="mr-2 group-hover:translate-x-1 transition-transform duration-300" size={20} />
                 {tCommon('getStarted')}
@@ -175,7 +175,7 @@ export default function Landing() {
                 href={`/${locale}/sign-in`} 
                 color="primary" 
                 size="lg"
-                className="px-12 py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-blue-500/25 group"
+                className="px-12 py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-blue-500/25 group min-w-[200px]"
               >
                 <Rocket className="mr-2 group-hover:translate-x-1 transition-transform duration-300" size={20} />
                 {tCommon('getStarted')}
@@ -187,7 +187,7 @@ export default function Landing() {
               href={`/${locale}/dashboard`} 
               variant="bordered" 
               size="lg"
-              className="px-12 py-6 text-lg font-semibold border-2 border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 transform hover:scale-105 transition-all duration-300 backdrop-blur-sm group"
+              className="px-12 py-6 text-lg font-semibold border-2 border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 transform hover:scale-105 transition-all duration-300 backdrop-blur-sm group min-w-[200px]"
             >
               <BarChart3 className="mr-2 group-hover:rotate-12 transition-transform duration-300" size={20} />
               {tCommon('viewDashboard')}

@@ -3,13 +3,9 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-// เอา remark-breaks ออกเพื่อไม่ให้ \n ใน code fences เพี้ยน
-// import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-
-// ใช้ Prism ผ่าน react-syntax-highlighter แทน rehype-highlight
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -20,9 +16,9 @@ interface MarkdownRendererProps {
 
 /**
  * Sanitize schema:
- * - อนุญาต <mark> และ props ที่เกี่ยวกับสี
- * - คง className บน <code>/<pre>/<span> เพื่อไม่ตัด language-xxx ที่ต้องใช้หา language
- * - อนุญาต target/rel บน <a>
+ * - Allow <mark> and color-related props
+ * - Keep className on <code>/<pre>/<span> to preserve language-xxx classes
+ * - Allow target/rel on <a>
  */
 const sanitizeSchema = (() => {
   const schema: any = JSON.parse(JSON.stringify(defaultSchema));
@@ -53,20 +49,20 @@ function pickMarkStyle(
   className?: string,
   props?: { [k: string]: unknown }
 ): React.CSSProperties {
-  // 1) style เดิมมี background/backgroundColor → เคารพค่าที่มาก่อน
+  // 1) Respect existing background/backgroundColor styles
   const style = (props?.style || {}) as React.CSSProperties;
   if (style.background || style.backgroundColor) {
     return style;
   }
 
-  // 2) อ่านสีจาก data-* หรือ color attr
+  // 2) Read color from data-* or color attr
   const dataColor =
     (props?.["data-color"] as string) ||
     (props?.["data-highlight"] as string) ||
     (props?.["color"] as string) ||
     "";
 
-  // 3) อ่านจาก class="highlight-blue"
+  // 3) Read from class="highlight-blue"
   const classColor = (className || "").match(/highlight-([\w-]+)/)?.[1];
 
   const colorKey = (dataColor || classColor || "yellow").toLowerCase();
@@ -96,10 +92,10 @@ export function MarkdownRenderer({
       className={[
         "markdown-content",
         "prose prose-invert prose-sm max-w-none",
-        // container สวย ๆ สำหรับบล็อกโค้ด
+        // Beautiful container for code blocks
         "prose-pre:bg-gray-900/50 prose-pre:border prose-pre:border-white/10",
         "prose-pre:rounded-lg prose-pre:overflow-x-auto",
-        // เอา backticks decoration ของ typography ออกจาก inline code
+        // Remove backticks decoration from typography for inline code
         "prose-code:before:content-[''] prose-code:after:content-['']",
         "prose-a:text-primary-400 hover:prose-a:text-primary-300",
         "prose-blockquote:border-l-primary-500",
@@ -107,31 +103,79 @@ export function MarkdownRenderer({
       ].join(" ")}
     >
       <ReactMarkdown
-        // แค่ GFM ก็พอ (tables, task list, strikethrough, autolink)
+        // Just GFM is enough (tables, task list, strikethrough, autolink)
         remarkPlugins={[remarkGfm]}
-        // ลำดับ: raw -> sanitize -> slug
+        // Order: raw -> sanitize -> slug
         rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeSlug]}
         components={{
-          // หัวข้อ
-          h1: ({ children }) => (
-            <h1 className="text-2xl font-bold text-white mb-4">{children}</h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-xl font-semibold text-white mb-3">
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-lg font-medium text-white mb-2">{children}</h3>
-          ),
-          h4: ({ children }) => (
-            <h4 className="text-base font-medium text-white mb-2">{children}</h4>
-          ),
+          // Headings with alignment support
+          h1: ({ children, ...props }) => {
+            const style = (props as any).style || {};
+            const textAlign = style.textAlign || 'left';
+            
+            return (
+              <h1 
+                className="text-2xl font-bold text-white mb-4"
+                style={{ textAlign }}
+              >
+                {children}
+              </h1>
+            );
+          },
+          h2: ({ children, ...props }) => {
+            const style = (props as any).style || {};
+            const textAlign = style.textAlign || 'left';
+            
+            return (
+              <h2 
+                className="text-xl font-semibold text-white mb-3"
+                style={{ textAlign }}
+              >
+                {children}
+              </h2>
+            );
+          },
+          h3: ({ children, ...props }) => {
+            const style = (props as any).style || {};
+            const textAlign = style.textAlign || 'left';
+            
+            return (
+              <h3 
+                className="text-lg font-medium text-white mb-2"
+                style={{ textAlign }}
+              >
+                {children}
+              </h3>
+            );
+          },
+          h4: ({ children, ...props }) => {
+            const style = (props as any).style || {};
+            const textAlign = style.textAlign || 'left';
+            
+            return (
+              <h4 
+                className="text-base font-medium text-white mb-2"
+                style={{ textAlign }}
+              >
+                {children}
+              </h4>
+            );
+          },
 
-          // ข้อความพื้นฐาน
-          p: ({ children }) => (
-            <p className="text-white/80 mb-3 leading-relaxed">{children}</p>
-          ),
+          // Basic text with alignment support
+          p: ({ children, ...props }) => {
+            const style = (props as any).style || {};
+            const textAlign = style.textAlign || 'left';
+            
+            return (
+              <p 
+                className="text-white/80 mb-3 leading-relaxed"
+                style={{ textAlign }}
+              >
+                {children}
+              </p>
+            );
+          },
           strong: ({ children }) => (
             <strong className="font-semibold text-white">{children}</strong>
           ),
@@ -139,7 +183,7 @@ export function MarkdownRenderer({
             <em className="italic text-white/90">{children}</em>
           ),
 
-          // ลิงก์: anchor (#...) ไม่เปิดแท็บใหม่
+          // Links: anchor (#...) doesn't open new tab
           a: ({ children, href }) => {
             const isHash = href?.startsWith("#");
             return (
@@ -154,31 +198,31 @@ export function MarkdownRenderer({
             );
           },
 
-          // รายการ
+          // Lists
           ul: ({ children }) => (
-            <ul className="list-disc list-inside mb-3 text-white/80">
+            <ul className="list-disc list-inside mb-3 text-white/80 pl-4">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside mb-3 text-white/80">
+            <ol className="list-decimal list-inside mb-3 text-white/80 pl-4">
               {children}
             </ol>
           ),
           li: ({ children }) => <li className="mb-1">{children}</li>,
 
-          // อ้างอิง
+          // Blockquotes
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-primary-500 pl-4 italic text-white/70 my-3">
+            <blockquote className="border-l-4 border-primary-500 pl-4 italic text-white/70 my-3 bg-primary-500/5 rounded-r-md py-2">
               {children}
             </blockquote>
           ),
 
           /**
            * PRE/Code:
-           * - override <pre> ให้เป็น wrapper ธรรมดา เพื่อเลี่ยง "pre ซ้อน pre"
-           * - บล็อกโค้ดใช้ SyntaxHighlighter (Prism) → รองรับหลายบรรทัดแน่นอน + ไม่ต้องพึ่ง CSS ภายนอก
-           * - inline code ยังใช้ <code> แบบเดิม
+           * - Override <pre> to be a simple wrapper to avoid "pre inside pre"
+           * - Code blocks use SyntaxHighlighter (Prism) → supports multiple lines + no external CSS needed
+           * - Inline code still uses <code> as before
            */
           pre: ({ children }) => (
             <div className="mb-3 overflow-x-auto">{children}</div>
@@ -209,7 +253,7 @@ export function MarkdownRenderer({
             const match = /language-([\w-]+)/.exec(className || "");
             const language = match?.[1] || undefined;
 
-            // ตัด newline ท้ายบล็อก 1 ตัวตามมาตรฐาน react-markdown
+            // Remove trailing newline from block according to react-markdown standard
             const content = raw.replace(/\n$/, "");
 
             return (
@@ -231,7 +275,7 @@ export function MarkdownRenderer({
             );
           },
 
-          // ตาราง
+          // Tables
           table: ({ children }) => (
             <div className="overflow-x-auto mb-3">
               <table className="min-w-full border-collapse border border-white/20">
@@ -250,7 +294,12 @@ export function MarkdownRenderer({
             </td>
           ),
 
-          // <mark> รองรับหลายทางเลือกในการระบุสี
+          // Strikethrough
+          del: ({ children }) => (
+            <del className="line-through text-white/60">{children}</del>
+          ),
+
+          // <mark> supports multiple ways to specify color
           mark: ({ children, className, ...props }: any) => {
             const style = pickMarkStyle(className, props);
             return (

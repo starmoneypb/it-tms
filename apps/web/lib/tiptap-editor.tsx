@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextAlign } from '@tiptap/extension-text-align';
@@ -30,16 +30,27 @@ import {
 } from 'lucide-react';
 import { Button } from '@heroui/react';
 
-// Simple syntax highlighting using highlight.js
-const highlightCode = (code: string, language: string) => {
-  if (typeof window !== 'undefined' && (window as any).hljs) {
-    try {
-      return (window as any).hljs.highlight(code, { language }).value;
-    } catch (e) {
-      return (window as any).hljs.highlightAuto(code).value;
-    }
+// Load highlight.js for syntax highlighting
+const loadHighlightJS = () => {
+  if (typeof window !== 'undefined' && !(window as any).hljs) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+    script.onload = () => {
+      // Load common languages
+      const languages = ['javascript', 'typescript', 'python', 'java', 'cpp', 'css', 'xml', 'json', 'sql', 'bash', 'markdown'];
+      languages.forEach(lang => {
+        const langScript = document.createElement('script');
+        langScript.src = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/${lang}.min.js`;
+        document.head.appendChild(langScript);
+      });
+    };
+    document.head.appendChild(script);
+    
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+    document.head.appendChild(link);
   }
-  return code;
 };
 
 interface TiptapEditorProps {
@@ -334,6 +345,34 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     },
   });
 
+  // Load highlight.js and apply syntax highlighting
+  useEffect(() => {
+    loadHighlightJS();
+    
+    if (editor) {
+      const applyHighlighting = () => {
+        if (typeof window !== 'undefined' && (window as any).hljs) {
+          const codeBlocks = document.querySelectorAll('.ProseMirror pre code');
+          codeBlocks.forEach((block) => {
+            (window as any).hljs.highlightElement(block);
+          });
+        }
+      };
+
+      // Apply highlighting on content updates
+      editor.on('update', applyHighlighting);
+      editor.on('create', applyHighlighting);
+      
+      // Apply highlighting after a short delay to ensure DOM is ready
+      setTimeout(applyHighlighting, 100);
+      
+      return () => {
+        editor.off('update', applyHighlighting);
+        editor.off('create', applyHighlighting);
+      };
+    }
+  }, [editor]);
+
   // Update editor content when value prop changes
   React.useEffect(() => {
     if (editor && value !== editor.getHTML()) {
@@ -347,6 +386,84 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 
   return (
     <div className={`tiptap-editor ${className}`}>
+      <style jsx global>{`
+        .ProseMirror pre {
+          background: #1e1e1e !important;
+          color: #d4d4d4 !important;
+          border: 1px solid #3e3e3e;
+          border-radius: 0.5rem;
+          padding: 1rem;
+          overflow-x: auto;
+          font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+          font-size: 0.875rem;
+          line-height: 1.5;
+        }
+        
+        .ProseMirror pre code {
+          background: transparent !important;
+          color: inherit !important;
+          padding: 0 !important;
+          border: none !important;
+          border-radius: 0 !important;
+        }
+        
+        .ProseMirror code:not(pre code) {
+          background: rgba(255, 255, 255, 0.1) !important;
+          color: #f8f8f2 !important;
+          padding: 0.125rem 0.25rem !important;
+          border-radius: 0.25rem !important;
+          font-family: 'Fira Code', 'Monaco', 'Consolas', monospace !important;
+          font-size: 0.875em !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        .ProseMirror blockquote {
+          border-left: 4px solid #3b82f6 !important;
+          padding-left: 1rem !important;
+          margin: 1rem 0 !important;
+          font-style: italic !important;
+          color: rgba(255, 255, 255, 0.7) !important;
+          background: rgba(59, 130, 246, 0.05) !important;
+          padding: 0.75rem 1rem !important;
+          border-radius: 0.25rem !important;
+        }
+        
+        .ProseMirror ul, .ProseMirror ol {
+          padding-left: 1.5rem !important;
+          margin: 0.75rem 0 !important;
+        }
+        
+        .ProseMirror ul {
+          list-style-type: disc !important;
+        }
+        
+        .ProseMirror ol {
+          list-style-type: decimal !important;
+        }
+        
+        .ProseMirror li {
+          margin: 0.25rem 0 !important;
+          color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        .ProseMirror s {
+          text-decoration: line-through !important;
+          color: rgba(255, 255, 255, 0.6) !important;
+        }
+        
+        .ProseMirror [style*="text-align: center"] {
+          text-align: center !important;
+        }
+        
+        .ProseMirror [style*="text-align: right"] {
+          text-align: right !important;
+        }
+        
+        .ProseMirror [style*="text-align: justify"] {
+          text-align: justify !important;
+        }
+      `}</style>
+      
       {label && (
         <label className="text-sm font-medium text-white/90 mb-3 block">
           {label}
