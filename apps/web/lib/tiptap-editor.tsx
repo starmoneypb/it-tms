@@ -24,6 +24,12 @@ import {
 
 // --- Tiptap Node ---
 import { HorizontalRule } from "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension";
+import "@/components/tiptap-node/blockquote-node/blockquote-node.scss";
+import "@/components/tiptap-node/code-block-node/code-block-node.scss";
+import "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node.scss";
+import "@/components/tiptap-node/list-node/list-node.scss";
+import "@/components/tiptap-node/heading-node/heading-node.scss";
+import "@/components/tiptap-node/paragraph-node/paragraph-node.scss";
 
 // --- Tiptap UI ---
 import { HeadingDropdownMenu } from "@/components/tiptap-ui/heading-dropdown-menu";
@@ -55,7 +61,7 @@ import { useWindowSize } from "@/hooks/use-window-size";
 import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
 
 // --- Styles ---
-import "./tiptap-editor.css";
+import "@/components/tiptap-templates/simple/simple-editor.scss";
 
 interface TiptapEditorProps {
   value?: string;
@@ -191,7 +197,7 @@ export function TiptapEditor({
         autocorrect: "off",
         autocapitalize: "off",
         "aria-label": "Main content area, start typing to enter text.",
-        class: "tiptap-editor",
+        class: "simple-editor",
         placeholder: placeholder,
       },
     },
@@ -238,7 +244,7 @@ export function TiptapEditor({
   }, [editor, value]);
 
   return (
-    <div className={`tiptap-editor-wrapper ${className}`}>
+    <div className={`simple-editor-wrapper ${className}`}>
       {label && (
         <label className="text-sm font-medium text-white/80 mb-3 block px-1">
           {label}
@@ -270,7 +276,7 @@ export function TiptapEditor({
           )}
         </Toolbar>
 
-        <div style={{ minHeight }} className="tiptap-editor-content">
+        <div style={{ minHeight }} className="simple-editor-content">
           <EditorContent
             editor={editor}
             role="presentation"

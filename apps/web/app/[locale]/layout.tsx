@@ -55,7 +55,7 @@ export default async function LocaleLayout({
               <header className="sticky top-0 z-50 glass border-b border-white/10">
                 <Navigation />
               </header>
-              <main className="min-h-screen pb-6">{children}</main>
+              <main className="min-h-screen pt-6 pb-6">{children}</main>
               <NotificationToast />
             </div>
           </NotificationProvider>
