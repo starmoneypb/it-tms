@@ -87,6 +87,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "25.0.0",
+    "picocolors": "^1.1.1",
     "postcss": "8.4.41",
     "prettier": "3.3.3",
     "semver": "^7.7.2",

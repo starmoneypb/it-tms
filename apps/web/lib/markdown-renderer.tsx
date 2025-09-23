@@ -113,9 +113,17 @@ export function MarkdownRenderer({
             const style = (props as any).style || {};
             const textAlign = style.textAlign || 'left';
             
+            const alignmentMap = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            };
+            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
+            
             return (
               <h1 
-                className="text-2xl font-bold text-white mb-4"
+                className={`text-2xl font-bold text-white mb-4 ${alignmentClass}`}
                 style={{ textAlign }}
               >
                 {children}
@@ -126,9 +134,17 @@ export function MarkdownRenderer({
             const style = (props as any).style || {};
             const textAlign = style.textAlign || 'left';
             
+            const alignmentMap = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            };
+            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
+            
             return (
               <h2 
-                className="text-xl font-semibold text-white mb-3"
+                className={`text-xl font-semibold text-white mb-3 ${alignmentClass}`}
                 style={{ textAlign }}
               >
                 {children}
@@ -139,9 +155,17 @@ export function MarkdownRenderer({
             const style = (props as any).style || {};
             const textAlign = style.textAlign || 'left';
             
+            const alignmentMap = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            };
+            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
+            
             return (
               <h3 
-                className="text-lg font-medium text-white mb-2"
+                className={`text-lg font-medium text-white mb-2 ${alignmentClass}`}
                 style={{ textAlign }}
               >
                 {children}
@@ -152,9 +176,17 @@ export function MarkdownRenderer({
             const style = (props as any).style || {};
             const textAlign = style.textAlign || 'left';
             
+            const alignmentMap = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            };
+            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
+            
             return (
               <h4 
-                className="text-base font-medium text-white mb-2"
+                className={`text-base font-medium text-white mb-2 ${alignmentClass}`}
                 style={{ textAlign }}
               >
                 {children}
@@ -167,9 +199,27 @@ export function MarkdownRenderer({
             const style = (props as any).style || {};
             const textAlign = style.textAlign || 'left';
             
+            // Check if this paragraph contains only a code block
+            // If so, don't wrap it in a <p> tag
+            if (React.Children.count(children) === 1) {
+              const child = React.Children.only(children);
+              if (React.isValidElement(child) && child.type === 'pre') {
+                return <>{children}</>;
+              }
+            }
+            
+            // Apply text alignment classes
+            const alignmentMap = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            };
+            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
+            
             return (
               <p 
-                className="text-white/80 mb-3 leading-relaxed"
+                className={`text-white/80 mb-3 leading-relaxed ${alignmentClass}`}
                 style={{ textAlign }}
               >
                 {children}
@@ -200,20 +250,24 @@ export function MarkdownRenderer({
 
           // Lists
           ul: ({ children }) => (
-            <ul className="list-disc list-inside mb-3 text-white/80 pl-4">
+            <ul className="list-disc mb-4 text-white/80 pl-6 space-y-1">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside mb-3 text-white/80 pl-4">
+            <ol className="list-decimal mb-4 text-white/80 pl-6 space-y-1">
               {children}
             </ol>
           ),
-          li: ({ children }) => <li className="mb-1">{children}</li>,
+          li: ({ children }) => (
+            <li className="mb-1 leading-relaxed">
+              {children}
+            </li>
+          ),
 
           // Blockquotes
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-primary-500 pl-4 italic text-white/70 my-3 bg-primary-500/5 rounded-r-md py-2">
+            <blockquote className="border-l-4 border-primary-500 pl-4 italic text-white/70 my-4 bg-primary-500/10 rounded-r-md py-3 pr-4 shadow-sm">
               {children}
             </blockquote>
           ),
@@ -224,9 +278,26 @@ export function MarkdownRenderer({
            * - Code blocks use SyntaxHighlighter (Prism) → supports multiple lines + no external CSS needed
            * - Inline code still uses <code> as before
            */
-          pre: ({ children }) => (
-            <div className="mb-3 overflow-x-auto">{children}</div>
-          ),
+          pre: ({ children }) => {
+            // Check if this pre contains a code element with language class
+            const codeElement = React.Children.toArray(children).find(child => 
+              React.isValidElement(child) && 
+              child.type === 'code' && 
+              child.props?.className?.includes('language-')
+            );
+            
+            if (codeElement) {
+              // This is a code block, let the code component handle it
+              return <div className="mb-3 overflow-x-auto">{children}</div>;
+            }
+            
+            // This is a regular pre element
+            return (
+              <pre className="mb-3 overflow-x-auto bg-gray-900/50 border border-white/10 rounded-lg p-4 text-white/90 font-mono text-sm">
+                {children}
+              </pre>
+            );
+          },
           code: ({
             inline,
             className,
@@ -265,10 +336,19 @@ export function MarkdownRenderer({
                 CodeTag="code"
                 customStyle={{
                   margin: 0,
-                  background: "transparent",
-                  padding: 0,
+                  background: "#1e1e1e",
+                  padding: "1rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid #3e3e3e",
+                  fontSize: "0.875rem",
+                  lineHeight: "1.5",
                 }}
                 className="not-prose"
+                codeTagProps={{
+                  style: {
+                    fontFamily: "'Fira Code', 'Monaco', 'Consolas', monospace",
+                  }
+                }}
               >
                 {content}
               </SyntaxHighlighter>
@@ -296,7 +376,7 @@ export function MarkdownRenderer({
 
           // Strikethrough
           del: ({ children }) => (
-            <del className="line-through text-white/60">{children}</del>
+            <del className="line-through text-white/50 decoration-red-400 decoration-2">{children}</del>
           ),
 
           // <mark> supports multiple ways to specify color
