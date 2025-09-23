@@ -256,9 +256,6 @@ importers:
       prettier:
         specifier: 3.3.3
         version: 3.3.3
-      sass:
-        specifier: ^1.93.1
-        version: 1.93.1
       semver:
         specifier: ^7.7.2
         version: 7.7.2

@@ -8,7 +8,9 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "turbo run format",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "install:check": "pnpm install --frozen-lockfile",
+    "install:update": "pnpm install && echo 'Lockfile updated successfully'"
   },
   "devDependencies": {
     "semver": "^7.7.2",
