@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -112,38 +111,40 @@ func TestCommentGeneration_ChangeTracking(t *testing.T) {
 	}{
 		{
 			name:     "Single field change",
-			changes:  []string{"Priority changed from \"P3\" to \"P1\""},
+			changes:  []string{"`Supervisor` performed `Priority Change` from `P3` to `P1`"},
 			role:     "Supervisor",
-			expected: "⚙️ Ticket fields updated by Supervisor:\n\nPriority changed from \"P3\" to \"P1\"",
+			expected: "`Supervisor` performed `Priority Change` from `P3` to `P1`",
 		},
 		{
 			name:     "Multiple field changes",
-			changes:  []string{"Priority changed from \"P3\" to \"P1\"", "Impact Score changed from 2 to 5"},
+			changes:  []string{"`Manager` performed `Priority Change` from `P3` to `P1`", "`Manager` performed `Impact Score Change` from `2` to `5`"},
 			role:     "Manager",
-			expected: "⚙️ Ticket fields updated by Manager:\n\nPriority changed from \"P3\" to \"P1\"\nImpact Score changed from 2 to 5",
+			expected: "`Manager` performed `Priority Change` from `P3` to `P1`\n`Manager` performed `Impact Score Change` from `2` to `5`",
 		},
 		{
 			name:     "Title and description changes",
-			changes:  []string{"Title changed from \"Old Title\" to \"New Title\"", "Description was updated"},
+			changes:  []string{"`Supervisor` performed `Title Change` from `Old Title` to `New Title`", "`Supervisor` performed `Description Update`"},
 			role:     "Supervisor",
-			expected: "Ticket updated by Supervisor:\n\nTitle changed from \"Old Title\" to \"New Title\"\nDescription was updated",
+			expected: "`Supervisor` performed `Title Change` from `Old Title` to `New Title`\n`Supervisor` performed `Description Update`",
 		},
 		{
 			name:     "Red flag changes",
-			changes:  []string{"Red Flag was set"},
+			changes:  []string{"`Manager` performed `Red Flag Set` from `false` to `true`"},
 			role:     "Manager",
-			expected: "Ticket fields updated by Manager:\n\nRed Flag was set",
+			expected: "`Manager` performed `Red Flag Set` from `false` to `true`",
+		},
+		{
+			name:     "Title with backticks (should be escaped)",
+			changes:  []string{"`Supervisor` performed `Title Change` from `Fix the \\`backtick\\` issue` to `Fix the \\`backtick\\` issue v2`"},
+			role:     "Supervisor",
+			expected: "`Supervisor` performed `Title Change` from `Fix the \\`backtick\\` issue` to `Fix the \\`backtick\\` issue v2`",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var commentBody string
-			if strings.Contains(tt.expected, "fields updated") {
-				commentBody = fmt.Sprintf("Ticket fields updated by %s:\n\n%s", tt.role, strings.Join(tt.changes, "\n"))
-			} else {
-				commentBody = fmt.Sprintf("Ticket updated by %s:\n\n%s", tt.role, strings.Join(tt.changes, "\n"))
-			}
+			commentBody = strings.Join(tt.changes, "\n")
 			
 			assert.Equal(t, tt.expected, commentBody)
 		})
@@ -213,6 +214,48 @@ func TestChangeDetection_Logic(t *testing.T) {
 			}
 			
 			assert.Equal(t, tt.shouldChange, changed)
+		})
+	}
+}
+
+func TestEscapeMarkdown(t *testing.T) {
+	// Test the escapeMarkdown function
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "No backticks",
+			input:    "Normal text",
+			expected: "Normal text",
+		},
+		{
+			name:     "Single backtick",
+			input:    "Fix the `backtick` issue",
+			expected: "Fix the \\`backtick\\` issue",
+		},
+		{
+			name:     "Multiple backticks",
+			input:    "`code` and `more code`",
+			expected: "\\`code\\` and \\`more code\\`",
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "Only backticks",
+			input:    "``",
+			expected: "\\`\\`",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := escapeMarkdown(tt.input)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

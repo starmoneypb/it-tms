@@ -14,6 +14,12 @@ import (
 	"github.com/it-tms/apps/api/internal/models"
 )
 
+// escapeMarkdown escapes markdown special characters in user input to prevent injection
+func escapeMarkdown(input string) string {
+	// Replace backticks with escaped version to prevent markdown code injection
+	return strings.ReplaceAll(input, "`", "\\`")
+}
+
 type TicketRepo struct{ pool *pgxpool.Pool }
 
 func (r *TicketRepo) Create(ctx context.Context, t *models.Ticket) error {
@@ -421,7 +427,7 @@ func (r *TicketRepo) UpdateRedFlags(ctx context.Context, id string, redFlagsData
 	}
 	
 	// Add automatic comment
-	commentBody := fmt.Sprintf("Red Flags (Critical Issues) updated by %s", authorName)
+	commentBody := fmt.Sprintf("`%s` performed `Red Flags Update`", escapeMarkdown(authorName))
 	return r.AddSystemComment(ctx, id, commentBody)
 }
 
@@ -435,7 +441,7 @@ func (r *TicketRepo) UpdateImpactAssessment(ctx context.Context, id string, impa
 	}
 	
 	// Add automatic comment
-	commentBody := fmt.Sprintf("Impact Assessment updated by %s", authorName)
+	commentBody := fmt.Sprintf("`%s` performed `Impact Assessment Update`", escapeMarkdown(authorName))
 	return r.AddSystemComment(ctx, id, commentBody)
 }
 
@@ -449,7 +455,7 @@ func (r *TicketRepo) UpdateUrgencyTimeline(ctx context.Context, id string, urgen
 	}
 	
 	// Add automatic comment
-	commentBody := fmt.Sprintf("Urgency Timeline updated by %s", authorName)
+	commentBody := fmt.Sprintf("`%s` performed `Urgency Timeline Update`", escapeMarkdown(authorName))
 	return r.AddSystemComment(ctx, id, commentBody)
 }
 
@@ -460,7 +466,7 @@ func (r *TicketRepo) UpdateEffort(ctx context.Context, id string, effortData map
     if err != nil {
         return err
     }
-    commentBody := fmt.Sprintf("Effort Score updated by %s", authorName)
+    commentBody := fmt.Sprintf("`%s` performed `Effort Score Update`", escapeMarkdown(authorName))
     return r.AddSystemComment(ctx, id, commentBody)
 }
 

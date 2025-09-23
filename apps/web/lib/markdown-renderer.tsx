@@ -319,7 +319,7 @@ export function MarkdownRenderer({
             if (inline) {
               return (
                 <code
-                  className="bg-white/10 text-white/90 px-1 py-0.5 rounded text-[0.9em] font-mono border border-white/10"
+                  className="bg-white/10 text-white/90 px-1 py-0.5 rounded text-[0.9em] font-mono border border-white/10 not-prose"
                   {...props}
                 >
                   {children}

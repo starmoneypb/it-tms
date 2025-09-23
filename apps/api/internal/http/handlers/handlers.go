@@ -30,6 +30,12 @@ import (
 	"github.com/it-tms/apps/api/pkg/config"
 )
 
+// escapeMarkdown escapes markdown special characters in user input to prevent injection
+func escapeMarkdown(input string) string {
+	// Replace backticks with escaped version to prevent markdown code injection
+	return strings.ReplaceAll(input, "`", "\\`")
+}
+
 type Handlers struct {
 	cfg     config.Config
 	pool    *pgxpool.Pool
@@ -470,10 +476,10 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	// Track changes for automatic comment generation
 	var changes []string
 	if body.Title != nil && *body.Title != ticket.Title {
-		changes = append(changes, fmt.Sprintf("Title changed from \"%s\" to \"%s\"", ticket.Title, *body.Title))
+		changes = append(changes, fmt.Sprintf("`%s` performed `Title Change` from `%s` to `%s`", role, escapeMarkdown(ticket.Title), escapeMarkdown(*body.Title)))
 	}
 	if body.Description != nil && *body.Description != ticket.Description {
-		changes = append(changes, "Description was updated")
+		changes = append(changes, fmt.Sprintf("`%s` performed `Description Update`", role))
 	}
 	
 	if err := h.repo.Tickets.Update(ctx, id, body.Title, body.Description, body.Details); err != nil {
@@ -482,7 +488,7 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	
     // Add automatic comment if there were changes
 	if len(changes) > 0 {
-		commentBody := fmt.Sprintf("Ticket updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
+		commentBody := strings.Join(changes, "\n")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
         // If any ticket content changed, recompute priority on server side if we had inputs stored
         // Note: Priority still uses existing fields (impact/urgency/red flags) which are updated via dedicated endpoints.
@@ -607,32 +613,32 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	// Track changes for automatic comment generation
 	var changes []string
 	if body.InitialType != nil && *body.InitialType != ticket.InitialType {
-		changes = append(changes, fmt.Sprintf("Initial Type changed from \"%s\" to \"%s\"", ticket.InitialType, *body.InitialType))
+		changes = append(changes, fmt.Sprintf("`%s` performed `Initial Type Change` from `%s` to `%s`", role, escapeMarkdown(string(ticket.InitialType)), escapeMarkdown(string(*body.InitialType))))
 	}
 	if body.ResolvedType != nil && (ticket.ResolvedType == nil || *body.ResolvedType != *ticket.ResolvedType) {
 		if ticket.ResolvedType == nil {
-			changes = append(changes, fmt.Sprintf("Resolved Type set to \"%s\"", *body.ResolvedType))
+			changes = append(changes, fmt.Sprintf("`%s` performed `Resolved Type Set` from `(none)` to `%s`", role, escapeMarkdown(string(*body.ResolvedType))))
 		} else {
-			changes = append(changes, fmt.Sprintf("Resolved Type changed from \"%s\" to \"%s\"", *ticket.ResolvedType, *body.ResolvedType))
+			changes = append(changes, fmt.Sprintf("`%s` performed `Resolved Type Change` from `%s` to `%s`", role, escapeMarkdown(string(*ticket.ResolvedType)), escapeMarkdown(string(*body.ResolvedType))))
 		}
 	}
 	if body.Priority != nil && *body.Priority != ticket.Priority {
-		changes = append(changes, fmt.Sprintf("Priority changed from \"%s\" to \"%s\"", ticket.Priority, *body.Priority))
+		changes = append(changes, fmt.Sprintf("`%s` performed `Priority Change` from `%s` to `%s`", role, escapeMarkdown(string(ticket.Priority)), escapeMarkdown(string(*body.Priority))))
 	}
 	if body.ImpactScore != nil && *body.ImpactScore != ticket.ImpactScore {
-		changes = append(changes, fmt.Sprintf("Impact Score changed from %d to %d", ticket.ImpactScore, *body.ImpactScore))
+		changes = append(changes, fmt.Sprintf("`%s` performed `Impact Score Change` from `%d` to `%d`", role, ticket.ImpactScore, *body.ImpactScore))
 	}
 	if body.UrgencyScore != nil && *body.UrgencyScore != ticket.UrgencyScore {
-		changes = append(changes, fmt.Sprintf("Urgency Score changed from %d to %d", ticket.UrgencyScore, *body.UrgencyScore))
+		changes = append(changes, fmt.Sprintf("`%s` performed `Urgency Score Change` from `%d` to `%d`", role, ticket.UrgencyScore, *body.UrgencyScore))
 	}
 	if body.FinalScore != nil && *body.FinalScore != ticket.FinalScore {
-		changes = append(changes, fmt.Sprintf("Final Score changed from %d to %d", ticket.FinalScore, *body.FinalScore))
+		changes = append(changes, fmt.Sprintf("`%s` performed `Final Score Change` from `%d` to `%d`", role, ticket.FinalScore, *body.FinalScore))
 	}
 	if body.RedFlag != nil && *body.RedFlag != ticket.RedFlag {
 		if *body.RedFlag {
-			changes = append(changes, "Red Flag was set")
+			changes = append(changes, fmt.Sprintf("`%s` performed `Red Flag Set` from `false` to `true`", role))
 		} else {
-			changes = append(changes, "Red Flag was cleared")
+			changes = append(changes, fmt.Sprintf("`%s` performed `Red Flag Clear` from `true` to `false`", role))
 		}
 	}
 	
@@ -662,7 +668,7 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(changes) > 0 {
-		commentBody := fmt.Sprintf("⚙️ Ticket fields updated by %s:\n\n%s", role, strings.Join(changes, "\n"))
+		commentBody := strings.Join(changes, "\n")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
         // Recalculate score distribution if effort changed or final score changed for completed tickets
@@ -788,13 +794,13 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	
 	for _, assignee := range newAssignees {
 		if !currentAssigneeMap[assignee.ID] {
-			assignmentChanges = append(assignmentChanges, fmt.Sprintf("✅ Assigned to %s (%s)", assignee.Name, assignee.Role))
+			assignmentChanges = append(assignmentChanges, fmt.Sprintf("`%s` performed `Assignment` from `(unassigned)` to `%s (%s)`", role, escapeMarkdown(assignee.Name), escapeMarkdown(assignee.Role)))
 		}
 	}
 	
 	// Add automatic comment if there were changes
 	if len(assignmentChanges) > 0 {
-		commentBody := fmt.Sprintf("Assignment updated by %s:\n\n%s", role, strings.Join(assignmentChanges, "\n"))
+		commentBody := strings.Join(assignmentChanges, "\n")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
         // Recalculate score distribution if ticket is completed
@@ -866,7 +872,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 	for _, assignee := range currentAssignees {
 		for _, unassigneeID := range body.AssigneeIDs {
 			if assignee.ID == unassigneeID {
-				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("❌ Unassigned %s (%s)", assignee.Name, assignee.Role))
+				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("`%s` performed `Unassignment` from `%s (%s)` to `(unassigned)`", role, escapeMarkdown(assignee.Name), escapeMarkdown(assignee.Role)))
 				break
 			}
 		}
@@ -885,7 +891,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(unassignmentChanges) > 0 {
-		commentBody := fmt.Sprintf("Assignment updated by %s:\n\n%s", role, strings.Join(unassignmentChanges, "\n"))
+		commentBody := strings.Join(unassignmentChanges, "\n")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
         // Recalculate score distribution if ticket is completed
@@ -977,7 +983,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
     // Track status change for automatic comment generation
 	var statusChangeComment string
 	if body.Status != ticket.Status {
-		statusChangeComment = fmt.Sprintf("Status changed from \"%s\" to \"%s\" by %s", ticket.Status, body.Status, role)
+		statusChangeComment = fmt.Sprintf("`%s` performed `Status Change` from `%s` to `%s`", role, escapeMarkdown(string(ticket.Status)), escapeMarkdown(string(body.Status)))
 	}
 	
 	if err := h.repo.Tickets.ChangeStatus(ctx, id, body.Status); err != nil {
@@ -1597,7 +1603,7 @@ func (h *Handlers) TicketsUpdateEffort(c *fiber.Ctx) error {
         }
         
         // Send notification to assignees
-        commentBody := fmt.Sprintf("Effort Score updated by %s", userName)
+        commentBody := fmt.Sprintf("`%s` performed `Effort Score Update`", escapeMarkdown(userName))
         h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
     }()
 
@@ -1690,7 +1696,7 @@ func (h *Handlers) TicketsUpdateRedFlags(c *fiber.Ctx) error {
 		}
 		
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("Red Flags (Critical Issues) updated by %s", userName)
+		commentBody := fmt.Sprintf("`%s` performed `Red Flags Update`", escapeMarkdown(userName))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 	
@@ -1783,7 +1789,7 @@ func (h *Handlers) TicketsUpdateImpactAssessment(c *fiber.Ctx) error {
 		}
 		
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("Impact Assessment updated by %s", userName)
+		commentBody := fmt.Sprintf("`%s` performed `Impact Assessment Update`", escapeMarkdown(userName))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 	
@@ -1876,7 +1882,7 @@ func (h *Handlers) TicketsUpdateUrgencyTimeline(c *fiber.Ctx) error {
 		}
 		
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("Urgency Timeline updated by %s", userName)
+		commentBody := fmt.Sprintf("`%s` performed `Urgency Timeline Update`", escapeMarkdown(userName))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 	

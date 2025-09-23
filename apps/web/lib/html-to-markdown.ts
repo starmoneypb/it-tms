@@ -227,6 +227,15 @@ export function convertContentToMarkdown(content: string): string {
   if (!content || content.trim() === '') return '';
 
   if (!isHtmlContent(content)) {
+    // Check if content contains inline code patterns (single backticks)
+    const hasInlineCode = /`[^`\n]+`/.test(content);
+    
+    // If it has inline code, don't wrap in code blocks but ensure it's properly formatted
+    if (hasInlineCode) {
+      // Return the content as-is so ReactMarkdown can parse the inline code properly
+      return content;
+    }
+    
     const codePatterns = [
       /export\s+const\s+\w+\s*=/,
       /function\s+\w+\s*\(/,
