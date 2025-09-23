@@ -33,7 +33,7 @@
     
     # Install from pre-fetched store without hitting the registry
     RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-        pnpm install --frozen-lockfile --offline
+        pnpm install --frozen-lockfile
     
     # Build (cache Next at .next/cache; still fresh because sources changed invalidate it)
     WORKDIR /app/apps/web
