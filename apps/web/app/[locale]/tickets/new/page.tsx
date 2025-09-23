@@ -293,14 +293,14 @@ export default function NewTicket() {
                     placeholder={t('problemPlaceholder')}
                     value={draft.description || ""} 
                     onChange={(v)=>setDraft({...draft, description: v})}
-                    minHeight="120px"
+                    minHeight="200px"
                   />
                   <MarkdownEditor 
                     label={t('stepsToReproduce')} 
                     placeholder={t('howToReproduce')}
                     value={(draft.details?.steps)|| ""} 
                     onChange={(v)=>setDraft({...draft, details: {...(draft.details||{}), steps: v}})}
-                    minHeight="100px"
+                    minHeight="150px"
                   />
                 </div>
                 <div className="flex gap-4 pt-4 border-t border-white/10">
@@ -409,7 +409,7 @@ export default function NewTicket() {
                     placeholder={t('descriptionPlaceholder')}
                     value={draft.description || ""} 
                     onChange={(v)=>setDraft({...draft, description: v})}
-                    minHeight="150px"
+                    minHeight="200px"
                   />
                   <div>
                     <label className="text-sm font-medium text-white/80 mb-2 block">{t('attachments')}</label>

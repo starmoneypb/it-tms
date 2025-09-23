@@ -973,7 +973,8 @@ export default function TicketDetails() {
                   value={comment} 
                   onChange={setComment} 
                   placeholder={t('writeComment')}
-                  minHeight="120px"
+                  minHeight="200px"
+                  showPreviewToggle={false}
                 />
                 <div>
                   <label className="text-sm font-medium text-white/80 mb-2 block">{t('attachments')}</label>
