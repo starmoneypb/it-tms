@@ -23,7 +23,7 @@ interface MarkdownRendererProps {
 const sanitizeSchema = (() => {
   const schema: any = JSON.parse(JSON.stringify(defaultSchema));
 
-  schema.tagNames = Array.from(new Set([...(schema.tagNames || []), "mark"]));
+  schema.tagNames = Array.from(new Set([...(schema.tagNames || []), "mark", "del"]));
 
   schema.attributes = {
     ...(schema.attributes || {}),
@@ -38,6 +38,7 @@ const sanitizeSchema = (() => {
       "data-highlight",
       "color",
     ],
+    del: [...(schema.attributes?.del || []), "className"],
     a: [...(schema.attributes?.a || []), "target", "rel"],
   };
 

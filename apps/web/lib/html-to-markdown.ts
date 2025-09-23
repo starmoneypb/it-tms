@@ -19,6 +19,11 @@ export function htmlToMarkdown(html: string): string {
     .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
     .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
     
+    // Strikethrough
+    .replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~')
+    .replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~')
+    .replace(/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~')
+    
     // Headers
     .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
     .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
@@ -44,7 +49,19 @@ export function htmlToMarkdown(html: string): string {
     .replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
     
     // Code blocks (handle multi-line code properly)
-    .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gi, (match, content) => {
+    .replace(/<pre[^>]*><code[^>]*class="language-([^"]*)"[^>]*>(.*?)<\/code><\/pre>/gis, (match, language, content) => {
+      // Clean up the content and preserve line breaks
+      const cleanContent = content
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+      return `\`\`\`${language}\n${cleanContent}\n\`\`\`\n\n`;
+    })
+    .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, (match, content) => {
       // Clean up the content and preserve line breaks
       const cleanContent = content
         .replace(/<br\s*\/?>/gi, '\n')
@@ -56,7 +73,7 @@ export function htmlToMarkdown(html: string): string {
         .replace(/&#39;/g, "'");
       return `\`\`\`\n${cleanContent}\n\`\`\`\n\n`;
     })
-    .replace(/<pre[^>]*>(.*?)<\/pre>/gi, (match, content) => {
+    .replace(/<pre[^>]*>(.*?)<\/pre>/gis, (match, content) => {
       // Clean up the content and preserve line breaks
       const cleanContent = content
         .replace(/<br\s*\/?>/gi, '\n')
@@ -116,15 +133,67 @@ export function isHtmlContent(content: string): boolean {
     /&#\d+;/
   ];
   
-  return htmlPatterns.some(pattern => pattern.test(content));
+  // Also check for TiptapEditor specific patterns
+  const tiptapPatterns = [
+    /<p[^>]*>/,
+    /<pre[^>]*>/,
+    /<code[^>]*>/,
+    /<strong[^>]*>/,
+    /<em[^>]*>/,
+    /<h[1-6][^>]*>/,
+    /<ul[^>]*>/,
+    /<ol[^>]*>/,
+    /<li[^>]*>/,
+    /<blockquote[^>]*>/
+  ];
+  
+  return htmlPatterns.some(pattern => pattern.test(content)) || 
+         tiptapPatterns.some(pattern => pattern.test(content));
 }
 
 // Safe content converter that checks if content is HTML before converting
 export function convertContentToMarkdown(content: string): string {
   if (!content || content.trim() === '') return '';
   
-  // If it's already Markdown-like (no HTML tags), return as-is
+  // If it's already Markdown-like (no HTML tags), check if it looks like code
   if (!isHtmlContent(content)) {
+    // Check if content looks like code (contains common code patterns)
+    const codePatterns = [
+      /export\s+const\s+\w+\s*=/,
+      /function\s+\w+\s*\(/,
+      /class\s+\w+/,
+      /import\s+.*from/,
+      /const\s+\w+\s*=/,
+      /let\s+\w+\s*=/,
+      /var\s+\w+\s*=/,
+      /if\s*\(/,
+      /for\s*\(/,
+      /while\s*\(/,
+      /return\s+/,
+      /console\.log/,
+      /\.js$/,
+      /\.ts$/,
+      /\.py$/,
+      /\.java$/,
+      /\.cpp$/,
+      /\.css$/,
+      /\.html$/,
+      /\.json$/,
+      /\.sql$/,
+      /\.bash$/,
+      /\.sh$/
+    ];
+    
+    const looksLikeCode = codePatterns.some(pattern => pattern.test(content)) ||
+                         content.includes('{') && content.includes('}') ||
+                         content.includes('(') && content.includes(')') ||
+                         content.split('\n').length > 3;
+    
+    if (looksLikeCode) {
+      // Wrap in code block
+      return `\`\`\`\n${content}\n\`\`\``;
+    }
+    
     return content;
   }
   

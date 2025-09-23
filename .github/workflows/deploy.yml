@@ -12,110 +12,125 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v2
         with:
           version: 'latest'
-      
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-      
+
       - name: Deploy to VM
         run: |
           echo "Starting deployment to production..."
-          
-          # Create temporary script to avoid command line parsing issues with JSON
+
+          # Create a robust deploy script to run on the VM
           cat > deploy_script.sh << 'EOF'
-          #!/bin/bash
-          set -e
+          #!/usr/bin/env bash
+          set -euo pipefail
+
           echo 'Navigating to deployment directory...'
           cd /opt/unisight
-          
+
           echo 'Pulling latest changes from main branch...'
           sudo git pull origin main
-          
+
           echo 'Setting up environment file...'
           sudo cp env.gcp .env
+
+          echo 'Using Application Default Credentials (VM service account)...'
+
+          # Prefer Compose v2 if available
+          if docker compose version >/dev/null 2>&1; then
+            COMPOSE="docker compose"
+          else
+            COMPOSE="docker-compose"
+          fi
+
+          echo 'Stopping existing containers...'
+          sudo $COMPOSE -f docker-compose.gcp.yml down || true
+
+          # Enable BuildKit & parallel build (ยังคง --no-cache ตาม requirement)
+          export DOCKER_BUILDKIT=1
+          export COMPOSE_DOCKER_CLI_BUILD=1
+
+          echo 'Building with no cache (but keeping BuildKit caches for tools)...'
+          sudo -E $COMPOSE -f docker-compose.gcp.yml build --no-cache --parallel
+
+          echo 'Starting core services first (without nginx)...'
+          sudo $COMPOSE -f docker-compose.gcp.yml up -d db db-migrate db-seed api web
+
+          echo 'Waiting for services to be ready...'
+          sleep 15
+
+          echo 'Checking SSL certificates...'
+          if [ ! -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then
+            echo "SSL certificates not found, generating new ones..."
+            sudo $COMPOSE -f docker-compose.gcp.yml stop nginx || true
+            echo "Requesting SSL certificate from Lets Encrypt using standalone method..."
+            sudo docker run --rm -p 80:80 \
+              -v certbot-etc:/etc/letsencrypt \
+              -v certbot-var:/var/lib/letsencrypt \
+              certbot/certbot certonly --standalone \
+              -d unisight.dev -d www.unisight.dev \
+              --email admin@unisight.dev --agree-tos --non-interactive --expand
+            if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then
+              echo "SSL certificates generated successfully!"
+            else
+              echo "SSL certificate generation failed, will continue with HTTP-only configuration"
+            fi
+          else
+            echo "SSL certificates already exist!"
+          fi
+
+          echo 'Starting nginx with appropriate configuration...'
+          if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then
+            echo "SSL certificates found, using SSL configuration"
+            sudo cp nginx/nginx-ssl.conf nginx/nginx.conf
+          else
+            echo "No SSL certificates, using HTTP-only configuration"
+            sudo cp nginx/nginx.conf nginx/nginx.conf.backup 2>/dev/null || true
+          fi
+
+          sudo $COMPOSE -f docker-compose.gcp.yml up -d nginx
+
+          echo 'Checking service health...'
+          sleep 10
+          sudo $COMPOSE -f docker-compose.gcp.yml ps
+
+          echo 'Deployment completed successfully!'
+          if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then
+            echo "✅ SSL is enabled - your site is accessible via HTTPS"
+          else
+            echo "⚠️ SSL certificate generation failed - your site is accessible via HTTP only"
+            echo "   To enable SSL manually, run the certificate generation command on your VM"
+          fi
           EOF
-          
-          # Use Application Default Credentials - no JSON credentials needed
-          echo "" >> deploy_script.sh
-          echo "echo 'Using Application Default Credentials (VM service account)...'" >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Stopping existing containers...'" >> deploy_script.sh
-          echo 'sudo docker-compose -f docker-compose.gcp.yml down || true' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Cleaning Docker cache...'" >> deploy_script.sh
-          echo 'sudo docker system prune -f' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Building with no cache...'" >> deploy_script.sh
-          echo 'sudo docker-compose -f docker-compose.gcp.yml build --no-cache' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Starting core services first (without nginx)...'" >> deploy_script.sh
-          echo 'sudo docker-compose -f docker-compose.gcp.yml up -d db db-migrate db-seed api web' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Waiting for services to be ready...'" >> deploy_script.sh
-          echo 'sleep 15' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Checking SSL certificates...'" >> deploy_script.sh
-          echo 'if [ ! -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh
-          echo '  echo "SSL certificates not found, generating new ones..."' >> deploy_script.sh
-          echo '  sudo docker-compose -f docker-compose.gcp.yml stop nginx || true' >> deploy_script.sh
-          echo '  echo "Requesting SSL certificate from Lets Encrypt using standalone method..."' >> deploy_script.sh
-          echo '  sudo docker run --rm -p 80:80 -v certbot-etc:/etc/letsencrypt -v certbot-var:/var/lib/letsencrypt certbot/certbot certonly --standalone -d unisight.dev -d www.unisight.dev --email admin@unisight.dev --agree-tos --non-interactive --expand' >> deploy_script.sh
-          echo '  if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh
-          echo '    echo "SSL certificates generated successfully!"' >> deploy_script.sh
-          echo '  else' >> deploy_script.sh
-          echo '    echo "SSL certificate generation failed, will continue with HTTP-only configuration"' >> deploy_script.sh
-          echo '  fi' >> deploy_script.sh
-          echo 'else' >> deploy_script.sh
-          echo '  echo "SSL certificates already exist!"' >> deploy_script.sh
-          echo 'fi' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Starting nginx with appropriate configuration...'" >> deploy_script.sh
-          echo 'if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh
-          echo '  echo "SSL certificates found, using SSL configuration"' >> deploy_script.sh
-          echo '  sudo cp nginx/nginx-ssl.conf nginx/nginx.conf' >> deploy_script.sh
-          echo 'else' >> deploy_script.sh
-          echo '  echo "No SSL certificates, using HTTP-only configuration"' >> deploy_script.sh
-          echo '  sudo cp nginx/nginx.conf nginx/nginx.conf.backup 2>/dev/null || true' >> deploy_script.sh
-          echo 'fi' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo 'sudo docker-compose -f docker-compose.gcp.yml up -d nginx' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Checking service health...'" >> deploy_script.sh
-          echo 'sleep 10' >> deploy_script.sh
-          echo 'sudo docker-compose -f docker-compose.gcp.yml ps' >> deploy_script.sh
-          echo "" >> deploy_script.sh
-          echo "echo 'Deployment completed successfully!'" >> deploy_script.sh
-          echo 'if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then' >> deploy_script.sh
-          echo '  echo "✅ SSL is enabled - your site is accessible via HTTPS"' >> deploy_script.sh
-          echo 'else' >> deploy_script.sh
-          echo '  echo "⚠️ SSL certificate generation failed - your site is accessible via HTTP only"' >> deploy_script.sh
-          echo '  echo "   To enable SSL manually, run the certificate generation command on your VM"' >> deploy_script.sh
-          echo 'fi' >> deploy_script.sh
-          
+
           # Copy script to VM and execute it
           gcloud compute scp deploy_script.sh ${{ env.VM_NAME }}:~/deploy_script.sh --zone=${{ env.VM_ZONE }}
           gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="chmod +x ~/deploy_script.sh && ~/deploy_script.sh && rm -f ~/deploy_script.sh"
-          
+
           # Clean up local temporary files
           rm -f deploy_script.sh
-      
+
       - name: Verify deployment
         run: |
           echo "Verifying deployment health..."
-          gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command="
-            cd ${{ env.DEPLOY_DIR }}
-            echo 'Checking service status...'
-            sudo docker-compose -f docker-compose.gcp.yml ps
-            echo 'Checking container logs for any errors...'
-            sudo docker-compose -f docker-compose.gcp.yml logs --tail=20 web api
-          "
+          # Use the same compose wrapper logic on the VM
+          gcloud compute ssh ${{ env.VM_NAME }} --zone=${{ env.VM_ZONE }} --command='
+            set -e
+            cd '"${{ env.DEPLOY_DIR }}"'
+            if docker compose version >/dev/null 2>&1; then COMPOSE="docker compose"; else COMPOSE="docker-compose"; fi
+            echo "Checking service status..."
+            sudo $COMPOSE -f docker-compose.gcp.yml ps
+            echo "Checking container logs for any errors..."
+            sudo $COMPOSE -f docker-compose.gcp.yml logs --tail=20 web api
+          '
