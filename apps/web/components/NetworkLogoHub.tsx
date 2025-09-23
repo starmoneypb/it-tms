@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { 
-  Github, 
-  Twitter, 
-  Linkedin, 
-  Instagram, 
-  Youtube, 
-  Facebook,
-  Globe,
-  Cloud
+  FileText, 
+  Activity, 
+  Monitor,
+  BarChart3,
+  Shield,
+  Zap,
+  Database,
+  Users
 } from 'lucide-react';
 
 interface NetworkIcon {
@@ -38,68 +38,68 @@ const NetworkLogoHub: React.FC = () => {
     
     return [
       {
-        id: 'github',
-        icon: <Github size={iconSize} />,
+        id: 'document',
+        icon: <FileText size={iconSize} />,
         position: { x: 0, y: -radius },
-        color: 'text-gray-400',
-        hoverColor: 'text-white',
-        label: 'GitHub'
-      },
-      {
-        id: 'twitter',
-        icon: <Twitter size={iconSize} />,
-        position: { x: radius * 0.707, y: -radius * 0.707 },
         color: 'text-blue-400',
         hoverColor: 'text-blue-300',
-        label: 'Twitter'
+        label: 'Document'
       },
       {
-        id: 'linkedin',
-        icon: <Linkedin size={iconSize} />,
+        id: 'tracking',
+        icon: <Activity size={iconSize} />,
+        position: { x: radius * 0.707, y: -radius * 0.707 },
+        color: 'text-green-400',
+        hoverColor: 'text-green-300',
+        label: 'Tracking'
+      },
+      {
+        id: 'monitoring',
+        icon: <Monitor size={iconSize} />,
         position: { x: radius, y: 0 },
-        color: 'text-blue-500',
-        hoverColor: 'text-blue-400',
-        label: 'LinkedIn'
+        color: 'text-purple-400',
+        hoverColor: 'text-purple-300',
+        label: 'Monitoring'
       },
       {
-        id: 'instagram',
-        icon: <Instagram size={iconSize} />,
+        id: 'analytics',
+        icon: <BarChart3 size={iconSize} />,
         position: { x: radius * 0.707, y: radius * 0.707 },
-        color: 'text-pink-400',
-        hoverColor: 'text-pink-300',
-        label: 'Instagram'
+        color: 'text-orange-400',
+        hoverColor: 'text-orange-300',
+        label: 'Analytics'
       },
       {
-        id: 'youtube',
-        icon: <Youtube size={iconSize} />,
+        id: 'security',
+        icon: <Shield size={iconSize} />,
         position: { x: 0, y: radius },
         color: 'text-red-400',
         hoverColor: 'text-red-300',
-        label: 'YouTube'
+        label: 'Security'
       },
       {
-        id: 'facebook',
-        icon: <Facebook size={iconSize} />,
+        id: 'performance',
+        icon: <Zap size={iconSize} />,
         position: { x: -radius * 0.707, y: radius * 0.707 },
-        color: 'text-blue-600',
-        hoverColor: 'text-blue-500',
-        label: 'Facebook'
+        color: 'text-yellow-400',
+        hoverColor: 'text-yellow-300',
+        label: 'Performance'
       },
       {
-        id: 'globe',
-        icon: <Globe size={iconSize} />,
+        id: 'database',
+        icon: <Database size={iconSize} />,
         position: { x: -radius, y: 0 },
-        color: 'text-green-400',
-        hoverColor: 'text-green-300',
-        label: 'Web'
-      },
-      {
-        id: 'cloud',
-        icon: <Cloud size={iconSize} />,
-        position: { x: -radius * 0.707, y: -radius * 0.707 },
         color: 'text-cyan-400',
         hoverColor: 'text-cyan-300',
-        label: 'Cloud'
+        label: 'Database'
+      },
+      {
+        id: 'collaboration',
+        icon: <Users size={iconSize} />,
+        position: { x: -radius * 0.707, y: -radius * 0.707 },
+        color: 'text-indigo-400',
+        hoverColor: 'text-indigo-300',
+        label: 'Collaboration'
       }
     ];
   };
@@ -117,18 +117,19 @@ const NetworkLogoHub: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Calculate SVG path for connecting lines
+  // Calculate SVG path for elbow-shaped connecting lines
   const getConnectionPath = (icon: NetworkIcon) => {
     const centerX = 0;
     const centerY = 0;
     const iconX = icon.position.x;
     const iconY = icon.position.y;
     
-    // Create a curved path
-    const controlX = (centerX + iconX) / 2;
-    const controlY = (centerY + iconY) / 2 - 20;
+    // Calculate the elbow point (midpoint with offset for elbow effect)
+    const elbowX = centerX + (iconX - centerX) * 0.6;
+    const elbowY = centerY + (iconY - centerY) * 0.6;
     
-    return `M ${centerX} ${centerY} Q ${controlX} ${controlY} ${iconX} ${iconY}`;
+    // Create elbow path with rounded corners
+    return `M ${centerX} ${centerY} L ${elbowX} ${elbowY} L ${iconX} ${iconY}`;
   };
 
   return (
@@ -145,39 +146,146 @@ const NetworkLogoHub: React.FC = () => {
               className="absolute inset-0"
               style={{ overflow: 'visible' }}
             >
+              {/* Define gradients for shimmer effect */}
+              <defs>
+                {networkIcons.map((icon) => (
+                  <linearGradient
+                    key={`gradient-${icon.id}`}
+                    id={`shimmer-${icon.id}`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                    gradientUnits="objectBoundingBox"
+                  >
+                    <stop offset="0%" stopColor="transparent" />
+                    <stop offset="25%" stopColor="transparent" />
+                    <stop offset="40%" stopColor={icon.hoverColor.replace('text-', '#')} stopOpacity="0.3" />
+                    <stop offset="50%" stopColor={icon.hoverColor.replace('text-', '#')} stopOpacity="1" />
+                    <stop offset="60%" stopColor={icon.hoverColor.replace('text-', '#')} stopOpacity="0.3" />
+                    <stop offset="75%" stopColor="transparent" />
+                    <stop offset="100%" stopColor="transparent" />
+                    <animateTransform
+                      attributeName="gradientTransform"
+                      type="translate"
+                      values="-1 0; 1 0; -1 0"
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                  </linearGradient>
+                ))}
+                
+                {/* Default shimmer gradient */}
+                <linearGradient
+                  id="default-shimmer"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor="transparent" />
+                  <stop offset="20%" stopColor="transparent" />
+                  <stop offset="40%" stopColor="rgba(255, 255, 255, 0.4)" />
+                  <stop offset="50%" stopColor="rgba(255, 255, 255, 0.8)" />
+                  <stop offset="60%" stopColor="rgba(255, 255, 255, 0.4)" />
+                  <stop offset="80%" stopColor="transparent" />
+                  <stop offset="100%" stopColor="transparent" />
+                  <animateTransform
+                    attributeName="gradientTransform"
+                    type="translate"
+                    values="-1 0; 1 0; -1 0"
+                    dur="2.5s"
+                    repeatCount="indefinite"
+                  />
+                </linearGradient>
+                
+                {/* Secondary shimmer for more electricity effect */}
+                <linearGradient
+                  id="secondary-shimmer"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor="transparent" />
+                  <stop offset="45%" stopColor="transparent" />
+                  <stop offset="50%" stopColor="rgba(147, 197, 253, 0.6)" />
+                  <stop offset="55%" stopColor="transparent" />
+                  <stop offset="100%" stopColor="transparent" />
+                  <animateTransform
+                    attributeName="gradientTransform"
+                    type="translate"
+                    values="-1 0; 1 0; -1 0"
+                    dur="1.8s"
+                    repeatCount="indefinite"
+                    begin="0.5s"
+                  />
+                </linearGradient>
+              </defs>
+              
               {networkIcons.map((icon) => (
-                <path
-                  key={`line-${icon.id}`}
-                  d={getConnectionPath(icon)}
-                  stroke={hoveredIcon === icon.id ? icon.hoverColor.replace('text-', '#') : 'rgba(255, 255, 255, 0.1)'}
-                  strokeWidth="2"
-                  fill="none"
-                  className={`transition-all duration-300 ${
-                    hoveredIcon === icon.id 
-                      ? 'drop-shadow-lg' 
-                      : ''
-                  }`}
-                  style={{
-                    filter: hoveredIcon === icon.id 
-                      ? `drop-shadow(0 0 8px ${icon.hoverColor.replace('text-', '#')})` 
-                      : 'none'
-                  }}
-                />
+                <g key={`line-group-${icon.id}`}>
+                  {/* Base line */}
+                  <path
+                    d={getConnectionPath(icon)}
+                    stroke="rgba(255, 255, 255, 0.1)"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  
+                  {/* Primary shimmer line */}
+                  <path
+                    d={getConnectionPath(icon)}
+                    stroke={hoveredIcon === icon.id ? `url(#shimmer-${icon.id})` : 'url(#default-shimmer)'}
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`transition-all duration-300 ${
+                      hoveredIcon === icon.id 
+                        ? 'drop-shadow-lg' 
+                        : ''
+                    }`}
+                    style={{
+                      filter: hoveredIcon === icon.id 
+                        ? `drop-shadow(0 0 8px ${icon.hoverColor.replace('text-', '#')})` 
+                        : 'none'
+                    }}
+                  />
+                  
+                  {/* Secondary shimmer line for electricity effect */}
+                  <path
+                    d={getConnectionPath(icon)}
+                    stroke="url(#secondary-shimmer)"
+                    strokeWidth="1"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.7"
+                  />
+                </g>
               ))}
             </svg>
           </div>
 
           {/* Central Logo */}
-          <div className="relative z-10 flex justify-center items-center">
-            <div className="relative">
-              <div className="relative animate-float-slow">
+          <div className="absolute inset-0 flex justify-center items-center z-10">
+            <div className="relative group/logo">
+              <div className="relative transition-all duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-12">
                 <Image
                   src="/logo.svg"
                   alt="UniSight Logo"
                   width={80}
                   height={80}
-                  className="h-20 w-20 opacity-90 hover:opacity-100 transition-opacity duration-300"
+                  className="h-20 w-20 opacity-90 group-hover/logo:opacity-100 transition-all duration-500"
                 />
+                
+                {/* Subtle glow effect on hover */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500 blur-xl"></div>
               </div>
             </div>
           </div>
@@ -209,14 +317,14 @@ const NetworkLogoHub: React.FC = () => {
                   <div className={`
                     absolute inset-0 rounded-2xl opacity-0 group-hover/icon:opacity-100 
                     transition-opacity duration-300 blur-lg
-                    ${icon.id === 'github' ? 'bg-gray-500/20' : ''}
-                    ${icon.id === 'twitter' ? 'bg-blue-400/20' : ''}
-                    ${icon.id === 'linkedin' ? 'bg-blue-500/20' : ''}
-                    ${icon.id === 'instagram' ? 'bg-pink-400/20' : ''}
-                    ${icon.id === 'youtube' ? 'bg-red-400/20' : ''}
-                    ${icon.id === 'facebook' ? 'bg-blue-600/20' : ''}
-                    ${icon.id === 'globe' ? 'bg-green-400/20' : ''}
-                    ${icon.id === 'cloud' ? 'bg-cyan-400/20' : ''}
+                    ${icon.id === 'document' ? 'bg-blue-400/20' : ''}
+                    ${icon.id === 'tracking' ? 'bg-green-400/20' : ''}
+                    ${icon.id === 'monitoring' ? 'bg-purple-400/20' : ''}
+                    ${icon.id === 'analytics' ? 'bg-orange-400/20' : ''}
+                    ${icon.id === 'security' ? 'bg-red-400/20' : ''}
+                    ${icon.id === 'performance' ? 'bg-yellow-400/20' : ''}
+                    ${icon.id === 'database' ? 'bg-cyan-400/20' : ''}
+                    ${icon.id === 'collaboration' ? 'bg-indigo-400/20' : ''}
                   `}></div>
                   
                   {/* Icon */}
