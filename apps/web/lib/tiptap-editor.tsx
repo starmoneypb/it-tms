@@ -73,7 +73,14 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
     color={isActive ? "primary" : "default"}
     isDisabled={disabled}
     onPress={onClick}
-    className={`min-w-8 h-8 p-1 ${isActive ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+    className={`
+      min-w-7 h-7 sm:min-w-8 sm:h-8 p-1 transition-all duration-200
+      ${isActive 
+        ? 'bg-primary-500 text-white shadow-md' 
+        : 'text-white/70 hover:text-white hover:bg-white/10 border-0'
+      }
+      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+    `}
     title={title}
   >
     {children}
@@ -81,11 +88,11 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 );
 
 const ToolbarSeparator = () => (
-  <div className="w-px h-6 bg-gray-600 mx-1" />
+  <div className="w-px h-6 bg-white/20 mx-1" />
 );
 
 const ToolbarGroup = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex items-center gap-1">
+  <div className="flex items-center gap-0.5 sm:gap-1">
     {children}
   </div>
 );
@@ -108,7 +115,7 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
   }, [editor]);
 
   return (
-    <div className="flex items-center gap-2 p-3 bg-gray-800 border border-gray-700 rounded-t-lg flex-wrap">
+    <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 bg-surface-elevated border border-white/10 rounded-t-lg flex-wrap backdrop-blur-sm overflow-x-auto">
       {/* History */}
       <ToolbarGroup>
         <ToolbarButton
@@ -116,14 +123,14 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           disabled={!editor.can().chain().focus().undo().run()}
           title="Undo"
         >
-          <Undo className="w-4 h-4" />
+          <Undo className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().chain().focus().redo().run()}
           title="Redo"
         >
-          <Redo className="w-4 h-4" />
+          <Redo className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
 
@@ -136,21 +143,21 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           isActive={editor.isActive('heading', { level: 1 })}
           title="Heading 1"
         >
-          <Heading1 className="w-4 h-4" />
+          <Heading1 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           isActive={editor.isActive('heading', { level: 2 })}
           title="Heading 2"
         >
-          <Heading2 className="w-4 h-4" />
+          <Heading2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           isActive={editor.isActive('heading', { level: 3 })}
           title="Heading 3"
         >
-          <Heading3 className="w-4 h-4" />
+          <Heading3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
 
@@ -163,28 +170,28 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           isActive={editor.isActive('bold')}
           title="Bold"
         >
-          <Bold className="w-4 h-4" />
+          <Bold className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
           isActive={editor.isActive('italic')}
           title="Italic"
         >
-          <Italic className="w-4 h-4" />
+          <Italic className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleStrike().run()}
           isActive={editor.isActive('strike')}
           title="Strikethrough"
         >
-          <Strikethrough className="w-4 h-4" />
+          <Strikethrough className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleCode().run()}
           isActive={editor.isActive('code')}
           title="Inline Code"
         >
-          <Code className="w-4 h-4" />
+          <Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
 
@@ -197,28 +204,28 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           isActive={editor.isActive('bulletList')}
           title="Bullet List"
         >
-          <List className="w-4 h-4" />
+          <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           isActive={editor.isActive('orderedList')}
           title="Numbered List"
         >
-          <ListOrdered className="w-4 h-4" />
+          <ListOrdered className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           isActive={editor.isActive('blockquote')}
           title="Quote"
         >
-          <Quote className="w-4 h-4" />
+          <Quote className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
           isActive={editor.isActive('codeBlock')}
           title="Code Block"
         >
-          <Code2 className="w-4 h-4" />
+          <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
 
@@ -231,28 +238,28 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           isActive={editor.isActive({ textAlign: 'left' })}
           title="Align Left"
         >
-          <AlignLeft className="w-4 h-4" />
+          <AlignLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
           isActive={editor.isActive({ textAlign: 'center' })}
           title="Align Center"
         >
-          <AlignCenter className="w-4 h-4" />
+          <AlignCenter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('right').run()}
           isActive={editor.isActive({ textAlign: 'right' })}
           title="Align Right"
         >
-          <AlignRight className="w-4 h-4" />
+          <AlignRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('justify').run()}
           isActive={editor.isActive({ textAlign: 'justify' })}
           title="Justify"
         >
-          <AlignJustify className="w-4 h-4" />
+          <AlignJustify className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
 
@@ -265,13 +272,13 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           isActive={editor.isActive('link')}
           title="Add Link"
         >
-          <Underline className="w-4 h-4" />
+          <Underline className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           title="Horizontal Rule"
         >
-          <Minus className="w-4 h-4" />
+          <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
     </div>
@@ -280,7 +287,7 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
 
 const PreviewContent: React.FC<{ content: string }> = ({ content }) => (
   <div 
-    className="prose prose-invert max-w-none p-4 bg-gray-900 border border-gray-700 rounded-b-lg"
+    className="prose prose-invert max-w-none p-4 bg-surface border border-white/10 rounded-b-lg"
     dangerouslySetInnerHTML={{ __html: content }}
   />
 );
@@ -320,7 +327,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none p-4 bg-gray-900 border border-gray-700 rounded-b-lg',
+        class: 'prose prose-invert max-w-none focus:outline-none p-4 bg-surface border border-white/10 rounded-b-lg text-white/90',
         style: `min-height: ${minHeight}`,
         placeholder: placeholder,
       },
@@ -346,11 +353,11 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         </label>
       )}
       
-      <div className="border border-gray-700 rounded-lg overflow-hidden">
+      <div className="border border-white/10 rounded-lg overflow-hidden shadow-lg backdrop-blur-sm">
         <Toolbar editor={editor} />
         
         {showPreviewToggle && (
-          <div className="flex items-center justify-between p-2 bg-gray-800 border-t border-gray-700">
+          <div className="flex items-center justify-between p-2 bg-surface-elevated border-t border-white/10">
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -359,7 +366,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
                 onPress={() => setIsPreview(false)}
                 className="h-7 px-3"
               >
-                <Edit3 className="w-4 h-4 mr-1" />
+                <Edit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                 Edit
               </Button>
               <Button
@@ -369,7 +376,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
                 onPress={() => setIsPreview(true)}
                 className="h-7 px-3"
               >
-                <Eye className="w-4 h-4 mr-1" />
+                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                 Preview
               </Button>
             </div>
@@ -381,7 +388,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         ) : (
           <EditorContent 
             editor={editor} 
-            className="focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-opacity-50"
+            className="focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-opacity-50 transition-all duration-200"
           />
         )}
       </div>
