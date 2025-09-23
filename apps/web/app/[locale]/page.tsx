@@ -140,7 +140,7 @@ export default function Landing() {
               <span>{t('badge')}</span>
             </div>
             
-            <h1 className="text-6xl md:text-8xl font-bold mb-6 gradient-text relative leading-tight">
+            <h1 className="text-6xl md:text-8xl font-bold mb-6 gradient-text relative leading-normal pb-2">
               {t('title')}
             </h1>
             
@@ -197,7 +197,7 @@ export default function Landing() {
               <Zap size={16} />
               <span>{t('quickActions')}</span>
             </div>
-            <h2 className="text-4xl md:text-6xl font-bold gradient-text mb-6 leading-tight">
+            <h2 className="text-4xl md:text-6xl font-bold gradient-text mb-6 leading-normal pb-1">
               {t('quickActions')}
             </h2>
             <p className="text-xl text-white/60 max-w-3xl mx-auto leading-relaxed">
