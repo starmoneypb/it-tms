@@ -82,21 +82,21 @@ export function NotificationToast() {
   };
 
   const getNotificationStyle = (notification: Notification) => {
-    const baseStyle = "relative overflow-hidden border rounded-2xl p-4 sm:p-5 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-3xl group";
+    const baseStyle = "relative overflow-hidden border rounded-2xl p-4 sm:p-5 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:scale-[1.02] hover:shadow-3xl group";
     
     if (notification.type === 'ticket_created' && notification.ticket?.initialType === 'ISSUE_REPORT') {
-      return `${baseStyle} border-red-500/40 bg-gradient-to-br from-red-500/20 via-red-600/15 to-red-700/10 shadow-red-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-red-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+      return `${baseStyle} border-red-500/20 bg-gradient-to-br from-red-500/8 via-red-600/6 to-red-700/4 shadow-red-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-red-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     } else if (notification.type === 'ticket_assigned') {
-      return `${baseStyle} border-green-500/40 bg-gradient-to-br from-green-500/20 via-green-600/15 to-green-700/10 shadow-green-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-green-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+      return `${baseStyle} border-green-500/20 bg-gradient-to-br from-green-500/8 via-green-600/6 to-green-700/4 shadow-green-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-green-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     } else if (notification.type === 'ticket_unassigned') {
-      return `${baseStyle} border-orange-500/40 bg-gradient-to-br from-orange-500/20 via-orange-600/15 to-orange-700/10 shadow-orange-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-orange-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+      return `${baseStyle} border-orange-500/20 bg-gradient-to-br from-orange-500/8 via-orange-600/6 to-orange-700/4 shadow-orange-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-orange-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     } else if (notification.type === 'comment_added') {
-      return `${baseStyle} border-purple-500/40 bg-gradient-to-br from-purple-500/20 via-purple-600/15 to-purple-700/10 shadow-purple-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-purple-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+      return `${baseStyle} border-purple-500/20 bg-gradient-to-br from-purple-500/8 via-purple-600/6 to-purple-700/4 shadow-purple-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-purple-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     } else if (notification.type === 'ticket_updated') {
-      return `${baseStyle} border-blue-500/40 bg-gradient-to-br from-blue-500/20 via-blue-600/15 to-blue-700/10 shadow-blue-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+      return `${baseStyle} border-blue-500/20 bg-gradient-to-br from-blue-500/8 via-blue-600/6 to-blue-700/4 shadow-blue-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     }
     
-    return `${baseStyle} border-blue-500/40 bg-gradient-to-br from-blue-500/20 via-blue-600/15 to-blue-700/10 shadow-blue-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+    return `${baseStyle} border-blue-500/20 bg-gradient-to-br from-blue-500/8 via-blue-600/6 to-blue-700/4 shadow-blue-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
   };
 
   if (visibleNotifications.length === 0) {
@@ -151,7 +151,7 @@ export function NotificationToast() {
                 initial={{ opacity: 0, scale: 1.1 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2, duration: 0.6 }}
-                className="absolute inset-0 bg-gradient-to-r from-white/8 via-white/4 to-transparent"
+                className="absolute inset-0 bg-gradient-to-r from-white/4 via-white/2 to-transparent"
               />
               
               {/* Subtle border glow effect */}
@@ -159,7 +159,7 @@ export function NotificationToast() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.8 }}
-                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/10 via-transparent to-white/5 opacity-50"
+                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/5 via-transparent to-white/3 opacity-30"
               />
               
               {/* Sparkle effects for issue reports */}
@@ -207,7 +207,7 @@ export function NotificationToast() {
                     damping: 25,
                     delay: 0.3
                   }}
-                  className="flex-shrink-0 p-2 rounded-full bg-white/10 backdrop-blur-sm"
+                  className="flex-shrink-0 p-2 rounded-full bg-white/5 backdrop-blur-sm"
                 >
                   {getNotificationIcon(notification)}
                 </motion.div>
@@ -256,7 +256,7 @@ export function NotificationToast() {
                       transition={{ delay: 0.5 }}
                       className="space-y-3"
                     >
-                      <div className="p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                      <div className="p-3 rounded-xl bg-white/3 backdrop-blur-sm border border-white/5">
                         <p className="text-sm sm:text-base text-white/95 font-semibold leading-tight mb-2">
                           #{notification.ticket.code} — {notification.ticket.title}
                         </p>
@@ -273,7 +273,7 @@ export function NotificationToast() {
                             {notification.ticket.priority}
                           </motion.span>
                           <span className="text-white/40">•</span>
-                          <span className="text-white/80 font-medium px-2 py-1 rounded-md bg-white/5">
+                          <span className="text-white/80 font-medium px-2 py-1 rounded-md bg-white/3">
                             {notification.ticket.status}
                           </span>
                         </div>
@@ -295,7 +295,7 @@ export function NotificationToast() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.7 }}
-                      className="mt-3 p-3 bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm"
+                      className="mt-3 p-3 bg-white/3 rounded-xl border border-white/5 backdrop-blur-sm"
                     >
                       <p className="text-xs sm:text-sm text-white/80 leading-relaxed italic">
                         "{notification.commentBody.length > 120 
@@ -312,13 +312,13 @@ export function NotificationToast() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
-                  className="mt-4 pt-3 border-t border-white/10"
+                  className="mt-4 pt-3 border-t border-white/5"
                 >
                   <motion.a
                     whileHover={{ x: 5, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     href={`/${locale}/tickets/${notification.ticketId}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-white/80 hover:text-white transition-all duration-200 font-medium group bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 hover:border-white/20"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-white/80 hover:text-white transition-all duration-200 font-medium group bg-white/3 hover:bg-white/5 rounded-lg border border-white/5 hover:border-white/10"
                     onClick={() => removeNotification(notification.timestamp)}
                   >
                     <Zap className="h-3 w-3 sm:h-4 sm:w-4 group-hover:animate-pulse" />

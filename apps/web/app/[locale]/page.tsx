@@ -122,7 +122,7 @@ export default function Landing() {
       {/* Content */}
       <div className="relative z-10 container">
         {/* Hero Section */}
-        <section className="text-center py-20 relative">
+        <section className="text-center min-h-screen flex flex-col justify-center relative">
           {/* Language Toggle */}
           <div className="absolute top-4 right-4 z-20">
             <LanguageToggle />
@@ -272,59 +272,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Simple Info Section */}
-        <section className="py-20">
-          <div className={`text-center transition-all duration-1000 delay-900 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-600/20 to-blue-600/20 backdrop-blur-sm border border-green-500/30 rounded-full px-4 py-2 mb-6 text-sm font-medium text-green-300">
-              <CheckCircle size={16} />
-              <span>{t('simpleEffective')}</span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-8">
-              {t('builtForTeam')}
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto mb-12">
-              {t('teamDescription')}
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              <div className="text-center group relative">
-                <div className="relative p-6 border border-white/5 hover:border-white/20 rounded-2xl backdrop-blur-sm transition-all duration-300 group-hover:scale-105">
-                  <div className="text-4xl mb-4">📋</div>
-                  <div className="text-white/80 text-lg font-semibold mb-2">
-                    {t('easyTicketCreation')}
-                  </div>
-                  <div className="text-white/50 text-sm">
-                    {t('easyTicketDescription')}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="text-center group relative">
-                <div className="relative p-6 border border-white/5 hover:border-white/20 rounded-2xl backdrop-blur-sm transition-all duration-300 group-hover:scale-105">
-                  <div className="text-4xl mb-4">📊</div>
-                  <div className="text-white/80 text-lg font-semibold mb-2">
-                    {t('clearDashboard')}
-                  </div>
-                  <div className="text-white/50 text-sm">
-                    {t('clearDashboardDescription')}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="text-center group relative">
-                <div className="relative p-6 border border-white/5 hover:border-white/20 rounded-2xl backdrop-blur-sm transition-all duration-300 group-hover:scale-105">
-                  <div className="text-4xl mb-4">👥</div>
-                  <div className="text-white/80 text-lg font-semibold mb-2">
-                    {t('teamCollaboration')}
-                  </div>
-                  <div className="text-white/50 text-sm">
-                    {t('teamCollaborationDescription')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );
