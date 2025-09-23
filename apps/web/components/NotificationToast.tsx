@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useNotifications, Notification } from '../lib/notifications';
 import { useLocale } from 'next-intl';
-import { X, AlertTriangle, Ticket, UserCheck, UserX, Sparkles, Zap, MessageSquare, Clock } from 'lucide-react';
+import { X, AlertTriangle, Ticket, UserCheck, UserX, Sparkles, Zap, MessageSquare, Clock, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import RedScreenEffect from './RedScreenEffect';
 
@@ -53,6 +53,8 @@ export function NotificationToast() {
         return <UserX className="h-5 w-5 text-orange-400" />;
       case 'comment_added':
         return <MessageSquare className="h-5 w-5 text-purple-400" />;
+      case 'ticket_updated':
+        return <Edit className="h-5 w-5 text-blue-400" />;
       default:
         return <Ticket className="h-5 w-5 text-blue-400" />;
     }
@@ -72,6 +74,8 @@ export function NotificationToast() {
         return notification.isSystemComment 
           ? '🤖 System Update'
           : '💬 New Comment';
+      case 'ticket_updated':
+        return '✏️ Ticket Updated';
       default:
         return 'Notification';
     }
@@ -88,6 +92,8 @@ export function NotificationToast() {
       return `${baseStyle} border-orange-500/40 bg-gradient-to-br from-orange-500/20 via-orange-600/15 to-orange-700/10 shadow-orange-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-orange-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     } else if (notification.type === 'comment_added') {
       return `${baseStyle} border-purple-500/40 bg-gradient-to-br from-purple-500/20 via-purple-600/15 to-purple-700/10 shadow-purple-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-purple-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+    } else if (notification.type === 'ticket_updated') {
+      return `${baseStyle} border-blue-500/40 bg-gradient-to-br from-blue-500/20 via-blue-600/15 to-blue-700/10 shadow-blue-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     }
     
     return `${baseStyle} border-blue-500/40 bg-gradient-to-br from-blue-500/20 via-blue-600/15 to-blue-700/10 shadow-blue-500/40 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/10 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
@@ -104,7 +110,7 @@ export function NotificationToast() {
         onComplete={() => setShowRedScreen(false)} 
       />
       
-      <div className="fixed top-4 right-2 sm:top-6 sm:right-4 z-50 space-y-2 sm:space-y-3 w-full max-w-sm sm:max-w-md px-2 sm:px-0">
+      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 sm:top-6 sm:right-4 sm:left-auto sm:transform-none z-50 space-y-2 sm:space-y-3 w-full max-w-sm sm:max-w-md px-2 sm:px-0">
         <AnimatePresence mode="popLayout">
           {visibleNotifications.map((notification, index) => (
             <motion.div

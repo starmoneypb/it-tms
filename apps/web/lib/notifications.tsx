@@ -20,7 +20,7 @@ const resolveWebSocketUrl = () => {
 const WS_URL = resolveWebSocketUrl();
 
 export interface Notification {
-  type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned' | 'comment_added';
+  type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned' | 'comment_added' | 'ticket_updated';
   ticketId: string;
   ticket?: {
     id: string;
@@ -140,6 +140,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
               showBrowserNotification(
                 '❌ Ticket Unassigned',
                 `You have been unassigned from: ${notification.ticket?.title}`,
+                notification.ticketId
+              );
+            } else if (notification.type === 'ticket_updated') {
+              showBrowserNotification(
+                '✏️ Ticket Updated',
+                `Ticket #${notification.ticket?.code} has been updated`,
                 notification.ticketId
               );
             }

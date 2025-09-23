@@ -18,6 +18,7 @@ const (
 	NotificationTicketAssigned  NotificationType = "ticket_assigned"
 	NotificationTicketUnassigned NotificationType = "ticket_unassigned"
 	NotificationCommentAdded    NotificationType = "comment_added"
+	NotificationTicketUpdated   NotificationType = "ticket_updated"
 )
 
 type Notification struct {
@@ -367,6 +368,43 @@ func (h *Hub) NotifyCommentAdded(ticketID string, assigneeIDs []string, commentA
 	for _, assigneeID := range assigneeIDs {
 		// Skip sending to the comment author
 		if commentAuthorID != nil && assigneeID == *commentAuthorID {
+			continue
+		}
+
+		// Send to specific user room
+		if room, exists := h.rooms[assigneeID]; exists {
+			for client := range room {
+				select {
+				case client.send <- notification:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
+		}
+	}
+}
+
+// NotifyTicketUpdated sends notification to all assignees of a ticket when it's updated
+func (h *Hub) NotifyTicketUpdated(ticketID string, assigneeIDs []string, updatedByID *string, updateMessage string, ticket *models.Ticket) {
+	notification := Notification{
+		Type:            NotificationTicketUpdated,
+		TicketID:        ticketID,
+		Ticket:          ticket,
+		Message:         updateMessage,
+		Timestamp:       time.Now(),
+		CommentAuthorID: updatedByID,
+		CommentBody:     &updateMessage,
+		IsSystemComment: &[]bool{true}[0], // Always true for ticket updates
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Send to all assignees except the updater
+	for _, assigneeID := range assigneeIDs {
+		// Skip sending to the updater
+		if updatedByID != nil && assigneeID == *updatedByID {
 			continue
 		}
 

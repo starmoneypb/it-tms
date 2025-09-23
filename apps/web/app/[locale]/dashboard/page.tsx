@@ -4,6 +4,8 @@ import { Card, CardBody, CardHeader, Avatar, Select, SelectItem, Button } from "
 import dynamic from "next/dynamic";
 import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award, Calendar, Filter } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
+import { MarkdownRenderer } from '@/lib/markdown-renderer';
+import { convertContentToMarkdown } from '@/lib/html-to-markdown';
 
 // Import the Chart.js pie chart component with SSR disabled
 const ChartJsPieChart = dynamic(() => import("@/components/ChartJsPieChart"), {
@@ -490,17 +492,10 @@ export default function Dashboard() {
                         <div className="text-xs text-white/50 mb-1">{tCommon('latestComment')}</div>
                         <div className="h-[80px] bg-white/5 rounded-lg p-3 overflow-hidden relative">
                           <div className="text-sm text-white/80 leading-5 h-full overflow-hidden">
-                            {(() => {
-                              const cleanText = ticket.latestComment
-                                .replace(/<br\s*\/?>/gi, ' ')
-                                .replace(/<\/p>\s*<p>/gi, ' ')
-                                .replace(/<[^>]*>/g, '')
-                                .replace(/\s+/g, ' ')
-                                .trim();
-                              
-                              // Manually truncate to fit in 4 lines (approximately 160 characters)
-                              return cleanText.length > 160 ? cleanText.substring(0, 160) + '...' : cleanText;
-                            })()}
+                            <MarkdownRenderer 
+                              content={convertContentToMarkdown(ticket.latestComment)}
+                              className="text-sm text-white/80"
+                            />
                           </div>
                         </div>
                       </>

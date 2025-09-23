@@ -487,6 +487,31 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
         // If any ticket content changed, recompute priority on server side if we had inputs stored
         // Note: Priority still uses existing fields (impact/urgency/red flags) which are updated via dedicated endpoints.
         // We ensure user scores use Effort only, handled elsewhere.
+        
+        // Send notifications to assignees
+        go func() {
+            // Get updated ticket details and assignees
+            updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+            if err != nil {
+                log.Printf("Failed to get updated ticket for notification: %v", err)
+                return
+            }
+            
+            assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+            if err != nil {
+                log.Printf("Failed to get assignees for ticket update notification: %v", err)
+                return
+            }
+            
+            // Extract assignee IDs
+            var assigneeIDs []string
+            for _, assignee := range assignees {
+                assigneeIDs = append(assigneeIDs, assignee.ID)
+            }
+            
+            // Send notification to assignees
+            h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, commentBody, &updatedTicket)
+        }()
 	}
 	
 	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket", nil, body)
@@ -658,6 +683,31 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
                 h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
 			}
 		}
+		
+		// Send notifications to assignees
+		go func() {
+			// Get updated ticket details and assignees
+			updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+			if err != nil {
+				log.Printf("Failed to get updated ticket for fields update notification: %v", err)
+				return
+			}
+			
+			assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+			if err != nil {
+				log.Printf("Failed to get assignees for fields update notification: %v", err)
+				return
+			}
+			
+			// Extract assignee IDs
+			var assigneeIDs []string
+			for _, assignee := range assignees {
+				assigneeIDs = append(assigneeIDs, assignee.ID)
+			}
+			
+			// Send notification to assignees
+			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, commentBody, &updatedTicket)
+		}()
 	}
 	
 	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket_fields", nil, body)
@@ -936,6 +986,31 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 	// Add automatic comment if status changed
 	if statusChangeComment != "" {
 		h.repo.Tickets.AddComment(ctx, id, &userID, statusChangeComment)
+		
+		// Send notifications to assignees
+		go func() {
+			// Get updated ticket details and assignees
+			updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+			if err != nil {
+				log.Printf("Failed to get updated ticket for status change notification: %v", err)
+				return
+			}
+			
+			assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+			if err != nil {
+				log.Printf("Failed to get assignees for status change notification: %v", err)
+				return
+			}
+			
+			// Extract assignee IDs
+			var assigneeIDs []string
+			for _, assignee := range assignees {
+				assigneeIDs = append(assigneeIDs, assignee.ID)
+			}
+			
+			// Send notification to assignees
+			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, statusChangeComment, &updatedTicket)
+		}()
 	}
 	
 	h.repo.Audits.Insert(ctx, id, &userID, "status_change", nil, body.Status)

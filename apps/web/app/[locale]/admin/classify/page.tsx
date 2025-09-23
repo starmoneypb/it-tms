@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 import { useTranslations } from 'next-intl';
+import { MarkdownRenderer } from '@/lib/markdown-renderer';
 
 // Use current hostname with port 8000 for production-like environment
 const API = typeof window !== 'undefined' && window.location.port === '8000'
@@ -283,7 +284,14 @@ export default function ClassifyPage() {
                         {t('description')}
                       </h5>
                       <div className="bg-default-100 rounded-lg p-4">
-                        <p className="text-sm whitespace-pre-wrap">{selectedTicket.description || t('noDescriptionProvided')}</p>
+                        {selectedTicket.description ? (
+                          <MarkdownRenderer 
+                            content={selectedTicket.description}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <p className="text-sm text-default-500">{t('noDescriptionProvided')}</p>
+                        )}
                       </div>
                     </div>
 
