@@ -27,7 +27,7 @@ function pickAttr(tagHtml: string, name: string): string | undefined {
 
 // Convert <img ...> to Markdown image: ![alt](src "title")
 function convertImages(html: string): string {
-  return html.replace(/<img\b[^>]*?>/gi, (fullTag) => {
+  return html.replace(/<img\b[^>]*?>/gi, (fullTag: string) => {
     const src = pickAttr(fullTag, 'src') || '';
     if (!src) return ''; // drop invalid image
     const alt = pickAttr(fullTag, 'alt') || '';
@@ -41,7 +41,7 @@ function convertImages(html: string): string {
 // Supports <ol start="N">. (Nested lists are handled reasonably for common cases.)
 function convertOrderedLists(html: string): string {
   const olRegex = /<ol\b[^>]*>([\s\S]*?)<\/ol>/gi;
-  return html.replace(olRegex, (match, inner) => {
+  return html.replace(olRegex, (match: string, inner: string) => {
     const startMatch = /<ol\b[^>]*\bstart=["']?(\d+)["']?[^>]*>/i.exec(match);
     let index = startMatch ? parseInt(startMatch[1], 10) || 1 : 1;
 
@@ -51,7 +51,7 @@ function convertOrderedLists(html: string): string {
 
     // Now number the top-level <li> in this block
     let out = '';
-    content = content.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liFull, liInner) => {
+    content = content.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liFull: string, liInner: string) => {
       // Clean line breaks inside li; we will preserve inner newlines if present
       const trimmed = liInner.trim();
       // If li contains its own lists already converted to MD, indent subsequent lines
@@ -69,12 +69,12 @@ function convertOrderedLists(html: string): string {
 // Convert unordered lists block-by-block to "- " bullet items.
 function convertUnorderedLists(html: string): string {
   const ulRegex = /<ul\b[^>]*>([\s\S]*?)<\/ul>/gi;
-  return html.replace(ulRegex, (_match, inner) => {
+  return html.replace(ulRegex, (_match: string, inner: string) => {
     // Recursively process nested lists inside
     let content = convertOrderedLists(inner);
     content = convertUnorderedLists(content);
 
-    content = content.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liFull, liInner) => {
+    content = content.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liFull: string, liInner: string) => {
       const trimmed = liInner.trim();
       const lines = decodeEntities(trimmed).split('\n');
       const first = lines.shift() ?? '';
@@ -100,7 +100,7 @@ export function htmlToMarkdown(html: string): string {
   // Convert code blocks (with language)
   markdown = markdown.replace(
     /<pre[^>]*>\s*<code[^>]*class=["']language-([^"']+)["'][^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi,
-    (_m, language, content) => {
+    (_m: string, language: string, content: string) => {
       const clean = decodeEntities(
         content.replace(/<br\s*\/?>/gi, '\n')
       );
@@ -111,7 +111,7 @@ export function htmlToMarkdown(html: string): string {
   // Convert code blocks (no language)
   markdown = markdown.replace(
     /<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi,
-    (_m, content) => {
+    (_m: string, content: string) => {
       const clean = decodeEntities(
         content.replace(/<br\s*\/?>/gi, '\n')
       );
@@ -122,7 +122,7 @@ export function htmlToMarkdown(html: string): string {
   // Pre without inner code
   markdown = markdown.replace(
     /<pre[^>]*>([\s\S]*?)<\/pre>/gi,
-    (_m, content) => {
+    (_m: string, content: string) => {
       const clean = decodeEntities(
         content.replace(/<br\s*\/?>/gi, '\n')
       );
@@ -131,27 +131,27 @@ export function htmlToMarkdown(html: string): string {
   );
 
   // Inline code (after block code to avoid conflicts)
-  markdown = markdown.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m, c) => '`' + decodeEntities(c) + '`');
+  markdown = markdown.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m: string, c: string) => '`' + decodeEntities(c) + '`');
 
   // Headings
   markdown = markdown
-    .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, (_m, c) => `# ${decodeEntities(c)}\n\n`)
-    .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, (_m, c) => `## ${decodeEntities(c)}\n\n`)
-    .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, (_m, c) => `### ${decodeEntities(c)}\n\n`)
-    .replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, (_m, c) => `#### ${decodeEntities(c)}\n\n`)
-    .replace(/<h5\b[^>]*>([\s\S]*?)<\/h5>/gi, (_m, c) => `##### ${decodeEntities(c)}\n\n`)
-    .replace(/<h6\b[^>]*>([\s\S]*?)<\/h6>/gi, (_m, c) => `###### ${decodeEntities(c)}\n\n`);
+    .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, (_m: string, c: string) => `# ${decodeEntities(c)}\n\n`)
+    .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, (_m: string, c: string) => `## ${decodeEntities(c)}\n\n`)
+    .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, (_m: string, c: string) => `### ${decodeEntities(c)}\n\n`)
+    .replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, (_m: string, c: string) => `#### ${decodeEntities(c)}\n\n`)
+    .replace(/<h5\b[^>]*>([\s\S]*?)<\/h5>/gi, (_m: string, c: string) => `##### ${decodeEntities(c)}\n\n`)
+    .replace(/<h6\b[^>]*>([\s\S]*?)<\/h6>/gi, (_m: string, c: string) => `###### ${decodeEntities(c)}\n\n`);
 
   // Horizontal rule
   markdown = markdown.replace(/<hr\s*\/?>/gi, `\n---\n\n`);
 
   // Bold / italic / strikethrough
   markdown = markdown
-    .replace(/<strong\b[^>]*>([\s\S]*?)<\/strong>/gi, (_m, c) => `**${decodeEntities(c)}**`)
-    .replace(/<b\b[^>]*>([\s\S]*?)<\/b>/gi, (_m, c) => `**${decodeEntities(c)}**`)
-    .replace(/<em\b[^>]*>([\s\S]*?)<\/em>/gi, (_m, c) => `*${decodeEntities(c)}*`)
-    .replace(/<i\b[^>]*>([\s\S]*?)<\/i>/gi, (_m, c) => `*${decodeEntities(c)}*`)
-    .replace(/<(del|s|strike)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _t, c) => `~~${decodeEntities(c)}~~`);
+    .replace(/<strong\b[^>]*>([\s\S]*?)<\/strong>/gi, (_m: string, c: string) => `**${decodeEntities(c)}**`)
+    .replace(/<b\b[^>]*>([\s\S]*?)<\/b>/gi, (_m: string, c: string) => `**${decodeEntities(c)}**`)
+    .replace(/<em\b[^>]*>([\s\S]*?)<\/em>/gi, (_m: string, c: string) => `*${decodeEntities(c)}*`)
+    .replace(/<i\b[^>]*>([\s\S]*?)<\/i>/gi, (_m: string, c: string) => `*${decodeEntities(c)}*`)
+    .replace(/<(del|s|strike)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m: string, _t: string, c: string) => `~~${decodeEntities(c)}~~`);
 
   // Line breaks
   markdown = markdown.replace(/<br\s*\/?>/gi, '\n');
@@ -162,13 +162,13 @@ export function htmlToMarkdown(html: string): string {
   // Links
   markdown = markdown.replace(
     /<a\b[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
-    (_m, href, text) => `[${decodeEntities(text)}](${href})`
+    (_m: string, href: string, text: string) => `[${decodeEntities(text)}](${href})`
   );
 
   // Blockquotes
-  markdown = markdown.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m, c) => {
+  markdown = markdown.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m: string, c: string) => {
     // Remove wrapping paragraphs inside blockquote
-    const inner = c.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_mp, pc) => decodeEntities(pc) + '\n');
+    const inner = c.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_mp: string, pc: string) => decodeEntities(pc) + '\n');
     return `\n> ${inner.trim().replace(/\n/g, '\n> ')}\n\n`;
   });
 
@@ -177,7 +177,7 @@ export function htmlToMarkdown(html: string): string {
   markdown = convertUnorderedLists(markdown);
 
   // Paragraphs
-  markdown = markdown.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_m, c) => `${decodeEntities(c)}\n\n`);
+  markdown = markdown.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_m: string, c: string) => `${decodeEntities(c)}\n\n`);
 
   // Highlighting: keep <mark> as raw HTML (preserve style/class/data-*)
   // If there is a background-color inline style, keep it so renderer can use it.
