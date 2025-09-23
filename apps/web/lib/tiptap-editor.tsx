@@ -263,13 +263,7 @@ export function TiptapEditor({
       <EditorContext.Provider value={{ editor }}>
         <Toolbar
           ref={toolbarRef}
-          style={{
-            ...(isMobile
-              ? {
-                  bottom: `calc(100% - ${height - rect.y}px)`,
-                }
-              : {}),
-          }}
+          data-variant={isMobile ? "fixed" : "floating"}
         >
           {mobileView === "main" ? (
             <MainToolbarContent

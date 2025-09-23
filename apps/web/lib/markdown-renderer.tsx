@@ -3,11 +3,15 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
+// เอา remark-breaks ออกเพื่อไม่ให้ \n ใน code fences เพี้ยน
+// import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
-import rehypeHighlight from "rehype-highlight";
 import rehypeSlug from "rehype-slug";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+
+// ใช้ Prism ผ่าน react-syntax-highlighter แทน rehype-highlight
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface MarkdownRendererProps {
   content: string;
@@ -15,9 +19,10 @@ interface MarkdownRendererProps {
 }
 
 /**
- * ปรับ schema ของ sanitize:
- * - อนุญาต <mark> และ attribute ที่ใช้กำหนดสี
- * - คง className บน <code>/<span>/<pre> เพื่อไม่ตัดคลาสของ highlight.js
+ * Sanitize schema:
+ * - อนุญาต <mark> และ props ที่เกี่ยวกับสี
+ * - คง className บน <code>/<pre>/<span> เพื่อไม่ตัด language-xxx ที่ต้องใช้หา language
+ * - อนุญาต target/rel บน <a>
  */
 const sanitizeSchema = (() => {
   const schema: any = JSON.parse(JSON.stringify(defaultSchema));
@@ -43,6 +48,45 @@ const sanitizeSchema = (() => {
   return schema;
 })();
 
+// ————— mark helpers —————
+function pickMarkStyle(
+  className?: string,
+  props?: { [k: string]: unknown }
+): React.CSSProperties {
+  // 1) style เดิมมี background/backgroundColor → เคารพค่าที่มาก่อน
+  const style = (props?.style || {}) as React.CSSProperties;
+  if (style.background || style.backgroundColor) {
+    return style;
+  }
+
+  // 2) อ่านสีจาก data-* หรือ color attr
+  const dataColor =
+    (props?.["data-color"] as string) ||
+    (props?.["data-highlight"] as string) ||
+    (props?.["color"] as string) ||
+    "";
+
+  // 3) อ่านจาก class="highlight-blue"
+  const classColor = (className || "").match(/highlight-([\w-]+)/)?.[1];
+
+  const colorKey = (dataColor || classColor || "yellow").toLowerCase();
+
+  const colorMap: Record<string, { bg: string; text: string }> = {
+    yellow: { bg: "#6b6524", text: "#58531e" },
+    green: { bg: "#509568", text: "#47855d" },
+    blue: { bg: "#6e92aa", text: "#5e86a1" },
+    purple: { bg: "#583e74", text: "#4c3564" },
+    red: { bg: "#743e42", text: "#643539" },
+    gray: { bg: "rgb(47,47,47)", text: "rgba(255,255,255,0.094)" },
+    brown: { bg: "rgb(74,50,40)", text: "rgba(184,101,69,0.25)" },
+    orange: { bg: "rgb(92,59,35)", text: "rgba(233,126,37,0.2)" },
+    pink: { bg: "rgb(78,44,60)", text: "rgba(220,76,145,0.22)" },
+  };
+
+  const picked = colorMap[colorKey] || colorMap.yellow;
+  return { ...style, backgroundColor: picked.bg, color: picked.text };
+}
+
 export function MarkdownRenderer({
   content,
   className = "",
@@ -52,26 +96,21 @@ export function MarkdownRenderer({
       className={[
         "markdown-content",
         "prose prose-invert prose-sm max-w-none",
-        // block code container
+        // container สวย ๆ สำหรับบล็อกโค้ด
         "prose-pre:bg-gray-900/50 prose-pre:border prose-pre:border-white/10",
         "prose-pre:rounded-lg prose-pre:overflow-x-auto",
-        // ตัด backtick decoration ของ typography สำหรับ inline code
+        // เอา backticks decoration ของ typography ออกจาก inline code
         "prose-code:before:content-[''] prose-code:after:content-['']",
-        // ลิงก์และ blockquote ให้เข้ากับธีมมืด
         "prose-a:text-primary-400 hover:prose-a:text-primary-300",
         "prose-blockquote:border-l-primary-500",
         className,
       ].join(" ")}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-        // ลำดับ: raw -> sanitize -> slug -> highlight
-        rehypePlugins={[
-          rehypeRaw,
-          [rehypeSanitize, sanitizeSchema],
-          rehypeSlug, // ใส่ id ให้ heading (ไม่ทำเป็นลิงก์)
-          [rehypeHighlight, { detect: true, ignoreMissing: true }],
-        ]}
+        // แค่ GFM ก็พอ (tables, task list, strikethrough, autolink)
+        remarkPlugins={[remarkGfm]}
+        // ลำดับ: raw -> sanitize -> slug
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeSlug]}
         components={{
           // หัวข้อ
           h1: ({ children }) => (
@@ -89,7 +128,7 @@ export function MarkdownRenderer({
             <h4 className="text-base font-medium text-white mb-2">{children}</h4>
           ),
 
-          // ข้อความ / เน้น
+          // ข้อความพื้นฐาน
           p: ({ children }) => (
             <p className="text-white/80 mb-3 leading-relaxed">{children}</p>
           ),
@@ -136,11 +175,25 @@ export function MarkdownRenderer({
           ),
 
           /**
-           * โค้ด:
-           * - inline code: แต่งเล็กน้อย
-           * - block code: ปล่อยให้ rehype-highlight ใส่คลาส .hljs / .language-* เอง
+           * PRE/Code:
+           * - override <pre> ให้เป็น wrapper ธรรมดา เพื่อเลี่ยง "pre ซ้อน pre"
+           * - บล็อกโค้ดใช้ SyntaxHighlighter (Prism) → รองรับหลายบรรทัดแน่นอน + ไม่ต้องพึ่ง CSS ภายนอก
+           * - inline code ยังใช้ <code> แบบเดิม
            */
-          code: ({ inline, className, children, ...props }: any) => {
+          pre: ({ children }) => (
+            <div className="mb-3 overflow-x-auto">{children}</div>
+          ),
+          code: ({
+            inline,
+            className,
+            children,
+            ...props
+          }: {
+            inline?: boolean;
+            className?: string;
+            children?: React.ReactNode;
+          } & React.HTMLAttributes<HTMLElement>) => {
+            const raw = String(children ?? "");
             if (inline) {
               return (
                 <code
@@ -151,10 +204,30 @@ export function MarkdownRenderer({
                 </code>
               );
             }
+
+            // language-xxx → xxx
+            const match = /language-([\w-]+)/.exec(className || "");
+            const language = match?.[1] || undefined;
+
+            // ตัด newline ท้ายบล็อก 1 ตัวตามมาตรฐาน react-markdown
+            const content = raw.replace(/\n$/, "");
+
             return (
-              <code className={className} {...props}>
-                {children}
-              </code>
+              <SyntaxHighlighter
+                language={language}
+                style={oneDark}
+                wrapLongLines
+                PreTag="pre"
+                CodeTag="code"
+                customStyle={{
+                  margin: 0,
+                  background: "transparent",
+                  padding: 0,
+                }}
+                className="not-prose"
+              >
+                {content}
+              </SyntaxHighlighter>
             );
           },
 
@@ -177,43 +250,14 @@ export function MarkdownRenderer({
             </td>
           ),
 
-          /**
-           * <mark> สี:
-           * - class="highlight-blue" หรือ data-color="blue" / data-highlight="blue"
-           * - ไม่ระบุ → yellow (ดีฟอลต์)
-           */
+          // <mark> รองรับหลายทางเลือกในการระบุสี
           mark: ({ children, className, ...props }: any) => {
-            const rawColor =
-              (props["data-color"] as string) ||
-              (props["data-highlight"] as string) ||
-              (props["color"] as string) ||
-              "";
-            const classColorMatch = (className as string | undefined)?.match(
-              /highlight-(\w+)/
-            );
-            const color = (classColorMatch?.[1] || rawColor || "yellow").toLowerCase();
-
-            const colorMap: Record<string, { bg: string; text: string }> = {
-              yellow: { bg: "#6b6524", text: "#58531e" },
-              green: { bg: "#509568", text: "#47855d" },
-              blue: { bg: "#6e92aa", text: "#5e86a1" },
-              purple: { bg: "#583e74", text: "#4c3564" },
-              red: { bg: "#743e42", text: "#643539" },
-              gray: { bg: "rgb(47, 47, 47)", text: "rgba(255, 255, 255, 0.094)" },
-              brown: { bg: "rgb(74, 50, 40)", text: "rgba(184, 101, 69, 0.25)" },
-              orange: { bg: "rgb(92, 59, 35)", text: "rgba(233, 126, 37, 0.2)" },
-              pink: { bg: "rgb(78, 44, 60)", text: "rgba(220, 76, 145, 0.22)" },
-            };
-            const fallback = colorMap[color] || colorMap.yellow;
-
-            const style: React.CSSProperties = {
-              backgroundColor: fallback.bg,
-              color: fallback.text,
-              ...(props.style as React.CSSProperties),
-            };
-
+            const style = pickMarkStyle(className, props);
             return (
-              <mark className="px-1 py-0.5 rounded" style={style}>
+              <mark
+                className={`px-1 py-0.5 rounded ${className || ""}`}
+                style={style}
+              >
                 {children}
               </mark>
             );

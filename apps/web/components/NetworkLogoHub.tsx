@@ -90,8 +90,19 @@ const NetworkLogoHub: React.FC = () => {
     };
     measure();
     setMounted(true);
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    
+    // Throttle resize events for better performance
+    let timeoutId: NodeJS.Timeout;
+    const throttledMeasure = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(measure, 100);
+    };
+    
+    window.addEventListener('resize', throttledMeasure);
+    return () => {
+      window.removeEventListener('resize', throttledMeasure);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const center = useMemo<XY>(() => ({ x: boxSize / 2, y: boxSize / 2 }), [boxSize]);
@@ -206,9 +217,9 @@ const NetworkLogoHub: React.FC = () => {
 
             {icons.map((ic, idx) => {
               const d = makePathToBox(ic);
-              const dashDur = 1.15 + (idx % 4) * 0.2;
-              const sparkDur = 1.25 + (idx % 3) * 0.25;
-              const begin = `${(idx * 0.12).toFixed(2)}s`;
+              // Simplified animation timing for better performance
+              const dashDur = 2 + (idx % 3) * 0.5;
+              const begin = `${(idx * 0.2).toFixed(2)}s`;
 
               return (
                 <g key={ic.id}>
@@ -221,7 +232,7 @@ const NetworkLogoHub: React.FC = () => {
                     strokeLinecap="square"
                     strokeLinejoin="miter"
                   />
-                  {/* Electric current */}
+                  {/* Electric current - simplified animation */}
                   <path
                     id={`path-${ic.id}`}
                     d={d}
@@ -233,26 +244,26 @@ const NetworkLogoHub: React.FC = () => {
                     style={{
                       filter: 'url(#soft-glow)',
                       mixBlendMode: 'screen',
-                      strokeDasharray: '28 240',
+                      strokeDasharray: '20 200',
                       animation: `dash-move ${dashDur}s linear infinite`,
-                      opacity: hovered === ic.id ? 1 : 0.95,
+                      opacity: hovered === ic.id ? 1 : 0.8,
                     }}
                   />
-                  {/* Sparks run along the path */}
-                  <g style={{ filter: 'url(#spark-glow)', mixBlendMode: 'screen' }}>
-                    {[0, 1].map((s) => (
-                      <circle key={`${ic.id}-s${s}`} r={hovered === ic.id ? 2.5 : 2} fill={ic.glow}>
-                        <animateMotion
-                          dur={`${sparkDur + s * 0.18}s`}
-                          begin={s === 0 ? begin : `calc(${begin} + 0.35s)`}
-                          repeatCount="indefinite"
-                          rotate="auto"
-                        >
-                          <mpath href={`#path-${ic.id}`} xlinkHref={`#path-${ic.id}`} />
-                        </animateMotion>
-                      </circle>
-                    ))}
-                  </g>
+                  {/* Single spark for better performance */}
+                  <circle 
+                    r={hovered === ic.id ? 2.5 : 2} 
+                    fill={ic.glow}
+                    style={{ filter: 'url(#spark-glow)', mixBlendMode: 'screen' }}
+                  >
+                    <animateMotion
+                      dur={`${dashDur + 0.5}s`}
+                      begin={begin}
+                      repeatCount="indefinite"
+                      rotate="auto"
+                    >
+                      <mpath href={`#path-${ic.id}`} xlinkHref={`#path-${ic.id}`} />
+                    </animateMotion>
+                  </circle>
                 </g>
               );
             })}
@@ -390,10 +401,10 @@ const ElectricTicketLogo: React.FC<{ size?: number }> = ({ size = 96 }) => {
           <stop offset="100%" stopColor="#FFFFFF" />
         </linearGradient>
 
-        {/* Noise ด้านในเพื่อให้เกิดไฟฟ้าฟลิคเกอร์ */}
+        {/* Simplified electricity effect for better performance */}
         <filter id="electricity" x="-20%" y="-20%" width="140%" height="140%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="noise">
-            <animate attributeName="baseFrequency" values="0.9;1.3;0.8;1.0;0.9" dur="2.2s" repeatCount="indefinite" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="1" seed="7" result="noise">
+            <animate attributeName="baseFrequency" values="0.8;1.0;0.8" dur="3s" repeatCount="indefinite" />
           </feTurbulence>
           <feColorMatrix
             in="noise"
@@ -405,7 +416,7 @@ const ElectricTicketLogo: React.FC<{ size?: number }> = ({ size = 96 }) => {
               0 0 0 1 0"
             result="whiteNoise"
           />
-          <feGaussianBlur in="whiteNoise" stdDeviation="0.6" result="soft" />
+          <feGaussianBlur in="whiteNoise" stdDeviation="0.4" result="soft" />
           <feBlend in="SourceGraphic" in2="soft" mode="screen" />
         </filter>
 

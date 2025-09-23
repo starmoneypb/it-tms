@@ -1,14 +1,25 @@
 'use client';
 
 import Link from "next/link";
-import Image from "next/image";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
-import { Ticket, BarChart3, Clipboard, LogIn, Sparkles, Zap, Star, Rocket, ArrowRight, CheckCircle, Shield, Clock, Users } from "lucide-react";
+import { Ticket, BarChart3, Clipboard, LogIn, Sparkles, Zap, Rocket, ArrowRight } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuth } from '@/lib/auth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import NetworkLogoHub from '@/components/NetworkLogoHub';
+import dynamic from 'next/dynamic';
+
+// Lazy load the heavy NetworkLogoHub component
+const NetworkLogoHub = dynamic(() => import('@/components/NetworkLogoHub'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center mb-8">
+      <div className="w-80 h-80 md:w-96 md:h-96 flex items-center justify-center">
+        <div className="w-24 h-24 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 animate-pulse"></div>
+      </div>
+    </div>
+  )
+});
 
 export default function Landing() {
   const t = useTranslations('landing');
@@ -18,34 +29,41 @@ export default function Landing() {
   const [isVisible, setIsVisible] = useState(false);
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, size: number, speed: number}>>([]);
 
-  // Initialize particles and animations
-  useEffect(() => {
-    setIsVisible(true);
-    
-    // Create floating particles
-    const newParticles = Array.from({ length: 50 }, (_, i) => ({
+  // Optimized particle system with reduced count and better performance
+  const initializeParticles = useCallback(() => {
+    // Reduced from 50 to 20 particles for better performance
+    const newParticles = Array.from({ length: 20 }, (_, i) => ({
       id: i,
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      size: Math.random() * 3 + 1,
-      speed: Math.random() * 0.5 + 0.1
+      x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200),
+      y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
+      size: Math.random() * 2 + 1,
+      speed: Math.random() * 0.3 + 0.1
     }));
     setParticles(newParticles);
+  }, []);
 
-    // Animate particles
+  // Initialize particles and animations with better performance
+  useEffect(() => {
+    setIsVisible(true);
+    initializeParticles();
+
+    // Use requestAnimationFrame instead of setInterval for better performance
+    let animationId: number;
     const animateParticles = () => {
       setParticles(prev => prev.map(particle => ({
         ...particle,
-        y: (particle.y + particle.speed) % window.innerHeight,
-        x: particle.x + Math.sin(Date.now() * 0.001 + particle.id) * 0.2
+        y: (particle.y + particle.speed) % (typeof window !== 'undefined' ? window.innerHeight : 800),
+        x: particle.x + Math.sin(Date.now() * 0.0005 + particle.id) * 0.1
       })));
+      animationId = requestAnimationFrame(animateParticles);
     };
 
-    const interval = setInterval(animateParticles, 50);
-    return () => clearInterval(interval);
-  }, []);
+    animationId = requestAnimationFrame(animateParticles);
+    return () => cancelAnimationFrame(animationId);
+  }, [initializeParticles]);
 
-  const cards = [
+  // Memoize cards to prevent unnecessary re-renders
+  const cards = useMemo(() => [
     ...(user ? [{ 
       href: `/${locale}/tickets/new`, 
       title: t('openTicket.title'), 
@@ -78,7 +96,7 @@ export default function Landing() {
       color: "from-purple-500 to-pink-600",
       delay: "delay-300"
     }] : [])
-  ];
+  ], [user, locale, t, tCommon]);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
