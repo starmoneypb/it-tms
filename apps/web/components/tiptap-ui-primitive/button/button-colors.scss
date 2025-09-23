@@ -80,12 +80,12 @@
 
   /* Dark mode */
   .dark & {
-    --tt-button-default-icon-color: var(--tt-gray-dark-a-800);
-    --tt-button-hover-icon-color: var(--tt-gray-dark-a-900);
-    --tt-button-active-icon-color: var(--tt-brand-color-400);
-    --tt-button-active-icon-color-emphasized: var(--tt-brand-color-400);
-    --tt-button-active-icon-color-subdued: var(--tt-gray-dark-a-900);
-    --tt-button-disabled-icon-color: var(--tt-gray-dark-a-400);
+    --tt-button-default-icon-color: var(--tt-gray-dark-a-800) !important;
+    --tt-button-hover-icon-color: var(--tt-gray-dark-a-900) !important;
+    --tt-button-active-icon-color: var(--tt-brand-color-400) !important;
+    --tt-button-active-icon-color-emphasized: var(--tt-brand-color-400) !important;
+    --tt-button-active-icon-color-subdued: var(--tt-gray-dark-a-900) !important;
+    --tt-button-disabled-icon-color: var(--tt-gray-dark-a-400) !important;
   }
 
   /************************************************** 
@@ -221,12 +221,12 @@
 
     /* Dark mode */
     .dark & {
-      --tt-button-default-icon-color: var(--tt-gray-dark-a-800);
-      --tt-button-hover-icon-color: var(--tt-gray-dark-a-900);
-      --tt-button-active-icon-color: var(--tt-brand-color-400);
-      --tt-button-active-icon-color-emphasized: var(--tt-brand-color-300);
-      --tt-button-active-icon-color-subdued: var(--tt-gray-dark-a-900);
-      --tt-button-disabled-icon-color: var(--tt-gray-dark-a-400);
+      --tt-button-default-icon-color: var(--tt-gray-dark-a-800) !important;
+      --tt-button-hover-icon-color: var(--tt-gray-dark-a-900) !important;
+      --tt-button-active-icon-color: var(--tt-brand-color-400) !important;
+      --tt-button-active-icon-color-emphasized: var(--tt-brand-color-300) !important;
+      --tt-button-active-icon-color-subdued: var(--tt-gray-dark-a-900) !important;
+      --tt-button-disabled-icon-color: var(--tt-gray-dark-a-400) !important;
     }
 
     /************************************************** 

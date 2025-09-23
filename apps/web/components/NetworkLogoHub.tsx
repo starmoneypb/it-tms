@@ -117,7 +117,7 @@ const NetworkLogoHub: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Calculate SVG path for electrical circuit-style connecting lines
+  // Calculate SVG path for straight horizontal/vertical connecting lines
   const getConnectionPath = (icon: NetworkIcon) => {
     // Use absolute coordinates that match the container size
     const containerSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 320 : 384; // w-80 = 320px (mobile) or w-96 = 384px (desktop)
@@ -128,14 +128,16 @@ const NetworkLogoHub: React.FC = () => {
     const iconX = centerX + icon.position.x;
     const iconY = centerY + icon.position.y;
     
-    // Create electrical circuit-style path with straight lines and 90-degree turns
-    // Always go horizontal first, then vertical (like in the reference image)
-    // Make lines longer by extending the elbow point further out
-    const elbowX = centerX + (icon.position.x * 0.8);
-    const elbowY = centerY;
-    
-    // Create circuit path with sharp 90-degree turns
-    return `M ${centerX} ${centerY} L ${elbowX} ${elbowY} L ${iconX} ${iconY}`;
+    // Create straight horizontal/vertical lines based on icon position
+    // For icons on the left/right (horizontal axis), go horizontal first
+    // For icons on the top/bottom (vertical axis), go vertical first
+    if (Math.abs(icon.position.x) > Math.abs(icon.position.y)) {
+      // Horizontal first (left/right icons)
+      return `M ${centerX} ${centerY} L ${iconX} ${centerY} L ${iconX} ${iconY}`;
+    } else {
+      // Vertical first (top/bottom icons)
+      return `M ${centerX} ${centerY} L ${centerX} ${iconY} L ${iconX} ${iconY}`;
+    }
   };
 
   return (
@@ -152,7 +154,7 @@ const NetworkLogoHub: React.FC = () => {
               className="absolute inset-0"
               style={{ overflow: 'visible' }}
             >
-              {/* Define gradients for shimmer effect */}
+              {/* Define gradients for shimmer effect on straight connection lines */}
               <defs>
                 {networkIcons.map((icon) => (
                   <linearGradient
@@ -233,7 +235,7 @@ const NetworkLogoHub: React.FC = () => {
               
               {networkIcons.map((icon) => (
                 <g key={`line-group-${icon.id}`}>
-                  {/* Base circuit line */}
+                  {/* Base connection line */}
                   <path
                     d={getConnectionPath(icon)}
                     stroke="rgba(147, 197, 253, 0.3)"
@@ -243,7 +245,7 @@ const NetworkLogoHub: React.FC = () => {
                     strokeLinejoin="miter"
                   />
                   
-                  {/* Primary circuit line with electrical effect */}
+                  {/* Primary connection line with electrical effect */}
                   <path
                     d={getConnectionPath(icon)}
                     stroke={hoveredIcon === icon.id ? `url(#shimmer-${icon.id})` : 'url(#default-shimmer)'}
@@ -263,7 +265,7 @@ const NetworkLogoHub: React.FC = () => {
                     }}
                   />
                   
-                  {/* Circuit connection points - only show on hover */}
+                  {/* Connection points - only show on hover */}
                   {hoveredIcon === icon.id && (
                     <>
                       <circle

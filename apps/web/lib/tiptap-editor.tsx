@@ -64,6 +64,13 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
 import "@/styles/_variables.scss";
 import "@/styles/_keyframe-animations.scss";
 import "@/components/tiptap-templates/simple/simple-editor.scss";
+import "@/components/tiptap-ui-primitive/button/button.scss";
+import "@/components/tiptap-ui-primitive/button/button-colors.scss";
+import "@/components/tiptap-ui-primitive/button/button-group.scss";
+import "@/components/tiptap-ui-primitive/toolbar/toolbar.scss";
+import "@/components/tiptap-ui-primitive/dropdown-menu/dropdown-menu.scss";
+import "@/components/tiptap-ui-primitive/card/card.scss";
+import "@/components/tiptap-ui/color-highlight-button/color-highlight-button.scss";
 
 interface TiptapEditorProps {
   value?: string;
@@ -248,7 +255,7 @@ export function TiptapEditor({
   return (
     <div className={`simple-editor-wrapper ${className}`}>
       {label && (
-        <label className="text-sm font-medium text-white/80 mb-3 block px-3">
+        <label className="text-sm font-medium text-white/80 mb-3 block px-3 pt-3">
           {label}
         </label>
       )}
