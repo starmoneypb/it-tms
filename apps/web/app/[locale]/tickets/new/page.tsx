@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox } from "@heroui/react";
 import { computePriority, PriorityInput } from "@/lib/priority";
-import { WysiwygEditor } from "@/lib/wysiwyg-editor";
+import { MarkdownEditor } from "@/lib/markdown-editor";
 import { useAuth } from "@/lib/auth";
 import { useLocale, useTranslations } from 'next-intl';
 import { 
@@ -288,14 +288,14 @@ export default function NewTicket() {
                   <p className="text-white/70 text-lg">{t('provideDetailedInfo')}</p>
                 </div>
                 <div className="space-y-4">
-                  <WysiwygEditor 
+                  <MarkdownEditor 
                     label={t('problemDescription')} 
                     placeholder={t('problemPlaceholder')}
                     value={draft.description || ""} 
                     onChange={(v)=>setDraft({...draft, description: v})}
                     minHeight="120px"
                   />
-                  <WysiwygEditor 
+                  <MarkdownEditor 
                     label={t('stepsToReproduce')} 
                     placeholder={t('howToReproduce')}
                     value={(draft.details?.steps)|| ""} 
@@ -404,7 +404,7 @@ export default function NewTicket() {
                     value={draft.title || ""} 
                     onValueChange={(v)=>setDraft({...draft, title: v})}
                   />
-                  <WysiwygEditor 
+                  <MarkdownEditor 
                     label={t('description')} 
                     placeholder={t('descriptionPlaceholder')}
                     value={draft.description || ""} 

@@ -17,6 +17,7 @@ const (
 	NotificationTicketCreated   NotificationType = "ticket_created"
 	NotificationTicketAssigned  NotificationType = "ticket_assigned"
 	NotificationTicketUnassigned NotificationType = "ticket_unassigned"
+	NotificationCommentAdded    NotificationType = "comment_added"
 )
 
 type Notification struct {
@@ -28,6 +29,10 @@ type Notification struct {
 	// For assignment notifications
 	AssignedUserID   *string `json:"assignedUserId,omitempty"`
 	UnassignedUserID *string `json:"unassignedUserId,omitempty"`
+	// For comment notifications
+	CommentAuthorID *string `json:"commentAuthorId,omitempty"`
+	CommentBody     *string `json:"commentBody,omitempty"`
+	IsSystemComment *bool   `json:"isSystemComment,omitempty"`
 }
 
 type Client struct {
@@ -337,6 +342,43 @@ func (h *Hub) NotifyTicketUnassigned(ticketID string, unassignedUserID string, t
 			default:
 				close(client.send)
 				delete(h.clients, client)
+			}
+		}
+	}
+}
+
+// NotifyCommentAdded sends notification to all assignees of a ticket when a comment is added
+func (h *Hub) NotifyCommentAdded(ticketID string, assigneeIDs []string, commentAuthorID *string, commentBody string, isSystemComment bool, ticket *models.Ticket) {
+	notification := Notification{
+		Type:            NotificationCommentAdded,
+		TicketID:        ticketID,
+		Ticket:          ticket,
+		Message:         "New comment added to ticket",
+		Timestamp:       time.Now(),
+		CommentAuthorID: commentAuthorID,
+		CommentBody:     &commentBody,
+		IsSystemComment: &isSystemComment,
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Send to all assignees except the comment author
+	for _, assigneeID := range assigneeIDs {
+		// Skip sending to the comment author
+		if commentAuthorID != nil && assigneeID == *commentAuthorID {
+			continue
+		}
+
+		// Send to specific user room
+		if room, exists := h.rooms[assigneeID]; exists {
+			for client := range room {
+				select {
+				case client.send <- notification:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
 			}
 		}
 	}

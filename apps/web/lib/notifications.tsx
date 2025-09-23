@@ -20,7 +20,7 @@ const resolveWebSocketUrl = () => {
 const WS_URL = resolveWebSocketUrl();
 
 export interface Notification {
-  type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned';
+  type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned' | 'comment_added';
   ticketId: string;
   ticket?: {
     id: string;
@@ -35,6 +35,10 @@ export interface Notification {
   timestamp: string;
   assignedUserId?: string;
   unassignedUserId?: string;
+  // For comment notifications
+  commentAuthorId?: string;
+  commentBody?: string;
+  isSystemComment?: boolean;
 }
 
 interface NotificationContextType {

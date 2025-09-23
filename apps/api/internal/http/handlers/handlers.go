@@ -963,6 +963,32 @@ func (h *Handlers) TicketsAddComment(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"add comment failed"}})
 	}
 	h.repo.Audits.Insert(ctx, id, userID, "add_comment", nil, body.Body)
+	
+	// Send notifications to assignees
+	go func() {
+		// Get ticket details and assignees
+		ticket, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get ticket for comment notification: %v", err)
+			return
+		}
+		
+		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get assignees for comment notification: %v", err)
+			return
+		}
+		
+		// Extract assignee IDs
+		var assigneeIDs []string
+		for _, assignee := range assignees {
+			assigneeIDs = append(assigneeIDs, assignee.ID)
+		}
+		
+		// Send notification to assignees
+		h.wsHub.NotifyCommentAdded(id, assigneeIDs, userID, body.Body, false, &ticket)
+	}()
+	
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(fiber.Map{"commentId": commentID}))
 }
 
@@ -1417,6 +1443,32 @@ func (h *Handlers) TicketsUpdateEffort(c *fiber.Ctx) error {
     if err := h.repo.Tickets.UpdateEffort(ctx, id, data, int32(score), userName); err != nil {
         return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
     }
+    
+    // Send notifications to assignees for system comment
+    go func() {
+        assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+        if err != nil {
+            log.Printf("Failed to get assignees for system comment notification: %v", err)
+            return
+        }
+        
+        // Extract assignee IDs
+        var assigneeIDs []string
+        for _, assignee := range assignees {
+            assigneeIDs = append(assigneeIDs, assignee.ID)
+        }
+        
+        // Get updated ticket
+        updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+        if err != nil {
+            log.Printf("Failed to get updated ticket for system comment notification: %v", err)
+            return
+        }
+        
+        // Send notification to assignees
+        commentBody := fmt.Sprintf("Effort Score updated by %s", userName)
+        h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
+    }()
 
     // If completed, redistribute points using effort
     ticket, _ := h.repo.Tickets.GetByID(ctx, id)
@@ -1485,6 +1537,32 @@ func (h *Handlers) TicketsUpdateRedFlags(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 	
+	// Send notifications to assignees for system comment
+	go func() {
+		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get assignees for system comment notification: %v", err)
+			return
+		}
+		
+		// Extract assignee IDs
+		var assigneeIDs []string
+		for _, assignee := range assignees {
+			assigneeIDs = append(assigneeIDs, assignee.ID)
+		}
+		
+		// Get updated ticket
+		updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get updated ticket for system comment notification: %v", err)
+			return
+		}
+		
+		// Send notification to assignees
+		commentBody := fmt.Sprintf("Red Flags (Critical Issues) updated by %s", userName)
+		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
+	}()
+	
     // Trigger recalculation if ticket is completed
     if ticket.Status == models.StatusCompleted {
 		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
@@ -1552,6 +1630,32 @@ func (h *Handlers) TicketsUpdateImpactAssessment(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 	
+	// Send notifications to assignees for system comment
+	go func() {
+		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get assignees for system comment notification: %v", err)
+			return
+		}
+		
+		// Extract assignee IDs
+		var assigneeIDs []string
+		for _, assignee := range assignees {
+			assigneeIDs = append(assigneeIDs, assignee.ID)
+		}
+		
+		// Get updated ticket
+		updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get updated ticket for system comment notification: %v", err)
+			return
+		}
+		
+		// Send notification to assignees
+		commentBody := fmt.Sprintf("Impact Assessment updated by %s", userName)
+		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
+	}()
+	
     // Trigger recalculation if ticket is completed
     if ticket.Status == models.StatusCompleted {
 		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
@@ -1618,6 +1722,32 @@ func (h *Handlers) TicketsUpdateUrgencyTimeline(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
+	
+	// Send notifications to assignees for system comment
+	go func() {
+		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get assignees for system comment notification: %v", err)
+			return
+		}
+		
+		// Extract assignee IDs
+		var assigneeIDs []string
+		for _, assignee := range assignees {
+			assigneeIDs = append(assigneeIDs, assignee.ID)
+		}
+		
+		// Get updated ticket
+		updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			log.Printf("Failed to get updated ticket for system comment notification: %v", err)
+			return
+		}
+		
+		// Send notification to assignees
+		commentBody := fmt.Sprintf("Urgency Timeline updated by %s", userName)
+		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
+	}()
 	
     // Trigger recalculation if ticket is completed
     if ticket.Status == models.StatusCompleted {

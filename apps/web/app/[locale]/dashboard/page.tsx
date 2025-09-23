@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Avatar, Select, SelectItem, Button } from "@heroui/react";
-import DOMPurify from "isomorphic-dompurify";
 import dynamic from "next/dynamic";
 import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award, Calendar, Filter } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';

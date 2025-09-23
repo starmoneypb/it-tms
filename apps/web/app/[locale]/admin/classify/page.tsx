@@ -145,40 +145,40 @@ export default function ClassifyPage() {
                 className="glass border-white/10 hover:border-primary-500/30 transition-colors"
               >
                 <CardBody className="p-4">
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-semibold">{ticket.title}</h3>
-                        <Chip size="sm" color="primary" variant="flat">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                        <h3 className="text-lg font-semibold break-words">{ticket.title}</h3>
+                        <Chip size="sm" color="primary" variant="flat" className="self-start sm:self-center">
                           #{ticket.code}
                         </Chip>
                       </div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <Chip size="sm" variant="flat" className="bg-orange-500/20 text-orange-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+                        <Chip size="sm" variant="flat" className="bg-orange-500/20 text-orange-300 self-start">
                           {ticket.initialType.replace(/_/g, ' ')}
                         </Chip>
                         <span className="text-sm text-white/60">{t('initialClassification')}</span>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-3 lg:items-end xl:items-center">
                       <Button 
                         variant="ghost" 
                         onPress={() => handleViewDetails(ticket)}
-                        className="min-w-[120px] text-blue-400 hover:text-blue-300"
+                        className="w-full sm:w-auto lg:w-full xl:w-auto text-blue-400 hover:text-blue-300"
                         startContent={<Eye size={16} />}
                       >
                         {t('viewDetails')}
                       </Button>
                       
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 sm:flex-1 lg:flex-none xl:flex-1">
                         <Select 
                           label={t('resolvedType')} 
                           placeholder={t('selectClassification')}
                           selectedKeys={sel[ticket.id] ? [sel[ticket.id]] : []} 
                           onSelectionChange={(keys) => handleSelectionChange(ticket.id, keys)}
                           variant="bordered"
-                          className="min-w-[200px]"
+                          className="w-full sm:min-w-[180px] lg:w-full xl:min-w-[180px]"
                         >
                           <SelectItem key="EMERGENCY_CHANGE">
                             {t('emergencyChange')}
@@ -190,16 +190,16 @@ export default function ClassifyPage() {
                             {t('reject')}
                           </SelectItem>
                         </Select>
+                        
+                        <Button 
+                          color="primary" 
+                          onPress={() => classify(ticket.id)}
+                          isDisabled={!sel[ticket.id]}
+                          className="w-full sm:w-auto lg:w-full xl:w-auto"
+                        >
+                          {t('apply')}
+                        </Button>
                       </div>
-                      
-                      <Button 
-                        color="primary" 
-                        onPress={() => classify(ticket.id)}
-                        isDisabled={!sel[ticket.id]}
-                        className="min-w-[100px]"
-                      >
-                        {t('apply')}
-                      </Button>
                     </div>
                   </div>
                 </CardBody>

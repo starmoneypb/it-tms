@@ -2,13 +2,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox } from "@heroui/react";
-import { WysiwygEditor } from "@/lib/wysiwyg-editor";
+import { MarkdownEditor } from "@/lib/markdown-editor";
+import { MarkdownRenderer } from "@/lib/markdown-renderer";
+import { convertContentToMarkdown } from "@/lib/html-to-markdown";
 import { useAuth } from "@/lib/auth";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import EffortAssessmentExplanation from "@/components/EffortAssessmentExplanation";
 import TicketCompletionCelebration from "@/components/TicketCompletionCelebration";
-import DOMPurify from "isomorphic-dompurify";
 import { useTranslations, useLocale } from 'next-intl';
 import { 
   AlertTriangle, 
@@ -645,14 +646,12 @@ export default function TicketDetails() {
             <div>
               <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
               {!isEditingContent ? (
-                <div 
-                  className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: DOMPurify.sanitize(ticket.description) 
-                  }}
+                <MarkdownRenderer 
+                  content={convertContentToMarkdown(ticket.description)}
+                  className="text-white/80 leading-relaxed"
                 />
               ) : (
-                <WysiwygEditor 
+                <MarkdownEditor 
                   value={contentEditForm.description} 
                   onChange={(value) => setContentEditForm(prev => ({ ...prev, description: value }))} 
                   placeholder={t('enterTicketDescription')}
@@ -748,12 +747,12 @@ export default function TicketDetails() {
                 <Divider />
                 <div>
                   <h3 className="text-lg font-semibold mb-3">{t('stepsToReproduce')}</h3>
-                  <div 
-                    className="text-white/80 leading-relaxed prose prose-invert prose-sm max-w-none bg-white/5 p-6 rounded-lg"
-                    dangerouslySetInnerHTML={{ 
-                      __html: DOMPurify.sanitize(ticket.details.steps) 
-                    }}
-                  />
+                  <div className="bg-white/5 p-6 rounded-lg">
+                    <MarkdownRenderer 
+                      content={convertContentToMarkdown(ticket.details.steps)}
+                      className="text-white/80 leading-relaxed"
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -850,11 +849,9 @@ export default function TicketDetails() {
                             {new Date(c.createdAt).toLocaleString()}
                           </span>
                         </div>
-                        <div 
-                          className="text-sm text-white/80 prose prose-invert prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ 
-                            __html: DOMPurify.sanitize(c.body) 
-                          }}
+                        <MarkdownRenderer 
+                          content={convertContentToMarkdown(c.body)}
+                          className="text-sm text-white/80"
                         />
                         {c.attachments && c.attachments.length > 0 && (
                           <div className="mt-3 space-y-2">
@@ -972,7 +969,7 @@ export default function TicketDetails() {
                 </h3>
               </CardHeader>
               <CardBody className="space-y-4">
-                <WysiwygEditor 
+                <MarkdownEditor 
                   value={comment} 
                   onChange={setComment} 
                   placeholder={t('writeComment')}
