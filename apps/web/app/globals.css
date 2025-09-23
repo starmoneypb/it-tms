@@ -296,9 +296,7 @@
   --tt-color-highlight-pink-contrast: rgba(220, 76, 145, 0.22);
 }
 
-/* Import Tiptap official styles */
-@import '../styles/_variables.scss';
-@import '../styles/_keyframe-animations.scss';
+/* Tiptap styles are imported in the editor component */
 
 @keyframes slideFromBottom {
   from {

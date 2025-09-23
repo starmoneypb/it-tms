@@ -61,6 +61,8 @@ import { useWindowSize } from "@/hooks/use-window-size";
 import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
 
 // --- Styles ---
+import "@/styles/_variables.scss";
+import "@/styles/_keyframe-animations.scss";
 import "@/components/tiptap-templates/simple/simple-editor.scss";
 
 interface TiptapEditorProps {
