@@ -117,7 +117,7 @@ const NetworkLogoHub: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Calculate SVG path for elbow-shaped connecting lines
+  // Calculate SVG path for electrical circuit-style connecting lines
   const getConnectionPath = (icon: NetworkIcon) => {
     // Use absolute coordinates that match the container size
     const containerSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 320 : 384; // w-80 = 320px (mobile) or w-96 = 384px (desktop)
@@ -128,11 +128,26 @@ const NetworkLogoHub: React.FC = () => {
     const iconX = centerX + icon.position.x;
     const iconY = centerY + icon.position.y;
     
-    // Calculate the elbow point (60% of the way to the icon)
-    const elbowX = centerX + (icon.position.x * 0.6);
-    const elbowY = centerY + (icon.position.y * 0.6);
+    // Create electrical circuit-style path with straight lines and 90-degree turns
+    // First, determine the direction from center to icon
+    const deltaX = icon.position.x;
+    const deltaY = icon.position.y;
     
-    // Create elbow path with rounded corners
+    // Calculate the elbow point for a 90-degree turn
+    // For electrical circuit style, we want straight horizontal/vertical lines
+    let elbowX, elbowY;
+    
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Horizontal first, then vertical
+      elbowX = centerX + (deltaX * 0.7);
+      elbowY = centerY;
+    } else {
+      // Vertical first, then horizontal
+      elbowX = centerX;
+      elbowY = centerY + (deltaY * 0.7);
+    }
+    
+    // Create circuit path with sharp 90-degree turns
     return `M ${centerX} ${centerY} L ${elbowX} ${elbowY} L ${iconX} ${iconY}`;
   };
 
@@ -231,24 +246,24 @@ const NetworkLogoHub: React.FC = () => {
               
               {networkIcons.map((icon) => (
                 <g key={`line-group-${icon.id}`}>
-                  {/* Base line */}
+                  {/* Base circuit line */}
                   <path
                     d={getConnectionPath(icon)}
-                    stroke="rgba(255, 255, 255, 0.1)"
-                    strokeWidth="3"
+                    stroke="rgba(59, 130, 246, 0.2)"
+                    strokeWidth="4"
                     fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
                   />
                   
-                  {/* Primary shimmer line */}
+                  {/* Primary circuit line with electrical effect */}
                   <path
                     d={getConnectionPath(icon)}
                     stroke={hoveredIcon === icon.id ? `url(#shimmer-${icon.id})` : 'url(#default-shimmer)'}
-                    strokeWidth="2"
+                    strokeWidth="3"
                     fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
                     className={`transition-all duration-300 ${
                       hoveredIcon === icon.id 
                         ? 'drop-shadow-lg' 
@@ -256,20 +271,36 @@ const NetworkLogoHub: React.FC = () => {
                     }`}
                     style={{
                       filter: hoveredIcon === icon.id 
-                        ? `drop-shadow(0 0 8px ${icon.hoverColor.replace('text-', '#')})` 
+                        ? `drop-shadow(0 0 12px ${icon.hoverColor.replace('text-', '#')})` 
                         : 'none'
                     }}
                   />
                   
-                  {/* Secondary shimmer line for electricity effect */}
+                  {/* Electrical pulse effect */}
                   <path
                     d={getConnectionPath(icon)}
                     stroke="url(#secondary-shimmer)"
-                    strokeWidth="1"
+                    strokeWidth="2"
                     fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    opacity="0.7"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    opacity="0.8"
+                  />
+                  
+                  {/* Circuit connection points */}
+                  <circle
+                    cx={typeof window !== 'undefined' && window.innerWidth < 768 ? 160 : 192}
+                    cy={typeof window !== 'undefined' && window.innerWidth < 768 ? 160 : 192}
+                    r="3"
+                    fill="rgba(59, 130, 246, 0.8)"
+                    className="animate-pulse"
+                  />
+                  <circle
+                    cx={typeof window !== 'undefined' && window.innerWidth < 768 ? 160 : 192 + icon.position.x}
+                    cy={typeof window !== 'undefined' && window.innerWidth < 768 ? 160 : 192 + icon.position.y}
+                    r="2"
+                    fill={hoveredIcon === icon.id ? icon.hoverColor.replace('text-', '#') : 'rgba(59, 130, 246, 0.6)'}
+                    className="transition-all duration-300"
                   />
                 </g>
               ))}
@@ -318,25 +349,34 @@ const NetworkLogoHub: React.FC = () => {
                 onMouseEnter={() => setHoveredIcon(icon.id)}
                 onMouseLeave={() => setHoveredIcon(null)}
               >
-                {/* Icon Container */}
+                {/* Icon Container - Circuit Style */}
                 <div className={`
-                  relative p-3 md:p-4 rounded-xl md:rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 
-                  hover:border-white/30 transition-all duration-300 group/icon
-                  ${hoveredIcon === icon.id ? 'scale-110 shadow-lg' : 'scale-100'}
+                  relative p-3 md:p-4 rounded-lg bg-slate-900/80 backdrop-blur-sm border-2 border-blue-500/30 
+                  hover:border-blue-400/60 transition-all duration-300 group/icon
+                  ${hoveredIcon === icon.id ? 'scale-110 shadow-lg shadow-blue-500/25' : 'scale-100'}
+                  shadow-inner
                 `}>
-                  {/* Icon Glow Effect */}
+                  {/* Circuit Glow Effect */}
                   <div className={`
-                    absolute inset-0 rounded-2xl opacity-0 group-hover/icon:opacity-100 
-                    transition-opacity duration-300 blur-lg
-                    ${icon.id === 'document' ? 'bg-blue-400/20' : ''}
-                    ${icon.id === 'tracking' ? 'bg-green-400/20' : ''}
-                    ${icon.id === 'monitoring' ? 'bg-purple-400/20' : ''}
-                    ${icon.id === 'analytics' ? 'bg-orange-400/20' : ''}
-                    ${icon.id === 'security' ? 'bg-red-400/20' : ''}
-                    ${icon.id === 'performance' ? 'bg-yellow-400/20' : ''}
-                    ${icon.id === 'database' ? 'bg-cyan-400/20' : ''}
-                    ${icon.id === 'collaboration' ? 'bg-indigo-400/20' : ''}
+                    absolute inset-0 rounded-lg opacity-0 group-hover/icon:opacity-100 
+                    transition-opacity duration-300 blur-md
+                    ${icon.id === 'document' ? 'bg-blue-400/30' : ''}
+                    ${icon.id === 'tracking' ? 'bg-green-400/30' : ''}
+                    ${icon.id === 'monitoring' ? 'bg-purple-400/30' : ''}
+                    ${icon.id === 'analytics' ? 'bg-orange-400/30' : ''}
+                    ${icon.id === 'security' ? 'bg-red-400/30' : ''}
+                    ${icon.id === 'performance' ? 'bg-yellow-400/30' : ''}
+                    ${icon.id === 'database' ? 'bg-cyan-400/30' : ''}
+                    ${icon.id === 'collaboration' ? 'bg-indigo-400/30' : ''}
                   `}></div>
+                  
+                  {/* Circuit Board Pattern */}
+                  <div className="absolute inset-0 rounded-lg opacity-20">
+                    <div className="absolute top-1 left-1 w-1 h-1 bg-blue-400 rounded-full"></div>
+                    <div className="absolute top-1 right-1 w-1 h-1 bg-blue-400 rounded-full"></div>
+                    <div className="absolute bottom-1 left-1 w-1 h-1 bg-blue-400 rounded-full"></div>
+                    <div className="absolute bottom-1 right-1 w-1 h-1 bg-blue-400 rounded-full"></div>
+                  </div>
                   
                   {/* Icon */}
                   <div className={`

@@ -150,6 +150,74 @@
 }
 
 /* =====================
+     HIGHLIGHTS
+     ===================== */
+.tiptap.ProseMirror {
+  mark[data-color="yellow"] {
+    background-color: var(--tt-color-highlight-yellow);
+    color: var(--tt-color-highlight-yellow-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="green"] {
+    background-color: var(--tt-color-highlight-green);
+    color: var(--tt-color-highlight-green-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="blue"] {
+    background-color: var(--tt-color-highlight-blue);
+    color: var(--tt-color-highlight-blue-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="purple"] {
+    background-color: var(--tt-color-highlight-purple);
+    color: var(--tt-color-highlight-purple-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="red"] {
+    background-color: var(--tt-color-highlight-red);
+    color: var(--tt-color-highlight-red-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="gray"] {
+    background-color: var(--tt-color-highlight-gray);
+    color: var(--tt-color-highlight-gray-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="brown"] {
+    background-color: var(--tt-color-highlight-brown);
+    color: var(--tt-color-highlight-brown-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="orange"] {
+    background-color: var(--tt-color-highlight-orange);
+    color: var(--tt-color-highlight-orange-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  mark[data-color="pink"] {
+    background-color: var(--tt-color-highlight-pink);
+    color: var(--tt-color-highlight-pink-contrast);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+  }
+}
+
+/* =====================
      MENTION
      ===================== */
 .tiptap.ProseMirror {

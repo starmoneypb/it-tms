@@ -25,6 +25,16 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
           p: ({ children }) => <p className="text-white/80 mb-3 leading-relaxed">{children}</p>,
           strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
           em: ({ children }) => <em className="italic text-white/90">{children}</em>,
+          a: ({ children, href }) => (
+            <a 
+              href={href} 
+              className="text-primary-400 underline hover:text-primary-300 transition-colors"
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              {children}
+            </a>
+          ),
           ul: ({ children }) => <ul className="list-disc list-inside mb-3 text-white/80">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal list-inside mb-3 text-white/80">{children}</ol>,
           li: ({ children }) => <li className="mb-1">{children}</li>,
@@ -53,6 +63,23 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
               {children}
             </pre>
           ),
+          mark: ({ children, className }) => {
+            // Extract color from className if present (e.g., "highlight-yellow")
+            const colorMatch = className?.match(/highlight-(\w+)/);
+            const color = colorMatch ? colorMatch[1] : 'yellow';
+            
+            return (
+              <mark 
+                className={`px-1 py-0.5 rounded`}
+                style={{
+                  backgroundColor: `var(--tt-color-highlight-${color})`,
+                  color: `var(--tt-color-highlight-${color}-contrast)`
+                }}
+              >
+                {children}
+              </mark>
+            );
+          },
           table: ({ children }) => (
             <div className="overflow-x-auto mb-3">
               <table className="min-w-full border-collapse border border-white/20">

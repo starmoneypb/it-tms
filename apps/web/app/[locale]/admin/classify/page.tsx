@@ -235,11 +235,11 @@ export default function ClassifyPage() {
         size="4xl"
         scrollBehavior="inside"
         classNames={{
-          base: "bg-background/95 backdrop-blur-md",
+          base: "bg-[#0b0f19]/95 backdrop-blur-md",
           backdrop: "bg-black/50"
         }}
       >
-        <ModalContent className="glass">
+        <ModalContent className="glass font-['IBM_Plex_Sans_Thai']">
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1 border-b border-white/10">
@@ -379,7 +379,10 @@ export default function ClassifyPage() {
                       <div>
                         <h5 className="font-semibold mb-2">{t('latestComment')}</h5>
                         <div className="bg-default-100 rounded-lg p-4">
-                          <p className="text-sm">{selectedTicket.latestComment}</p>
+                          <MarkdownRenderer 
+                            content={selectedTicket.latestComment}
+                            className="text-sm"
+                          />
                         </div>
                       </div>
                     )}

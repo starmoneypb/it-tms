@@ -127,7 +127,7 @@ export default function Landing() {
               <span>{t('badge')}</span>
             </div>
             
-            <h1 className="text-6xl md:text-8xl font-bold mb-6 gradient-text relative leading-normal pb-2">
+            <h1 className="text-6xl md:text-8xl font-bold mb-6 gradient-text relative leading-tight pb-4 overflow-visible">
               {t('title')}
             </h1>
             
