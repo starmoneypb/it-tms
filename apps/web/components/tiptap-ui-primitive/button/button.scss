@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--tt-radius-lg, 0.75rem);
-  transition-property: background, color, opacity;
+  transition-property: background, color, opacity, transform, box-shadow;
   transition-duration: var(--tt-transition-duration-default);
   transition-timing-function: var(--tt-transition-easing-default);
 
@@ -27,7 +27,8 @@
   &[data-focus-visible="true"] {
     background-color: var(--tt-button-hover-bg-color);
     color: var(--tt-button-hover-text-color);
-    // outline: 2px solid var(--tt-button-active-icon-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   &[data-weight="small"] {
@@ -214,6 +215,8 @@
   &[data-highlighted]:not([disabled]):not([data-highlighted="false"]) {
     background-color: var(--tt-button-hover-bg-color);
     color: var(--tt-button-hover-text-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 
     .tiptap-button-icon {
       color: var(--tt-button-hover-icon-color);

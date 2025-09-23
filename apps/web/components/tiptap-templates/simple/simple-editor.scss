@@ -6,10 +6,34 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   overflow: hidden;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.simple-editor-wrapper:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 8px 25px -5px rgba(0, 0, 0, 0.15),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.simple-editor-wrapper:focus-within {
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 
+    0 8px 25px -5px rgba(0, 0, 0, 0.15),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 0 0 3px rgba(102, 126, 234, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .dark .simple-editor-wrapper {
@@ -26,34 +50,45 @@
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor {
   flex: 1;
-  padding: 1rem;
+  padding: 1.25rem;
   min-height: 200px;
-  font-family: "IBM Plex Sans Thai", "DM Sans", sans-serif;
-  color: var(--tt-theme-text);
+  font-family: "IBM Plex Sans Thai", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: rgba(255, 255, 255, 0.9);
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
+  font-size: 14px;
+  line-height: 1.6;
   outline: none;
   border: none;
   background: transparent;
   resize: none;
+  transition: color 0.2s ease-in-out;
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor:focus {
   outline: none;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   pointer-events: none;
   height: 0;
+  font-style: italic;
 }
 
 @media screen and (max-width: 480px) {
+  .simple-editor-wrapper {
+    border-radius: 8px;
+    margin: 0.5rem;
+  }
+  
   .simple-editor-content .tiptap.ProseMirror.simple-editor {
-    padding: 0.75rem;
-    padding-bottom: calc(0.75rem + var(--tt-toolbar-height) + var(--tt-safe-area-bottom));
+    padding: 1rem;
+    padding-bottom: calc(1rem + var(--tt-toolbar-height) + var(--tt-safe-area-bottom));
+    font-size: 16px; /* Prevent zoom on iOS */
   }
 }
