@@ -18,6 +18,10 @@ const nextConfig = {
     tsconfigPath: './tsconfig.json',
   },
   // SWC minification is enabled by default in Next.js 15
+  // Configure Sass to use modern API
+  sassOptions: {
+    api: 'modern-compiler',
+  },
   // Configure images to allow SVG files
   images: {
     dangerouslyAllowSVG: true,
