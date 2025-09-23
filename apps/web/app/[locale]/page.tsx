@@ -105,22 +105,12 @@ export default function Landing() {
         <div className="absolute top-40 right-20 w-16 h-16 bg-gradient-to-r from-purple-600/5 to-blue-600/5 rounded-full animate-float-fast"></div>
         <div className="absolute bottom-40 left-1/4 w-32 h-32 bg-gradient-to-r from-slate-700/5 to-slate-600/5 rounded-full animate-float-medium"></div>
         
-        {/* Subtle Grid Pattern */}
-        <div className="absolute inset-0 opacity-2">
-          <div className="w-full h-full" style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-            `,
-            backgroundSize: '60px 60px'
-          }}></div>
-        </div>
       </div>
 
       {/* Content */}
       <div className="relative z-10 container">
         {/* Hero Section */}
-        <section className="text-center min-h-screen flex flex-col justify-center relative pt-16">
+        <section className="text-center min-h-screen flex flex-col justify-center relative pt-8">
           {/* Language Toggle */}
           <div className="absolute top-4 right-4 z-20">
             <LanguageToggle />

@@ -131,13 +131,49 @@
 
 .tiptap-editor-content .tiptap.ProseMirror ul,
 .tiptap-editor-content .tiptap.ProseMirror ol {
-  padding-left: 1.75rem;
+  padding-left: 2rem;
   margin: 0.75rem 0;
+  list-style-position: outside;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror ol {
+  list-style-type: decimal;
 }
 
 .tiptap-editor-content .tiptap.ProseMirror li {
   margin: 0.375rem 0;
   color: rgba(255, 255, 255, 0.9);
+  padding-left: 0.5rem;
+  position: relative;
+}
+
+/* Nested lists */
+.tiptap-editor-content .tiptap.ProseMirror ul ul,
+.tiptap-editor-content .tiptap.ProseMirror ol ol,
+.tiptap-editor-content .tiptap.ProseMirror ul ol,
+.tiptap-editor-content .tiptap.ProseMirror ol ul {
+  margin: 0.25rem 0;
+  padding-left: 1.5rem;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror ul ul {
+  list-style-type: circle;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror ul ul ul {
+  list-style-type: square;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror ol ol {
+  list-style-type: lower-alpha;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror ol ol ol {
+  list-style-type: lower-roman;
 }
 
 .tiptap-editor-content .tiptap.ProseMirror ul[data-type="taskList"] {
@@ -398,4 +434,53 @@
 
 .tiptap-input::placeholder {
   color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Highlight button styling */
+.tiptap-button-highlight {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 2px !important;
+  background-color: var(--highlight-color, var(--tt-color-highlight-yellow)) !important;
+  border: 1px solid var(--tt-color-highlight-yellow-contrast) !important;
+  display: inline-block !important;
+}
+
+/* Highlight mark styling in editor */
+.tiptap-editor-content .tiptap.ProseMirror mark {
+  background-color: var(--tt-color-highlight-yellow) !important;
+  color: var(--tt-color-highlight-yellow-contrast) !important;
+  padding: 0.1em 0.2em !important;
+  border-radius: 3px !important;
+  border: 1px solid var(--tt-color-highlight-yellow-contrast) !important;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror mark[data-color="var(--tt-color-highlight-green)"] {
+  background-color: var(--tt-color-highlight-green) !important;
+  color: var(--tt-color-highlight-green-contrast) !important;
+  border-color: var(--tt-color-highlight-green-contrast) !important;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror mark[data-color="var(--tt-color-highlight-blue)"] {
+  background-color: var(--tt-color-highlight-blue) !important;
+  color: var(--tt-color-highlight-blue-contrast) !important;
+  border-color: var(--tt-color-highlight-blue-contrast) !important;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror mark[data-color="var(--tt-color-highlight-red)"] {
+  background-color: var(--tt-color-highlight-red) !important;
+  color: var(--tt-color-highlight-red-contrast) !important;
+  border-color: var(--tt-color-highlight-red-contrast) !important;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror mark[data-color="var(--tt-color-highlight-purple)"] {
+  background-color: var(--tt-color-highlight-purple) !important;
+  color: var(--tt-color-highlight-purple-contrast) !important;
+  border-color: var(--tt-color-highlight-purple-contrast) !important;
+}
+
+.tiptap-editor-content .tiptap.ProseMirror mark[data-color="var(--tt-color-highlight-yellow)"] {
+  background-color: var(--tt-color-highlight-yellow) !important;
+  color: var(--tt-color-highlight-yellow-contrast) !important;
+  border-color: var(--tt-color-highlight-yellow-contrast) !important;
 }

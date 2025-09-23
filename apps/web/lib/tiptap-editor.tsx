@@ -240,7 +240,7 @@ export function TiptapEditor({
   return (
     <div className={`tiptap-editor-wrapper ${className}`}>
       {label && (
-        <label className="text-sm font-medium text-white/80 mb-2 block">
+        <label className="text-sm font-medium text-white/80 mb-3 block px-1">
           {label}
         </label>
       )}
