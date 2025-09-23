@@ -78,6 +78,7 @@ const MainToolbarContent = ({
 }) => {
   return (
     <>
+      {/* History Controls */}
       <ToolbarGroup>
         <UndoRedoButton action="undo" />
         <UndoRedoButton action="redo" />
@@ -85,6 +86,7 @@ const MainToolbarContent = ({
 
       <ToolbarSeparator />
 
+      {/* Document Structure */}
       <ToolbarGroup>
         <HeadingDropdownMenu levels={[1, 2, 3, 4]} portal={isMobile} />
         <ListDropdownMenu
@@ -97,12 +99,21 @@ const MainToolbarContent = ({
 
       <ToolbarSeparator />
 
+      {/* Text Formatting */}
       <ToolbarGroup>
         <MarkButton type="bold" />
         <MarkButton type="italic" />
+        <MarkButton type="underline" />
         <MarkButton type="strike" />
         <MarkButton type="code" />
-        <MarkButton type="underline" />
+        <MarkButton type="superscript" />
+        <MarkButton type="subscript" />
+      </ToolbarGroup>
+
+      <ToolbarSeparator />
+
+      {/* Advanced Formatting */}
+      <ToolbarGroup>
         {!isMobile ? (
           <ColorHighlightPopover />
         ) : (
@@ -113,13 +124,7 @@ const MainToolbarContent = ({
 
       <ToolbarSeparator />
 
-      <ToolbarGroup>
-        <MarkButton type="superscript" />
-        <MarkButton type="subscript" />
-      </ToolbarGroup>
-
-      <ToolbarSeparator />
-
+      {/* Text Alignment */}
       <ToolbarGroup>
         <TextAlignButton align="left" />
         <TextAlignButton align="center" />

@@ -418,8 +418,8 @@ html, body {
 }
 
 body {
-  background: var(--color-background);
-  background-image: var(--color-background-gradient);
+  background: #0f172a; /* slate-950 */
+  background-image: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a); /* from-slate-950 via-slate-900 to-slate-950 */
   background-attachment: fixed;
   background-size: cover;
   background-repeat: no-repeat;
@@ -1406,7 +1406,7 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--color-background-gradient);
+  background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a);
 }
 
 /* 2) ทำให้แผ่นเมนูมือถือเบลอได้จริง:

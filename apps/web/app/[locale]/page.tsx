@@ -84,9 +84,6 @@ export default function Landing() {
     <div className="relative min-h-screen overflow-hidden">
       {/* Modern Background */}
       <div className="fixed inset-0 z-0">
-        {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"></div>
-        
         {/* Subtle Floating Particles */}
         {particles.map((particle) => (
           <div

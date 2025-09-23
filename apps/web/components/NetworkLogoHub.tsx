@@ -119,17 +119,21 @@ const NetworkLogoHub: React.FC = () => {
 
   // Calculate SVG path for elbow-shaped connecting lines
   const getConnectionPath = (icon: NetworkIcon) => {
-    const centerX = 0;
-    const centerY = 0;
-    const iconX = icon.position.x;
-    const iconY = icon.position.y;
+    // Use percentage-based coordinates for proper SVG scaling
+    const centerX = 50; // 50% of container width
+    const centerY = 50; // 50% of container height
     
-    // Calculate the elbow point (midpoint with offset for elbow effect)
-    const elbowX = centerX + (iconX - centerX) * 0.6;
-    const elbowY = centerY + (iconY - centerY) * 0.6;
+    // Convert icon position to percentage (assuming 120px radius = 100% of available space)
+    const radius = typeof window !== 'undefined' && window.innerWidth < 768 ? 80 : 120;
+    const iconXPercent = 50 + (icon.position.x / radius) * 25; // Scale to fit within 25% of container
+    const iconYPercent = 50 + (icon.position.y / radius) * 25;
+    
+    // Calculate the elbow point (60% of the way to the icon)
+    const elbowX = centerX + (iconXPercent - centerX) * 0.6;
+    const elbowY = centerY + (iconYPercent - centerY) * 0.6;
     
     // Create elbow path with rounded corners
-    return `M ${centerX} ${centerY} L ${elbowX} ${elbowY} L ${iconX} ${iconY}`;
+    return `M ${centerX}% ${centerY}% L ${elbowX}% ${elbowY}% L ${iconXPercent}% ${iconYPercent}%`;
   };
 
   return (
