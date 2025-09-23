@@ -1,76 +1,46 @@
 "use client";
 
-import * as React from "react";
-import { EditorContent, EditorContext, useEditor } from "@tiptap/react";
+import React, { useCallback, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { Highlight } from '@tiptap/extension-highlight';
+import { 
+  Bold, 
+  Italic, 
+  Underline, 
+  Strikethrough, 
+  Code, 
+  Code2,
+  Heading1, 
+  Heading2, 
+  Heading3, 
+  List, 
+  ListOrdered, 
+  Quote, 
+  Minus, 
+  Undo, 
+  Redo,
+  Eye,
+  Edit3,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify
+} from 'lucide-react';
+import { Button } from '@heroui/react';
 
-// --- Tiptap Core Extensions ---
-import { StarterKit } from "@tiptap/starter-kit";
-import { TaskItem, TaskList } from "@tiptap/extension-list";
-import { TextAlign } from "@tiptap/extension-text-align";
-import { Typography } from "@tiptap/extension-typography";
-import { Highlight } from "@tiptap/extension-highlight";
-import { Subscript } from "@tiptap/extension-subscript";
-import { Superscript } from "@tiptap/extension-superscript";
-import { Selection } from "@tiptap/extensions";
-
-// --- UI Primitives ---
-import { Button } from "@/components/tiptap-ui-primitive/button";
-import { Spacer } from "@/components/tiptap-ui-primitive/spacer";
-import {
-  Toolbar,
-  ToolbarGroup,
-  ToolbarSeparator,
-} from "@/components/tiptap-ui-primitive/toolbar";
-
-// --- Tiptap Node ---
-import { HorizontalRule } from "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension";
-import "@/components/tiptap-node/blockquote-node/blockquote-node.scss";
-import "@/components/tiptap-node/code-block-node/code-block-node.scss";
-import "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node.scss";
-import "@/components/tiptap-node/list-node/list-node.scss";
-import "@/components/tiptap-node/heading-node/heading-node.scss";
-import "@/components/tiptap-node/paragraph-node/paragraph-node.scss";
-
-// --- Tiptap UI ---
-import { HeadingDropdownMenu } from "@/components/tiptap-ui/heading-dropdown-menu";
-import { ListDropdownMenu } from "@/components/tiptap-ui/list-dropdown-menu";
-import { BlockquoteButton } from "@/components/tiptap-ui/blockquote-button";
-import { CodeBlockButton } from "@/components/tiptap-ui/code-block-button";
-import {
-  ColorHighlightPopover,
-  ColorHighlightPopoverContent,
-  ColorHighlightPopoverButton,
-} from "@/components/tiptap-ui/color-highlight-popover";
-import {
-  LinkPopover,
-  LinkContent,
-  LinkButton,
-} from "@/components/tiptap-ui/link-popover";
-import { MarkButton } from "@/components/tiptap-ui/mark-button";
-import { TextAlignButton } from "@/components/tiptap-ui/text-align-button";
-import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button";
-
-// --- Icons ---
-import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon";
-import { HighlighterIcon } from "@/components/tiptap-icons/highlighter-icon";
-import { LinkIcon } from "@/components/tiptap-icons/link-icon";
-
-// --- Hooks ---
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useWindowSize } from "@/hooks/use-window-size";
-import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
-
-// --- Styles ---
-import "@/styles/_variables.scss";
-import "@/styles/_keyframe-animations.scss";
-import "@/components/tiptap-templates/simple/simple-editor.scss";
-import "@/components/tiptap-ui-primitive/button/button.scss";
-import "@/components/tiptap-ui-primitive/button/button-colors.scss";
-import "@/components/tiptap-ui-primitive/button/button-group.scss";
-import "@/components/tiptap-ui-primitive/toolbar/toolbar.scss";
-import "@/components/tiptap-ui-primitive/dropdown-menu/dropdown-menu.scss";
-import "@/components/tiptap-ui-primitive/card/card.scss";
-import "@/components/tiptap-ui/color-highlight-button/color-highlight-button.scss";
+// Simple syntax highlighting using highlight.js
+const highlightCode = (code: string, language: string) => {
+  if (typeof window !== 'undefined' && (window as any).hljs) {
+    try {
+      return (window as any).hljs.highlight(code, { language }).value;
+    } catch (e) {
+      return (window as any).hljs.highlightAuto(code).value;
+    }
+  }
+  return code;
+};
 
 interface TiptapEditorProps {
   value?: string;
@@ -82,180 +52,280 @@ interface TiptapEditorProps {
   showPreviewToggle?: boolean;
 }
 
-const MainToolbarContent = ({
-  onHighlighterClick,
-  onLinkClick,
-  isMobile,
-}: {
-  onHighlighterClick: () => void;
-  onLinkClick: () => void;
-  isMobile: boolean;
-}) => {
+interface ToolbarButtonProps {
+  onClick: () => void;
+  isActive?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  title?: string;
+}
+
+const ToolbarButton: React.FC<ToolbarButtonProps> = ({ 
+  onClick, 
+  isActive = false, 
+  disabled = false, 
+  children, 
+  title 
+}) => (
+  <Button
+    size="sm"
+    variant={isActive ? "solid" : "ghost"}
+    color={isActive ? "primary" : "default"}
+    isDisabled={disabled}
+    onPress={onClick}
+    className={`min-w-8 h-8 p-1 ${isActive ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
+    title={title}
+  >
+    {children}
+  </Button>
+);
+
+const ToolbarSeparator = () => (
+  <div className="w-px h-6 bg-gray-600 mx-1" />
+);
+
+const ToolbarGroup = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex items-center gap-1">
+    {children}
+  </div>
+);
+
+const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
+  if (!editor) return null;
+
+  const setLink = useCallback(() => {
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('URL', previousUrl);
+
+    if (url === null) return;
+
+    if (url === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  }, [editor]);
+
   return (
-    <>
-      {/* History Controls */}
+    <div className="flex items-center gap-2 p-3 bg-gray-800 border border-gray-700 rounded-t-lg flex-wrap">
+      {/* History */}
       <ToolbarGroup>
-        <UndoRedoButton action="undo" />
-        <UndoRedoButton action="redo" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.can().chain().focus().undo().run()}
+          title="Undo"
+        >
+          <Undo className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.can().chain().focus().redo().run()}
+          title="Redo"
+        >
+          <Redo className="w-4 h-4" />
+        </ToolbarButton>
       </ToolbarGroup>
 
       <ToolbarSeparator />
 
-      {/* Document Structure */}
+      {/* Headings */}
       <ToolbarGroup>
-        <HeadingDropdownMenu levels={[1, 2, 3, 4]} portal={isMobile} />
-        <ListDropdownMenu
-          types={["bulletList", "orderedList", "taskList"]}
-          portal={isMobile}
-        />
-        <BlockquoteButton />
-        <CodeBlockButton />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          isActive={editor.isActive('heading', { level: 1 })}
+          title="Heading 1"
+        >
+          <Heading1 className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          isActive={editor.isActive('heading', { level: 2 })}
+          title="Heading 2"
+        >
+          <Heading2 className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          isActive={editor.isActive('heading', { level: 3 })}
+          title="Heading 3"
+        >
+          <Heading3 className="w-4 h-4" />
+        </ToolbarButton>
       </ToolbarGroup>
 
       <ToolbarSeparator />
 
       {/* Text Formatting */}
       <ToolbarGroup>
-        <MarkButton type="bold" />
-        <MarkButton type="italic" />
-        <MarkButton type="underline" />
-        <MarkButton type="strike" />
-        <MarkButton type="code" />
-        <MarkButton type="superscript" />
-        <MarkButton type="subscript" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          isActive={editor.isActive('bold')}
+          title="Bold"
+        >
+          <Bold className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          isActive={editor.isActive('italic')}
+          title="Italic"
+        >
+          <Italic className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          isActive={editor.isActive('strike')}
+          title="Strikethrough"
+        >
+          <Strikethrough className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          isActive={editor.isActive('code')}
+          title="Inline Code"
+        >
+          <Code className="w-4 h-4" />
+        </ToolbarButton>
       </ToolbarGroup>
 
       <ToolbarSeparator />
 
-      {/* Advanced Formatting */}
+      {/* Lists and Blocks */}
       <ToolbarGroup>
-        {!isMobile ? (
-          <ColorHighlightPopover />
-        ) : (
-          <ColorHighlightPopoverButton onClick={onHighlighterClick} />
-        )}
-        {!isMobile ? <LinkPopover /> : <LinkButton onClick={onLinkClick} />}
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          isActive={editor.isActive('bulletList')}
+          title="Bullet List"
+        >
+          <List className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          isActive={editor.isActive('orderedList')}
+          title="Numbered List"
+        >
+          <ListOrdered className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          isActive={editor.isActive('blockquote')}
+          title="Quote"
+        >
+          <Quote className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          isActive={editor.isActive('codeBlock')}
+          title="Code Block"
+        >
+          <Code2 className="w-4 h-4" />
+        </ToolbarButton>
       </ToolbarGroup>
 
       <ToolbarSeparator />
 
-      {/* Text Alignment */}
+      {/* Alignment */}
       <ToolbarGroup>
-        <TextAlignButton align="left" />
-        <TextAlignButton align="center" />
-        <TextAlignButton align="right" />
-        <TextAlignButton align="justify" />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+          isActive={editor.isActive({ textAlign: 'left' })}
+          title="Align Left"
+        >
+          <AlignLeft className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('center').run()}
+          isActive={editor.isActive({ textAlign: 'center' })}
+          title="Align Center"
+        >
+          <AlignCenter className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          isActive={editor.isActive({ textAlign: 'right' })}
+          title="Align Right"
+        >
+          <AlignRight className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+          isActive={editor.isActive({ textAlign: 'justify' })}
+          title="Justify"
+        >
+          <AlignJustify className="w-4 h-4" />
+        </ToolbarButton>
       </ToolbarGroup>
 
-      <Spacer />
-    </>
+      <ToolbarSeparator />
+
+      {/* Other */}
+      <ToolbarGroup>
+        <ToolbarButton
+          onClick={setLink}
+          isActive={editor.isActive('link')}
+          title="Add Link"
+        >
+          <Underline className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          title="Horizontal Rule"
+        >
+          <Minus className="w-4 h-4" />
+        </ToolbarButton>
+      </ToolbarGroup>
+    </div>
   );
 };
 
-const MobileToolbarContent = ({
-  type,
-  onBack,
-}: {
-  type: "highlighter" | "link";
-  onBack: () => void;
-}) => (
-  <>
-    <ToolbarGroup>
-      <Button data-style="ghost" onClick={onBack}>
-        <ArrowLeftIcon className="tiptap-button-icon" />
-        {type === "highlighter" ? (
-          <HighlighterIcon className="tiptap-button-icon" />
-        ) : (
-          <LinkIcon className="tiptap-button-icon" />
-        )}
-      </Button>
-    </ToolbarGroup>
-
-    <ToolbarSeparator />
-
-    {type === "highlighter" ? (
-      <ColorHighlightPopoverContent />
-    ) : (
-      <LinkContent />
-    )}
-  </>
+const PreviewContent: React.FC<{ content: string }> = ({ content }) => (
+  <div 
+    className="prose prose-invert max-w-none p-4 bg-gray-900 border border-gray-700 rounded-b-lg"
+    dangerouslySetInnerHTML={{ __html: content }}
+  />
 );
 
-export function TiptapEditor({
-  value = "",
+export const TiptapEditor: React.FC<TiptapEditorProps> = ({
+  value = '',
   onChange,
-  placeholder = "Start typing...",
+  placeholder = 'Start typing...',
   label,
-  minHeight = "200px",
-  className = "",
+  minHeight = '200px',
+  className = '',
   showPreviewToggle = false,
-}: TiptapEditorProps) {
-  const isMobile = useIsMobile();
-  const { height } = useWindowSize();
-  const [mobileView, setMobileView] = React.useState<
-    "main" | "highlighter" | "link"
-  >("main");
-  const toolbarRef = React.useRef<HTMLDivElement>(null);
+}) => {
+  const [isPreview, setIsPreview] = useState(false);
 
   const editor = useEditor({
-    immediatelyRender: false,
-    shouldRerenderOnTransaction: false,
-    // Optimize editor props for better performance
-    editorProps: {
-      attributes: {
-        autocomplete: "off",
-        autocorrect: "off",
-        autocapitalize: "off",
-        "aria-label": "Main content area, start typing to enter text.",
-        class: "simple-editor",
-        placeholder: placeholder,
-      },
-      // Reduce DOM updates during typing
-      handleDOMEvents: {
-        input: () => false, // Let tiptap handle input events
-      },
-    },
     extensions: [
       StarterKit.configure({
-        horizontalRule: false,
-        link: {
-          openOnClick: false,
-          enableClickSelection: true,
+        codeBlock: {
+          HTMLAttributes: {
+            class: 'hljs',
+          },
         },
       }),
-      HorizontalRule,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Highlight.configure({ multicolor: true }),
-      Typography,
-      Superscript,
-      Subscript,
-      Selection,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Highlight.configure({
+        multicolor: true,
+      }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      // Throttle onChange calls to reduce parent component re-renders
       if (onChange) {
-        const html = editor.getHTML();
-        // Only call onChange if content actually changed
-        if (html !== value) {
-          onChange(html);
-        }
+        onChange(editor.getHTML());
       }
     },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-invert max-w-none focus:outline-none p-4 bg-gray-900 border border-gray-700 rounded-b-lg',
+        style: `min-height: ${minHeight}`,
+        placeholder: placeholder,
+      },
+    },
   });
-
-  const rect = useCursorVisibility({
-    editor,
-    overlayHeight: toolbarRef.current?.getBoundingClientRect().height ?? 0,
-  });
-
-  React.useEffect(() => {
-    if (!isMobile && mobileView !== "main") {
-      setMobileView("main");
-    }
-  }, [isMobile, mobileView]);
 
   // Update editor content when value prop changes
   React.useEffect(() => {
@@ -264,40 +334,57 @@ export function TiptapEditor({
     }
   }, [editor, value]);
 
+  if (!editor) {
+    return null;
+  }
+
   return (
-    <div className={`simple-editor-wrapper ${className}`}>
+    <div className={`tiptap-editor ${className}`}>
       {label && (
-        <label className="text-sm font-medium text-white/90 mb-3 block px-4 pt-4">
+        <label className="text-sm font-medium text-white/90 mb-3 block">
           {label}
         </label>
       )}
       
-      <EditorContext.Provider value={{ editor }}>
-        <Toolbar
-          ref={toolbarRef}
-          data-variant={isMobile ? "fixed" : "floating"}
-        >
-          {mobileView === "main" ? (
-            <MainToolbarContent
-              onHighlighterClick={() => setMobileView("highlighter")}
-              onLinkClick={() => setMobileView("link")}
-              isMobile={isMobile}
-            />
-          ) : (
-            <MobileToolbarContent
-              type={mobileView === "highlighter" ? "highlighter" : "link"}
-              onBack={() => setMobileView("main")}
-            />
-          )}
-        </Toolbar>
-
-        <div style={{ minHeight }} className="simple-editor-content">
-          <EditorContent
-            editor={editor}
-            role="presentation"
+      <div className="border border-gray-700 rounded-lg overflow-hidden">
+        <Toolbar editor={editor} />
+        
+        {showPreviewToggle && (
+          <div className="flex items-center justify-between p-2 bg-gray-800 border-t border-gray-700">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant={!isPreview ? "solid" : "ghost"}
+                color={!isPreview ? "primary" : "default"}
+                onPress={() => setIsPreview(false)}
+                className="h-7 px-3"
+              >
+                <Edit3 className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant={isPreview ? "solid" : "ghost"}
+                color={isPreview ? "primary" : "default"}
+                onPress={() => setIsPreview(true)}
+                className="h-7 px-3"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                Preview
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {isPreview ? (
+          <PreviewContent content={editor.getHTML()} />
+        ) : (
+          <EditorContent 
+            editor={editor} 
+            className="focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-opacity-50"
           />
-        </div>
-      </EditorContext.Provider>
+        )}
+      </div>
     </div>
   );
-}
+};
