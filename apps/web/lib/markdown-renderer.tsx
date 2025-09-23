@@ -7,9 +7,7 @@ import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
 import rehypeSlug from "rehype-slug";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import "highlight.js/styles/github-dark.css";
 
 interface MarkdownRendererProps {
   content: string;
@@ -17,44 +15,29 @@ interface MarkdownRendererProps {
 }
 
 /**
- * ──────────────────────────────────────────────────────────────────────────────
- *  หมายเหตุสำคัญ:
- *  - rehypeRaw เปิดให้ Markdown ที่มี HTML ดิบ (เช่น <mark>, <sup> ฯลฯ) ถูกเรนเดอร์จริง
- *  - rehypeSanitize ใช้ schema ที่ "ขยาย" เพื่อ:
- *      • อนุญาตแท็ก <mark> และ attribute ที่จำเป็น
- *      • คงค่า className บน <code>/<span> ที่ไฮไลต์ต้องใช้ (เช่น .hljs, .hljs-keyword ฯลฯ)
- *  - เรา override เฉพาะ inline <code> เพื่อไม่รบกวน block code ที่ไฮไลต์จัดการ
- *  - pre/block code ใช้สไตล์ผ่าน Tailwind Typography (prose-*) แทนการปรับ whitespace เอง
- * ──────────────────────────────────────────────────────────────────────────────
+ * ปรับ schema ของ sanitize:
+ * - อนุญาต <mark> และ attribute ที่ใช้กำหนดสี
+ * - คง className บน <code>/<span>/<pre> เพื่อไม่ตัดคลาสของ highlight.js
  */
-
 const sanitizeSchema = (() => {
-  // ทำ deep clone เพื่อไม่แก้ไขของเดิม
   const schema: any = JSON.parse(JSON.stringify(defaultSchema));
 
-  // อนุญาต tag <mark>
   schema.tagNames = Array.from(new Set([...(schema.tagNames || []), "mark"]));
 
-  // อนุญาต className บน <code> และ <span> (สำหรับ span ของ highlight.js)
   schema.attributes = {
     ...(schema.attributes || {}),
-    code: [
-      ...((schema.attributes && schema.attributes.code) || []),
-      // อนุญาตเก็บ className ที่ไฮไลต์เติมเข้ามา
-      "className",
-      "data-language",
-    ],
-    span: [
-      ...((schema.attributes && schema.attributes.span) || []),
-      "className",
-    ],
+    code: [...(schema.attributes?.code || []), "className", "data-language"],
+    pre: [...(schema.attributes?.pre || []), "className"],
+    span: [...(schema.attributes?.span || []), "className"],
     mark: [
-      ...((schema.attributes && schema.attributes.mark) || []),
+      ...(schema.attributes?.mark || []),
       "className",
-      // หากต้องการ inline style กับ <mark> (ไม่แนะนำหากรับ input ภายนอก)
       "style",
+      "data-color",
+      "data-highlight",
+      "color",
     ],
-    a: [...((schema.attributes && schema.attributes.a) || []), "target", "rel"],
+    a: [...(schema.attributes?.a || []), "target", "rel"],
   };
 
   return schema;
@@ -69,26 +52,24 @@ export function MarkdownRenderer({
       className={[
         "markdown-content",
         "prose prose-invert prose-sm max-w-none",
-        // ปรับสไตล์บล็อกโค้ด/อินไลน์โค้ดผ่าน typography แทนการแตะ <code>/<pre> โดยตรง
-        // ป้องกันไม่ให้ white-space/word-break ไปทำให้ markup ของไฮไลต์เพี้ยน
+        // block code container
         "prose-pre:bg-gray-900/50 prose-pre:border prose-pre:border-white/10",
         "prose-pre:rounded-lg prose-pre:overflow-x-auto",
+        // ตัด backtick decoration ของ typography สำหรับ inline code
         "prose-code:before:content-[''] prose-code:after:content-['']",
-        // ลิงก์และ blockquote ให้เหมาะกับธีมเข้ม
+        // ลิงก์และ blockquote ให้เข้ากับธีมมืด
         "prose-a:text-primary-400 hover:prose-a:text-primary-300",
         "prose-blockquote:border-l-primary-500",
         className,
       ].join(" ")}
     >
       <ReactMarkdown
-        // GFM: ตาราง, task list, strikethrough (+ แปลง \n เป็น <br> ถ้าอยากให้ขึ้นบรรทัดใหม่)
         remarkPlugins={[remarkGfm, remarkBreaks]}
-        // ลำดับสำคัญ: raw -> sanitize -> slug/auto-link -> highlight
+        // ลำดับ: raw -> sanitize -> slug -> highlight
         rehypePlugins={[
           rehypeRaw,
           [rehypeSanitize, sanitizeSchema],
-          rehypeSlug,
-          [rehypeAutolinkHeadings, { behavior: "wrap" }],
+          rehypeSlug, // ใส่ id ให้ heading (ไม่ทำเป็นลิงก์)
           [rehypeHighlight, { detect: true, ignoreMissing: true }],
         ]}
         components={{
@@ -119,7 +100,7 @@ export function MarkdownRenderer({
             <em className="italic text-white/90">{children}</em>
           ),
 
-          // ลิงก์: เปิดแท็บใหม่เฉพาะ external; anchor (#...) จะไม่เปิดใหม่
+          // ลิงก์: anchor (#...) ไม่เปิดแท็บใหม่
           a: ({ children, href }) => {
             const isHash = href?.startsWith("#");
             return (
@@ -156,8 +137,8 @@ export function MarkdownRenderer({
 
           /**
            * โค้ด:
-           * - ปล่อย "block code" ให้ rehype-highlight จัด markup + className เอง
-           * - จัดสไตล์เฉพาะ "inline code" เท่านั้น เพื่อไม่ทำลายคลาสจาก highlight.js
+           * - inline code: แต่งเล็กน้อย
+           * - block code: ปล่อยให้ rehype-highlight ใส่คลาส .hljs / .language-* เอง
            */
           code: ({ inline, className, children, ...props }: any) => {
             if (inline) {
@@ -170,7 +151,6 @@ export function MarkdownRenderer({
                 </code>
               );
             }
-            // block code: อย่าแตะ className/children
             return (
               <code className={className} {...props}>
                 {children}
@@ -197,14 +177,23 @@ export function MarkdownRenderer({
             </td>
           ),
 
-          // ไฮไลต์ (==text==) ผ่านแท็ก <mark> ใน Markdown (ต้องมี rehypeRaw)
-          mark: ({ children, className }: any) => {
-            const colorMatch = className?.match(/highlight-(\w+)/);
-            const color = colorMatch ? colorMatch[1] : "yellow";
-            const colorMap: Record<
-              string,
-              { bg: string; text: string }
-            > = {
+          /**
+           * <mark> สี:
+           * - class="highlight-blue" หรือ data-color="blue" / data-highlight="blue"
+           * - ไม่ระบุ → yellow (ดีฟอลต์)
+           */
+          mark: ({ children, className, ...props }: any) => {
+            const rawColor =
+              (props["data-color"] as string) ||
+              (props["data-highlight"] as string) ||
+              (props["color"] as string) ||
+              "";
+            const classColorMatch = (className as string | undefined)?.match(
+              /highlight-(\w+)/
+            );
+            const color = (classColorMatch?.[1] || rawColor || "yellow").toLowerCase();
+
+            const colorMap: Record<string, { bg: string; text: string }> = {
               yellow: { bg: "#6b6524", text: "#58531e" },
               green: { bg: "#509568", text: "#47855d" },
               blue: { bg: "#6e92aa", text: "#5e86a1" },
@@ -217,11 +206,14 @@ export function MarkdownRenderer({
             };
             const fallback = colorMap[color] || colorMap.yellow;
 
+            const style: React.CSSProperties = {
+              backgroundColor: fallback.bg,
+              color: fallback.text,
+              ...(props.style as React.CSSProperties),
+            };
+
             return (
-              <mark
-                className="px-1 py-0.5 rounded"
-                style={{ backgroundColor: fallback.bg, color: fallback.text }}
-              >
+              <mark className="px-1 py-0.5 rounded" style={style}>
                 {children}
               </mark>
             );
