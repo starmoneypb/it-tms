@@ -27,7 +27,7 @@
 /* Dark mode */
 .dark .tiptap-button {
   --tt-button-default-bg-color: var(--tt-gray-dark-a-100);
-  --tt-button-hover-bg-color: var(--tt-gray-dark-200);
+  --tt-button-hover-bg-color: var(--tt-gray-dark-a-200);
   --tt-button-active-bg-color: var(--tt-gray-dark-a-200);
   --tt-button-active-bg-color-emphasized: var(
     --tt-brand-color-900
@@ -35,7 +35,7 @@
   --tt-button-active-bg-color-subdued: var(
     --tt-gray-dark-a-200
   ); //less important active state
-  --tt-button-active-hover-bg-color: var(--tt-gray-dark-300);
+  --tt-button-active-hover-bg-color: var(--tt-gray-dark-a-300);
   --tt-button-active-hover-bg-color-emphasized: var(
     --tt-brand-color-800
   ); //more important active state hover
@@ -80,7 +80,7 @@
 
   /* Dark mode */
   .dark & {
-    --tt-button-default-icon-color: var(--tt-gray-dark-a-600);
+    --tt-button-default-icon-color: var(--tt-gray-dark-a-800);
     --tt-button-hover-icon-color: var(--tt-gray-dark-a-900);
     --tt-button-active-icon-color: var(--tt-brand-color-400);
     --tt-button-active-icon-color-emphasized: var(--tt-brand-color-400);
@@ -167,7 +167,7 @@
     /* Dark mode */
     .dark & {
       --tt-button-default-bg-color: var(--transparent);
-      --tt-button-hover-bg-color: var(--tt-gray-dark-200);
+      --tt-button-hover-bg-color: var(--tt-gray-dark-a-200);
       --tt-button-active-bg-color: var(--tt-gray-dark-a-100);
       --tt-button-active-bg-color-emphasized: var(
         --tt-brand-color-900
@@ -175,7 +175,7 @@
       --tt-button-active-bg-color-subdued: var(
         --tt-gray-dark-a-100
       ); //less important active state
-      --tt-button-active-hover-bg-color: var(--tt-gray-dark-200);
+      --tt-button-active-hover-bg-color: var(--tt-gray-dark-a-200);
       --tt-button-active-hover-bg-color-emphasized: var(
         --tt-brand-color-800
       ); //more important active state hover
@@ -221,7 +221,7 @@
 
     /* Dark mode */
     .dark & {
-      --tt-button-default-icon-color: var(--tt-gray-dark-a-600);
+      --tt-button-default-icon-color: var(--tt-gray-dark-a-800);
       --tt-button-hover-icon-color: var(--tt-gray-dark-a-900);
       --tt-button-active-icon-color: var(--tt-brand-color-400);
       --tt-button-active-icon-color-emphasized: var(--tt-brand-color-300);

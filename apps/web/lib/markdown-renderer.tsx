@@ -47,19 +47,19 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             const isInline = !className;
             if (isInline) {
               return (
-                <code className="bg-white/10 text-white/90 px-1 py-0.5 rounded text-sm font-mono">
+                <code className="bg-white/10 text-white/90 px-1 py-0.5 rounded text-sm font-mono border border-white/10">
                   {children}
                 </code>
               );
             }
             return (
-              <code className={`${className} block bg-gray-900/50 p-3 rounded-lg text-white/90 overflow-x-auto`}>
+              <code className={`${className} block bg-gray-900/50 p-3 rounded-lg text-white/90 overflow-x-auto font-mono border border-white/10`}>
                 {children}
               </code>
             );
           },
           pre: ({ children }) => (
-            <pre className="bg-gray-900/50 p-3 rounded-lg overflow-x-auto mb-3">
+            <pre className="bg-gray-900/50 p-3 rounded-lg overflow-x-auto mb-3 border border-white/10">
               {children}
             </pre>
           ),
@@ -68,12 +68,27 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
             const colorMatch = className?.match(/highlight-(\w+)/);
             const color = colorMatch ? colorMatch[1] : 'yellow';
             
+            // Fallback colors for when CSS variables aren't available
+            const colorMap: Record<string, { bg: string; text: string }> = {
+              yellow: { bg: '#6b6524', text: '#58531e' },
+              green: { bg: '#509568', text: '#47855d' },
+              blue: { bg: '#6e92aa', text: '#5e86a1' },
+              purple: { bg: '#583e74', text: '#4c3564' },
+              red: { bg: '#743e42', text: '#643539' },
+              gray: { bg: 'rgb(47, 47, 47)', text: 'rgba(255, 255, 255, 0.094)' },
+              brown: { bg: 'rgb(74, 50, 40)', text: 'rgba(184, 101, 69, 0.25)' },
+              orange: { bg: 'rgb(92, 59, 35)', text: 'rgba(233, 126, 37, 0.2)' },
+              pink: { bg: 'rgb(78, 44, 60)', text: 'rgba(220, 76, 145, 0.22)' }
+            };
+            
+            const fallbackColors = colorMap[color] || colorMap.yellow;
+            
             return (
               <mark 
                 className={`px-1 py-0.5 rounded`}
                 style={{
-                  backgroundColor: `var(--tt-color-highlight-${color})`,
-                  color: `var(--tt-color-highlight-${color}-contrast)`
+                  backgroundColor: fallbackColors.bg,
+                  color: fallbackColors.text
                 }}
               >
                 {children}
