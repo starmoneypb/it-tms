@@ -4,6 +4,7 @@ import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, Mo
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { MarkdownRenderer } from '@/lib/markdown-renderer';
+import { convertContentToMarkdown } from '@/lib/html-to-markdown';
 
 // Use current hostname with port 8000 for production-like environment
 const API = typeof window !== 'undefined' && window.location.port === '8000'
@@ -286,7 +287,7 @@ export default function ClassifyPage() {
                       <div className="bg-default-100 rounded-lg p-4">
                         {selectedTicket.description ? (
                           <MarkdownRenderer 
-                            content={selectedTicket.description}
+                            content={convertContentToMarkdown(selectedTicket.description)}
                             className="text-sm"
                           />
                         ) : (

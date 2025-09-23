@@ -43,9 +43,43 @@ export function htmlToMarkdown(html: string): string {
     // Links
     .replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
     
-    // Code
+    // Code blocks (handle multi-line code properly)
+    .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gi, (match, content) => {
+      // Clean up the content and preserve line breaks
+      const cleanContent = content
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+      return `\`\`\`\n${cleanContent}\n\`\`\`\n\n`;
+    })
+    .replace(/<pre[^>]*>(.*?)<\/pre>/gi, (match, content) => {
+      // Clean up the content and preserve line breaks
+      const cleanContent = content
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+      return `\`\`\`\n${cleanContent}\n\`\`\`\n\n`;
+    })
+    // Inline code (do this after code blocks to avoid conflicts)
     .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
-    .replace(/<pre[^>]*>(.*?)<\/pre>/gi, '```\n$1\n```\n\n')
+    
+    // Highlighting - preserve mark tags with their color information
+    .replace(/<mark[^>]*data-color="([^"]*)"[^>]*style="[^"]*background-color:\s*([^;]*);[^"]*"[^>]*>(.*?)<\/mark>/gi, (match, dataColor, bgColor, content) => {
+      // Extract color name from CSS variable or use the actual color
+      const colorMatch = bgColor.match(/var\(--tt-color-highlight-(\w+)\)/) || bgColor.match(/#([0-9a-fA-F]{6})/);
+      const color = colorMatch ? colorMatch[1] : 'yellow';
+      return `<mark class="highlight-${color}">${content}</mark>`;
+    })
+    .replace(/<mark[^>]*class="highlight-(\w+)"[^>]*>(.*?)<\/mark>/gi, '<mark class="highlight-$1">$2</mark>')
+    .replace(/<mark[^>]*>(.*?)<\/mark>/gi, '<mark class="highlight-yellow">$1</mark>')
     
     // Blockquotes
     .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, (match, content) => {
@@ -53,8 +87,8 @@ export function htmlToMarkdown(html: string): string {
       return `> ${cleanContent.trim()}\n\n`;
     })
     
-    // Remove remaining HTML tags
-    .replace(/<[^>]*>/g, '')
+    // Remove remaining HTML tags (but preserve mark tags)
+    .replace(/<(?!\/?mark\b)[^>]*>/g, '')
     
     // Decode HTML entities
     .replace(/&nbsp;/g, ' ')

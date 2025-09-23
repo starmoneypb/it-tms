@@ -53,13 +53,13 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
               );
             }
             return (
-              <code className={`${className} block bg-gray-900/50 p-3 rounded-lg text-white/90 overflow-x-auto font-mono border border-white/10`}>
+              <code className={`${className} block bg-gray-900/50 p-3 rounded-lg text-white/90 overflow-x-auto font-mono border border-white/10 whitespace-pre-wrap break-words`}>
                 {children}
               </code>
             );
           },
           pre: ({ children }) => (
-            <pre className="bg-gray-900/50 p-3 rounded-lg overflow-x-auto mb-3 border border-white/10">
+            <pre className="bg-gray-900/50 p-3 rounded-lg overflow-x-auto mb-3 border border-white/10 whitespace-pre-wrap break-words">
               {children}
             </pre>
           ),

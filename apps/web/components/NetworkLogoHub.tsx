@@ -117,7 +117,7 @@ const NetworkLogoHub: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Calculate SVG path for straight horizontal/vertical connecting lines
+  // Calculate SVG path for direct straight lines from center to icon edge
   const getConnectionPath = (icon: NetworkIcon) => {
     // Use absolute coordinates that match the container size
     const containerSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 320 : 384; // w-80 = 320px (mobile) or w-96 = 384px (desktop)
@@ -128,16 +128,26 @@ const NetworkLogoHub: React.FC = () => {
     const iconX = centerX + icon.position.x;
     const iconY = centerY + icon.position.y;
     
-    // Create straight horizontal/vertical lines based on icon position
-    // For icons on the left/right (horizontal axis), go horizontal first
-    // For icons on the top/bottom (vertical axis), go vertical first
-    if (Math.abs(icon.position.x) > Math.abs(icon.position.y)) {
-      // Horizontal first (left/right icons)
-      return `M ${centerX} ${centerY} L ${iconX} ${centerY} L ${iconX} ${iconY}`;
-    } else {
-      // Vertical first (top/bottom icons)
-      return `M ${centerX} ${centerY} L ${centerX} ${iconY} L ${iconX} ${iconY}`;
-    }
+    // Calculate the direction vector from center to icon
+    const deltaX = icon.position.x;
+    const deltaY = icon.position.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Normalize the direction vector
+    const dirX = deltaX / distance;
+    const dirY = deltaY / distance;
+    
+    // Calculate icon container size (p-4 md:p-5 = 16px/20px padding + icon size)
+    const iconContainerSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 56 : 64; // Approximate container size
+    const iconRadius = iconContainerSize / 2;
+    
+    // Calculate the point where the line should stop (at the edge of the icon container)
+    const stopDistance = distance - iconRadius;
+    const stopX = centerX + (dirX * stopDistance);
+    const stopY = centerY + (dirY * stopDistance);
+    
+    // Create direct straight line from center to icon edge
+    return `M ${centerX} ${centerY} L ${stopX} ${stopY}`;
   };
 
   return (

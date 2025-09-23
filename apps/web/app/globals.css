@@ -473,7 +473,28 @@ a {
 [data-slot="input-wrapper"] {
   border: none !important;
   background: rgba(255, 255, 255, 0.05) !important;
-  transition: all 0.2s ease-in-out !important;
+}
+
+/* Enhanced markdown content styling */
+.markdown-content {
+  /* Ensure proper text wrapping and overflow handling */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.markdown-content pre {
+  /* Better code block handling */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.markdown-content code {
+  /* Better inline code handling */
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 [data-slot="input-wrapper"]:hover {
