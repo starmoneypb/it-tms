@@ -15,20 +15,35 @@ interface MarkdownRendererProps {
 }
 
 /**
- * Sanitize schema:
- * - Allow <mark> and color-related props
- * - Keep className on <code>/<pre>/<span> to preserve language-xxx classes
+ * Sanitize schema (expanded):
+ * - Allow <mark>, <del>, <input>, <img>, <sup>, <sub>, <u>, <kbd>, <hr>, <br>
+ * - Keep className on <code>/<pre>/<span>
  * - Allow target/rel on <a>
+ * - Allow style on <mark>, headings, <p> (for text-align), and <pre>/<code> (if present)
  */
 const sanitizeSchema = (() => {
   const schema: any = JSON.parse(JSON.stringify(defaultSchema));
 
-  schema.tagNames = Array.from(new Set([...(schema.tagNames || []), "mark", "del"]));
+  schema.tagNames = Array.from(
+    new Set([
+      ...(schema.tagNames || []),
+      "mark",
+      "del",
+      "input",
+      "img",
+      "sup",
+      "sub",
+      "u",
+      "kbd",
+      "hr",
+      "br",
+    ])
+  );
 
   schema.attributes = {
     ...(schema.attributes || {}),
-    code: [...(schema.attributes?.code || []), "className", "data-language"],
-    pre: [...(schema.attributes?.pre || []), "className"],
+    code: [...(schema.attributes?.code || []), "className", "data-language", "style"],
+    pre: [...(schema.attributes?.pre || []), "className", "style"],
     span: [...(schema.attributes?.span || []), "className"],
     mark: [
       ...(schema.attributes?.mark || []),
@@ -40,6 +55,40 @@ const sanitizeSchema = (() => {
     ],
     del: [...(schema.attributes?.del || []), "className"],
     a: [...(schema.attributes?.a || []), "target", "rel"],
+    img: [
+      ...(schema.attributes?.img || []),
+      "src",
+      "alt",
+      "title",
+      "width",
+      "height",
+      "loading",
+      "decoding",
+      "className",
+    ],
+    input: [
+      ...(schema.attributes?.input || []),
+      "type",
+      "checked",
+      "disabled",
+      "aria-checked",
+      "tabIndex",
+      "readOnly",
+      "className",
+    ],
+    sup: [...(schema.attributes?.sup || []), "className"],
+    sub: [...(schema.attributes?.sub || []), "className"],
+    u: [...(schema.attributes?.u || []), "className"],
+    kbd: [...(schema.attributes?.kbd || []), "className"],
+
+    // Allow inline style on headings and paragraphs to keep text-align from raw HTML
+    h1: [...(schema.attributes?.h1 || []), "style"],
+    h2: [...(schema.attributes?.h2 || []), "style"],
+    h3: [...(schema.attributes?.h3 || []), "style"],
+    h4: [...(schema.attributes?.h4 || []), "style"],
+    h5: [...(schema.attributes?.h5 || []), "style"],
+    h6: [...(schema.attributes?.h6 || []), "style"],
+    p: [...(schema.attributes?.p || []), "style"],
   };
 
   return schema;
@@ -51,9 +100,9 @@ function pickMarkStyle(
   props?: { [k: string]: unknown }
 ): React.CSSProperties {
   // 1) Respect existing background/backgroundColor styles
-  const style = (props?.style || {}) as React.CSSProperties;
-  if (style.background || style.backgroundColor) {
-    return style;
+  const styleProp = props?.style as any;
+  if (styleProp && (styleProp.background || styleProp.backgroundColor)) {
+    return styleProp as React.CSSProperties;
   }
 
   // 2) Read color from data-* or color attr
@@ -81,7 +130,22 @@ function pickMarkStyle(
   };
 
   const picked = colorMap[colorKey] || colorMap.yellow;
-  return { ...style, backgroundColor: picked.bg, color: picked.text };
+  return { ...(styleProp as any), backgroundColor: picked.bg, color: picked.text };
+}
+
+function readTextAlignFromStyleProp(styleProp: unknown): "left" | "center" | "right" | "justify" {
+  if (styleProp && typeof styleProp === "object") {
+    const ta = (styleProp as any).textAlign;
+    if (ta && typeof ta === "string") {
+      const v = ta.toLowerCase();
+      if (v === "left" || v === "center" || v === "right" || v === "justify") return v;
+    }
+  }
+  if (typeof styleProp === "string") {
+    const m = styleProp.match(/text-align\s*:\s*(left|center|right|justify)/i);
+    if (m) return m[1].toLowerCase() as any;
+  }
+  return "left";
 }
 
 export function MarkdownRenderer({
@@ -104,92 +168,44 @@ export function MarkdownRenderer({
       ].join(" ")}
     >
       <ReactMarkdown
-        // Just GFM is enough (tables, task list, strikethrough, autolink)
+        // GFM → tables, task list, strikethrough, autolink, (footnotes)
         remarkPlugins={[remarkGfm]}
-        // Order: raw -> sanitize -> slug
+        // Order: raw -> sanitize -> slug (ids are added after sanitize)
         rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeSlug]}
         components={{
-          // Headings with alignment support
+          // Headings with alignment support (reads style even if it's a string)
           h1: ({ children, ...props }) => {
-            const style = (props as any).style || {};
-            const textAlign = style.textAlign || 'left';
-            
-            const alignmentMap = {
-              'left': 'text-left',
-              'center': 'text-center',
-              'right': 'text-right',
-              'justify': 'text-justify'
-            };
-            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
-            
+            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h1 
-                className={`text-2xl font-bold text-white mb-4 ${alignmentClass}`}
-                style={{ textAlign }}
-              >
+              <h1 className={`text-2xl font-bold text-white mb-4 ${map[textAlign]}`} style={{ textAlign }}>
                 {children}
               </h1>
             );
           },
           h2: ({ children, ...props }) => {
-            const style = (props as any).style || {};
-            const textAlign = style.textAlign || 'left';
-            
-            const alignmentMap = {
-              'left': 'text-left',
-              'center': 'text-center',
-              'right': 'text-right',
-              'justify': 'text-justify'
-            };
-            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
-            
+            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h2 
-                className={`text-xl font-semibold text-white mb-3 ${alignmentClass}`}
-                style={{ textAlign }}
-              >
+              <h2 className={`text-xl font-semibold text-white mb-3 ${map[textAlign]}`} style={{ textAlign }}>
                 {children}
               </h2>
             );
           },
           h3: ({ children, ...props }) => {
-            const style = (props as any).style || {};
-            const textAlign = style.textAlign || 'left';
-            
-            const alignmentMap = {
-              'left': 'text-left',
-              'center': 'text-center',
-              'right': 'text-right',
-              'justify': 'text-justify'
-            };
-            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
-            
+            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h3 
-                className={`text-lg font-medium text-white mb-2 ${alignmentClass}`}
-                style={{ textAlign }}
-              >
+              <h3 className={`text-lg font-medium text-white mb-2 ${map[textAlign]}`} style={{ textAlign }}>
                 {children}
               </h3>
             );
           },
           h4: ({ children, ...props }) => {
-            const style = (props as any).style || {};
-            const textAlign = style.textAlign || 'left';
-            
-            const alignmentMap = {
-              'left': 'text-left',
-              'center': 'text-center',
-              'right': 'text-right',
-              'justify': 'text-justify'
-            };
-            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
-            
+            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h4 
-                className={`text-base font-medium text-white mb-2 ${alignmentClass}`}
-                style={{ textAlign }}
-              >
+              <h4 className={`text-base font-medium text-white mb-2 ${map[textAlign]}`} style={{ textAlign }}>
                 {children}
               </h4>
             );
@@ -197,36 +213,24 @@ export function MarkdownRenderer({
 
           // Basic text with alignment support
           p: ({ children, ...props }) => {
-            const style = (props as any).style || {};
-            const textAlign = style.textAlign || 'left';
-            
-            // Check if this paragraph contains only a code block
-            // If so, don't wrap it in a <p> tag
+            const textAlign = readTextAlignFromStyleProp((props as any).style);
+
+            // If this paragraph contains only a code block, don't wrap it in <p>
             if (React.Children.count(children) === 1) {
               const child = React.Children.toArray(children)[0];
-              if (React.isValidElement(child) && child.type === 'pre') {
+              if (React.isValidElement(child) && (child as any).type === 'pre') {
                 return <>{children}</>;
               }
             }
-            
-            // Apply text alignment classes
-            const alignmentMap = {
-              'left': 'text-left',
-              'center': 'text-center',
-              'right': 'text-right',
-              'justify': 'text-justify'
-            };
-            const alignmentClass = alignmentMap[textAlign as keyof typeof alignmentMap] || 'text-left';
-            
+
+            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <p 
-                className={`text-white/80 mb-3 leading-relaxed ${alignmentClass}`}
-                style={{ textAlign }}
-              >
+              <p className={`text-white/80 mb-3 leading-relaxed ${map[textAlign]}`} style={{ textAlign }}>
                 {children}
               </p>
             );
           },
+
           strong: ({ children }) => (
             <strong className="font-semibold text-white">{children}</strong>
           ),
@@ -266,6 +270,26 @@ export function MarkdownRenderer({
             </li>
           ),
 
+          // Task list checkboxes (rendered by remark-gfm as <input type="checkbox">)
+          input: (props: any) => {
+            const type = (props.type || '').toString().toLowerCase();
+            if (type !== 'checkbox') return <input {...props} />;
+            const checked =
+              props.checked === true ||
+              props.checked === '' ||
+              props.checked === 'true' ||
+              props['aria-checked'] === 'true';
+            return (
+              <input
+                type="checkbox"
+                className="mr-2 align-middle"
+                checked={checked}
+                readOnly
+                disabled
+              />
+            );
+          },
+
           // Blockquotes
           blockquote: ({ children }) => (
             <blockquote className="border-l-4 border-primary-500 pl-4 italic text-white/70 my-4 bg-primary-500/10 rounded-r-md py-3 pr-4 shadow-sm">
@@ -275,29 +299,11 @@ export function MarkdownRenderer({
 
           /**
            * PRE/Code:
-           * - Override <pre> to be a simple wrapper to avoid "pre inside pre"
-           * - Code blocks use SyntaxHighlighter (Prism) → supports multiple lines + no external CSS needed
-           * - Inline code still uses <code> as before
+           * - 'pre' is kept minimal to avoid "pre inside pre"
+           * - Code blocks use SyntaxHighlighter (Prism)
            */
           pre: ({ children }) => {
-            // Check if this pre contains a code element with language class
-            const codeElement = React.Children.toArray(children).find(child => 
-              React.isValidElement(child) && 
-              child.type === 'code' && 
-              child.props?.className?.includes('language-')
-            );
-            
-            if (codeElement) {
-              // This is a code block, let the code component handle it
-              return <div className="mb-3 overflow-x-auto">{children}</div>;
-            }
-            
-            // This is a regular pre element
-            return (
-              <pre className="mb-3 overflow-x-auto bg-gray-900/50 border border-white/10 rounded-lg p-4 text-white/90 font-mono text-sm">
-                {children}
-              </pre>
-            );
+            return <div className="mb-3 overflow-x-auto">{children}</div>;
           },
           code: ({
             inline,
@@ -325,7 +331,6 @@ export function MarkdownRenderer({
             const match = /language-([\w-]+)/.exec(className || "");
             const language = match?.[1] || undefined;
 
-            // Remove trailing newline from block according to react-markdown standard
             const content = raw.replace(/\n$/, "");
 
             return (
@@ -355,6 +360,21 @@ export function MarkdownRenderer({
               </SyntaxHighlighter>
             );
           },
+
+          // Images
+          img: ({ src, alt, title }) => (
+            <img
+              src={src || ""}
+              alt={alt || ""}
+              title={title}
+              loading="lazy"
+              decoding="async"
+              className="max-w-full h-auto rounded-md my-3 border border-white/10"
+            />
+          ),
+
+          // Horizontal rule
+          hr: () => <hr className="border-white/10 my-6" />,
 
           // Tables
           table: ({ children }) => (
@@ -392,6 +412,16 @@ export function MarkdownRenderer({
               </mark>
             );
           },
+
+          // Extra inline HTML helpers
+          sup: ({ children }) => <sup className="align-super text-white/80">{children}</sup>,
+          sub: ({ children }) => <sub className="align-sub text-white/80">{children}</sub>,
+          u:   ({ children }) => <u className="underline decoration-white/60">{children}</u>,
+          kbd: ({ children }) => (
+            <kbd className="px-1.5 py-0.5 rounded border border-white/20 bg-white/10 text-white/90 font-mono text-[0.85em]">
+              {children}
+            </kbd>
+          ),
         }}
       >
         {content}
