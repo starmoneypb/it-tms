@@ -49,6 +49,17 @@
     "title": "UniSight",
     "subtitle": "One Vision, One Reality",
     "quickActions": "Quick Actions",
+    "badge": "IT Ticket Management System",
+    "description": "Access your most important tools and features",
+    "simpleEffective": "Simple & Effective",
+    "builtForTeam": "Built for Your Team",
+    "teamDescription": "A straightforward ticket management system designed to help your team work more efficiently",
+    "easyTicketCreation": "Easy Ticket Creation",
+    "easyTicketDescription": "Simple forms for quick issue reporting",
+    "clearDashboard": "Clear Dashboard",
+    "clearDashboardDescription": "Visual insights into your team's work",
+    "teamCollaboration": "Team Collaboration",
+    "teamCollaborationDescription": "Work together on tickets and projects",
     "openTicket": {
       "title": "Open Ticket",
       "description": "Start a new request or report an issue."

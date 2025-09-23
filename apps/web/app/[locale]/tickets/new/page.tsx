@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox } from "@heroui/react";
 import { computePriority, PriorityInput } from "@/lib/priority";
-import { MarkdownEditor } from "@/lib/markdown-editor";
+import { TiptapEditor } from "@/lib/tiptap-editor";
 import { useAuth } from "@/lib/auth";
 import { useLocale, useTranslations } from 'next-intl';
 import { 
@@ -288,14 +288,14 @@ export default function NewTicket() {
                   <p className="text-white/70 text-lg">{t('provideDetailedInfo')}</p>
                 </div>
                 <div className="space-y-4">
-                  <MarkdownEditor 
+                  <TiptapEditor 
                     label={t('problemDescription')} 
                     placeholder={t('problemPlaceholder')}
                     value={draft.description || ""} 
                     onChange={(v)=>setDraft({...draft, description: v})}
                     minHeight="200px"
                   />
-                  <MarkdownEditor 
+                  <TiptapEditor 
                     label={t('stepsToReproduce')} 
                     placeholder={t('howToReproduce')}
                     value={(draft.details?.steps)|| ""} 
@@ -404,11 +404,11 @@ export default function NewTicket() {
                     value={draft.title || ""} 
                     onValueChange={(v)=>setDraft({...draft, title: v})}
                   />
-                  <MarkdownEditor 
+                  <TiptapEditor 
                     label={t('description')} 
                     placeholder={t('descriptionPlaceholder')}
                     value={draft.description || ""} 
-                    onChange={(v)=>setDraft({...draft, description: v})}
+                    onChange={(v: string)=>setDraft({...draft, description: v})}
                     minHeight="200px"
                   />
                   <div>

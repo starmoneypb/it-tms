@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox } from "@heroui/react";
-import { MarkdownEditor } from "@/lib/markdown-editor";
+import { TiptapEditor } from "@/lib/tiptap-editor";
 import { MarkdownRenderer } from "@/lib/markdown-renderer";
 import { convertContentToMarkdown } from "@/lib/html-to-markdown";
 import { useAuth } from "@/lib/auth";
@@ -651,7 +651,7 @@ export default function TicketDetails() {
                   className="text-white/80 leading-relaxed"
                 />
               ) : (
-                <MarkdownEditor 
+                <TiptapEditor 
                   value={contentEditForm.description} 
                   onChange={(value) => setContentEditForm(prev => ({ ...prev, description: value }))} 
                   placeholder={t('enterTicketDescription')}
@@ -819,6 +819,60 @@ export default function TicketDetails() {
                 )}
               </div>
               
+              {/* Post Comment Box - Moved to top of comment list */}
+              {user && (
+                <Card className="glass mb-6">
+                  <CardHeader className="pb-3">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <MessageSquare size={18} className="text-primary-400" />
+                      {t('addComment')}
+                    </h3>
+                  </CardHeader>
+                  <CardBody className="space-y-4">
+                    <TiptapEditor 
+                      value={comment} 
+                      onChange={setComment} 
+                      placeholder={t('writeComment')}
+                      minHeight="200px"
+                      showPreviewToggle={false}
+                    />
+                    <div>
+                      <label className="text-sm font-medium text-white/80 mb-2 block">{t('attachments')}</label>
+                      <input 
+                        type="file" 
+                        multiple 
+                        onChange={(e) => setCommentFiles(Array.from(e.target.files || []))}
+                        className="w-full p-2 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
+                      />
+                      {commentFiles.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {commentFiles.map((file, index) => (
+                            <div key={index} className="text-sm text-white/70 flex items-center justify-between bg-white/5 p-2 rounded">
+                              <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                              <button 
+                                type="button"
+                                onClick={() => setCommentFiles(commentFiles.filter((_, i) => i !== index))}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                {t('remove')}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      color="primary" 
+                      onPress={postComment}
+                      isDisabled={!comment.trim()}
+                      className="w-full"
+                    >
+                      {t('postComment')}
+                    </Button>
+                  </CardBody>
+                </Card>
+              )}
+              
               {commentsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
@@ -960,59 +1014,6 @@ export default function TicketDetails() {
         </Card>
 
         <div className="space-y-6">
-          {user && (
-            <Card className="glass">
-              <CardHeader className="pb-3">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <MessageSquare size={18} className="text-primary-400" />
-                  {t('addComment')}
-                </h3>
-              </CardHeader>
-              <CardBody className="space-y-4">
-                <MarkdownEditor 
-                  value={comment} 
-                  onChange={setComment} 
-                  placeholder={t('writeComment')}
-                  minHeight="200px"
-                  showPreviewToggle={false}
-                />
-                <div>
-                  <label className="text-sm font-medium text-white/80 mb-2 block">{t('attachments')}</label>
-                  <input 
-                    type="file" 
-                    multiple 
-                    onChange={(e) => setCommentFiles(Array.from(e.target.files || []))}
-                    className="w-full p-2 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
-                  />
-                  {commentFiles.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {commentFiles.map((file, index) => (
-                        <div key={index} className="text-sm text-white/70 flex items-center justify-between bg-white/5 p-2 rounded">
-                          <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                          <button 
-                            type="button"
-                            onClick={() => setCommentFiles(commentFiles.filter((_, i) => i !== index))}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            {t('remove')}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <Button 
-                  color="primary" 
-                  onPress={postComment}
-                  isDisabled={!comment.trim()}
-                  className="w-full"
-                >
-                  {t('postComment')}
-                </Button>
-              </CardBody>
-            </Card>
-          )}
-
           {user && (
             <Card className="glass">
               <CardHeader className="pb-3">
