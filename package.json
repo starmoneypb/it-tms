@@ -12,5 +12,9 @@
   },
   "devDependencies": {
     "turbo": "2.0.10"
+  },
+  "dependencies": {
+    "caniuse-lite": "^1.0.30001743",
+    "picocolors": "^1.1.1"
   }
 }

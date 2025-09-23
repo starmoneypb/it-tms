@@ -943,7 +943,31 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
 	}
 	
-	// Check ownership for cancellation: Users can only cancel their own tickets
+	// Check permissions for status changes: Only Supervisors, Managers, or assigned users can change status
+	canChangeStatus := false
+	if role == "Supervisor" || role == "Manager" {
+		canChangeStatus = true
+	} else if role == "User" {
+		// Check if user created the ticket
+		if ticket.CreatedBy != nil && *ticket.CreatedBy == userID {
+			canChangeStatus = true
+		}
+		
+		// Check if user is assigned to the ticket
+		if !canChangeStatus {
+			isAssigned, err := h.repo.Tickets.IsUserAssignedToTicket(ctx, id, userID)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to check assignment"}})
+			}
+			canChangeStatus = isAssigned
+		}
+	}
+	
+	if !canChangeStatus {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors, managers, and assigned users can change ticket status"}})
+	}
+	
+	// Additional check for cancellation: Users can only cancel their own tickets
 	if body.Status == models.StatusCanceled && role == "User" {
 		if ticket.CreatedBy == nil || *ticket.CreatedBy != userID {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"can only cancel your own tickets"}})
@@ -1028,16 +1052,48 @@ func (h *Handlers) TicketsAddComment(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code":"BAD_REQUEST","message":"invalid comment"}})
 	}
 	userClaims, _ := c.Locals("user").(jwt.MapClaims)
-	var userID *string
-	if userClaims != nil {
-		if sid, ok := userClaims["sub"].(string); ok { userID = &sid }
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code":"UNAUTHORIZED","message":"authentication required"}})
 	}
+	
+	userID, role, _ := middleware.GetUserFromContext(c)
 	ctx := context.Background()
-	commentID, err := h.repo.Tickets.AddCommentWithID(ctx, id, userID, body.Body)
+	
+	// Get current ticket for permission check
+	ticket, err := h.repo.Tickets.GetByID(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code":"NOT_FOUND","message":"ticket not found"}})
+	}
+	
+	// Check permissions for commenting: Only Supervisors, Managers, or assigned users can post comments
+	canComment := false
+	if role == "Supervisor" || role == "Manager" {
+		canComment = true
+	} else if role == "User" {
+		// Check if user created the ticket
+		if ticket.CreatedBy != nil && *ticket.CreatedBy == userID {
+			canComment = true
+		}
+		
+		// Check if user is assigned to the ticket
+		if !canComment {
+			isAssigned, err := h.repo.Tickets.IsUserAssignedToTicket(ctx, id, userID)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to check assignment"}})
+			}
+			canComment = isAssigned
+		}
+	}
+	
+	if !canComment {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code":"FORBIDDEN","message":"only supervisors, managers, and assigned users can post comments"}})
+	}
+	
+	commentID, err := h.repo.Tickets.AddCommentWithID(ctx, id, &userID, body.Body)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"add comment failed"}})
 	}
-	h.repo.Audits.Insert(ctx, id, userID, "add_comment", nil, body.Body)
+	h.repo.Audits.Insert(ctx, id, &userID, "add_comment", nil, body.Body)
 	
 	// Send notifications to assignees
 	go func() {
@@ -1061,7 +1117,7 @@ func (h *Handlers) TicketsAddComment(c *fiber.Ctx) error {
 		}
 		
 		// Send notification to assignees
-		h.wsHub.NotifyCommentAdded(id, assigneeIDs, userID, body.Body, false, &ticket)
+		h.wsHub.NotifyCommentAdded(id, assigneeIDs, &userID, body.Body, false, &ticket)
 	}()
 	
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(fiber.Map{"commentId": commentID}))
