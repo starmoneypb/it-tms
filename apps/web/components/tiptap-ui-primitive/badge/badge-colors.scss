@@ -25,29 +25,30 @@
     --tt-brand-color-600
   ); //more important badge
 
-  /* Dark mode */
-  .dark & {
-    --tt-badge-border-color: var(--tt-gray-dark-a-200);
-    --tt-badge-border-color-subdued: var(--tt-gray-dark-a-200);
-    --tt-badge-border-color-emphasized: var(--tt-gray-dark-a-500);
-    --tt-badge-text-color: var(--tt-gray-dark-a-500);
-    --tt-badge-text-color-subdued: var(
-      --tt-gray-dark-a-400
-    ); //less important badge
-    --tt-badge-text-color-emphasized: var(
-      --tt-gray-dark-a-600
-    ); //more important badge
-    --tt-badge-bg-color: var(--black);
-    --tt-badge-bg-color-subdued: var(--black); //less important badge
-    --tt-badge-bg-color-emphasized: var(--black); //more important badge
-    --tt-badge-icon-color: var(--tt-gray-dark-a-500);
-    --tt-badge-icon-color-subdued: var(
-      --tt-gray-dark-a-400
-    ); //less important badge
-    --tt-badge-icon-color-emphasized: var(
-      --tt-brand-color-400
-    ); //more important badge
-  }
+}
+
+/* Dark mode */
+.dark .tiptap-badge {
+  --tt-badge-border-color: var(--tt-gray-dark-a-200);
+  --tt-badge-border-color-subdued: var(--tt-gray-dark-a-200);
+  --tt-badge-border-color-emphasized: var(--tt-gray-dark-a-500);
+  --tt-badge-text-color: var(--tt-gray-dark-a-500);
+  --tt-badge-text-color-subdued: var(
+    --tt-gray-dark-a-400
+  ); //less important badge
+  --tt-badge-text-color-emphasized: var(
+    --tt-gray-dark-a-600
+  ); //more important badge
+  --tt-badge-bg-color: var(--black);
+  --tt-badge-bg-color-subdued: var(--black); //less important badge
+  --tt-badge-bg-color-emphasized: var(--black); //more important badge
+  --tt-badge-icon-color: var(--tt-gray-dark-a-500);
+  --tt-badge-icon-color-subdued: var(
+    --tt-gray-dark-a-400
+  ); //less important badge
+  --tt-badge-icon-color-emphasized: var(
+    --tt-brand-color-400
+  ); //more important badge
 
   /************************************************** 
     Ghost 

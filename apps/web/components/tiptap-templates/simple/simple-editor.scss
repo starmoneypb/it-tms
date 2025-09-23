@@ -12,7 +12,7 @@
   overflow: hidden;
 }
 
-.simple-editor-wrapper .dark & {
+.dark .simple-editor-wrapper {
   --tt-theme-text: var(--tt-gray-dark-900);
 }
 
