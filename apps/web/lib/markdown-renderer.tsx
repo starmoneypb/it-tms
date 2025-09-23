@@ -202,7 +202,7 @@ export function MarkdownRenderer({
             // Check if this paragraph contains only a code block
             // If so, don't wrap it in a <p> tag
             if (React.Children.count(children) === 1) {
-              const child = React.Children.only(children);
+              const child = React.Children.toArray(children)[0];
               if (React.isValidElement(child) && child.type === 'pre') {
                 return <>{children}</>;
               }
