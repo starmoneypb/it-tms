@@ -794,7 +794,7 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	
 	for _, assignee := range newAssignees {
 		if !currentAssigneeMap[assignee.ID] {
-			assignmentChanges = append(assignmentChanges, fmt.Sprintf("`%s` performed `Assignment` from `(unassigned)` to `%s (%s)`", role, escapeMarkdown(assignee.Name), escapeMarkdown(assignee.Role)))
+			assignmentChanges = append(assignmentChanges, fmt.Sprintf("`%s` performed `Assignment` from `(unassigned)` to `%s (%s)`", role, escapeMarkdown(assignee.Name), escapeMarkdown(string(assignee.Role))))
 		}
 	}
 	
@@ -872,7 +872,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 	for _, assignee := range currentAssignees {
 		for _, unassigneeID := range body.AssigneeIDs {
 			if assignee.ID == unassigneeID {
-				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("`%s` performed `Unassignment` from `%s (%s)` to `(unassigned)`", role, escapeMarkdown(assignee.Name), escapeMarkdown(assignee.Role)))
+				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("`%s` performed `Unassignment` from `%s (%s)` to `(unassigned)`", role, escapeMarkdown(assignee.Name), escapeMarkdown(string(assignee.Role))))
 				break
 			}
 		}
