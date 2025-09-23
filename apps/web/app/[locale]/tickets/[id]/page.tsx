@@ -833,7 +833,7 @@ export default function TicketDetails() {
                   value={comment} 
                   onChange={setComment} 
                   placeholder={t('writeComment')}
-                  minHeight="200px"
+                  minHeight="120px"
                   showPreviewToggle={false}
                 />
                     <div>

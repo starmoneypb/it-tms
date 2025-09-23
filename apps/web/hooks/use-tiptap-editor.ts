@@ -43,6 +43,8 @@ export function useTiptapEditor(providedEditor?: Editor | null): {
         canCommand: context.editor.can,
       }
     },
+    // Only update when editor instance changes, not on every transaction
+    dependencies: [mainEditor],
   })
 
   return editorState || { editor: null }

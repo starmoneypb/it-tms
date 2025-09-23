@@ -179,8 +179,14 @@ export function useMark(config: UseMarkConfig) {
   React.useEffect(() => {
     if (!editor) return
 
+    let timeoutId: NodeJS.Timeout
+
     const handleSelectionUpdate = () => {
-      setIsVisible(shouldShowButton({ editor, type, hideWhenUnavailable }))
+      // Debounce selection updates to reduce re-renders during typing
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => {
+        setIsVisible(shouldShowButton({ editor, type, hideWhenUnavailable }))
+      }, 50)
     }
 
     handleSelectionUpdate()
@@ -188,6 +194,7 @@ export function useMark(config: UseMarkConfig) {
     editor.on("selectionUpdate", handleSelectionUpdate)
 
     return () => {
+      clearTimeout(timeoutId)
       editor.off("selectionUpdate", handleSelectionUpdate)
     }
   }, [editor, type, hideWhenUnavailable])

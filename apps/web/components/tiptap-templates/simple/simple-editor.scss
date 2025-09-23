@@ -12,6 +12,7 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   overflow: hidden;
+  max-height: 400px;
   box-shadow: 
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06),
@@ -45,13 +46,15 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 200px;
+  min-height: 120px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor {
   flex: 1;
   padding: 1.25rem;
-  min-height: 200px;
+  min-height: 120px;
   font-family: "IBM Plex Sans Thai", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: rgba(255, 255, 255, 0.9);
   font-optical-sizing: auto;
@@ -84,11 +87,17 @@
   .simple-editor-wrapper {
     border-radius: 8px;
     margin: 0.5rem;
+    max-height: 300px;
+  }
+  
+  .simple-editor-content {
+    max-height: 200px;
   }
   
   .simple-editor-content .tiptap.ProseMirror.simple-editor {
     padding: 1rem;
     padding-bottom: calc(1rem + var(--tt-toolbar-height) + var(--tt-safe-area-bottom));
     font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 100px;
   }
 }

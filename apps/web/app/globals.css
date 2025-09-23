@@ -523,8 +523,36 @@ a {
 /* Remove white borders from labels */
 [data-slot="label"] {
   color: rgba(255, 255, 255, 0.8) !important;
-  background: transparent !important;
-  border: none !important;
+}
+
+/* Prevent mobile zoom on input focus */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* Ensure all form inputs have minimum 16px font size on mobile */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Specific targeting for HeroUI components */
+  [data-slot="input"] {
+    font-size: 16px !important;
+  }
+  
+  [data-slot="textarea"] {
+    font-size: 16px !important;
+  }
+  
+  [data-slot="select"] {
+    font-size: 16px !important;
+  }
+  
+  /* Tiptap editor inputs */
+  .tiptap-input {
+    font-size: 16px !important;
+  }
 }
 
 /* Fix button styling */

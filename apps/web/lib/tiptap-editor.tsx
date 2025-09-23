@@ -200,6 +200,7 @@ export function TiptapEditor({
   const editor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: false,
+    // Optimize editor props for better performance
     editorProps: {
       attributes: {
         autocomplete: "off",
@@ -208,6 +209,10 @@ export function TiptapEditor({
         "aria-label": "Main content area, start typing to enter text.",
         class: "simple-editor",
         placeholder: placeholder,
+      },
+      // Reduce DOM updates during typing
+      handleDOMEvents: {
+        input: () => false, // Let tiptap handle input events
       },
     },
     extensions: [
@@ -230,7 +235,14 @@ export function TiptapEditor({
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      onChange?.(editor.getHTML());
+      // Throttle onChange calls to reduce parent component re-renders
+      if (onChange) {
+        const html = editor.getHTML();
+        // Only call onChange if content actually changed
+        if (html !== value) {
+          onChange(html);
+        }
+      }
     },
   });
 

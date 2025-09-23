@@ -98,7 +98,7 @@ export function useElementRect({
         left: newRect.left,
       })
     },
-    throttleMs,
+    Math.max(throttleMs, 150), // Increase minimum throttle to reduce frequency
     [enabled, getTargetElement],
     { leading: true, trailing: true }
   )
