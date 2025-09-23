@@ -8,6 +8,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useAuth } from '@/lib/auth';
 import { useEffect, useState } from 'react';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import NetworkLogoHub from '@/components/NetworkLogoHub';
 
 export default function Landing() {
   const t = useTranslations('landing');
@@ -122,26 +123,14 @@ export default function Landing() {
       {/* Content */}
       <div className="relative z-10 container">
         {/* Hero Section */}
-        <section className="text-center min-h-screen flex flex-col justify-center relative">
+        <section className="text-center min-h-screen flex flex-col justify-center relative pt-16">
           {/* Language Toggle */}
           <div className="absolute top-4 right-4 z-20">
             <LanguageToggle />
           </div>
 
-          {/* Clean Logo Design */}
-          <div className="flex justify-center mb-8 relative">
-            <div className="relative">
-              <div className="relative bg-white/5 backdrop-blur-sm rounded-full p-6 border border-white/10 hover:border-white/20 transition-all duration-300 group">
-                <Image
-                  src="/logo.svg"
-                  alt="UniSight Logo"
-                  width={80}
-                  height={80}
-                  className="h-20 w-20 opacity-90 group-hover:opacity-100 transition-opacity duration-300"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Animated Network Logo Hub */}
+          <NetworkLogoHub />
 
           {/* Clean Title Structure */}
           <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>

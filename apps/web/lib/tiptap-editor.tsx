@@ -68,9 +68,9 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
 import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
 
 // --- Styles ---
-import "@/components/tiptap-templates/simple/simple-editor.scss";
+import "./tiptap-editor.css";
 
-interface SimpleTiptapEditorProps {
+interface TiptapEditorProps {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
@@ -91,8 +91,6 @@ const MainToolbarContent = ({
 }) => {
   return (
     <>
-      <Spacer />
-
       <ToolbarGroup>
         <UndoRedoButton action="undo" />
         <UndoRedoButton action="redo" />
@@ -145,12 +143,10 @@ const MainToolbarContent = ({
       <ToolbarSeparator />
 
       <ToolbarGroup>
-        <ImageUploadButton text="Add" />
+        <ImageUploadButton text="Add Image" />
       </ToolbarGroup>
 
       <Spacer />
-
-      {isMobile && <ToolbarSeparator />}
     </>
   );
 };
@@ -184,15 +180,15 @@ const MobileToolbarContent = ({
   </>
 );
 
-export function SimpleTiptapEditor({
+export function TiptapEditor({
   value = "",
   onChange,
   placeholder = "Start typing...",
   label,
-  minHeight = "300px",
+  minHeight = "200px",
   className = "",
-  showPreviewToggle = true,
-}: SimpleTiptapEditorProps) {
+  showPreviewToggle = false,
+}: TiptapEditorProps) {
   const isMobile = useIsMobile();
   const { height } = useWindowSize();
   const [mobileView, setMobileView] = React.useState<
@@ -209,7 +205,7 @@ export function SimpleTiptapEditor({
         autocorrect: "off",
         autocapitalize: "off",
         "aria-label": "Main content area, start typing to enter text.",
-        class: "simple-editor",
+        class: "tiptap-editor",
         placeholder: placeholder,
       },
     },
@@ -264,7 +260,7 @@ export function SimpleTiptapEditor({
   }, [editor, value]);
 
   return (
-    <div className={`simple-editor-wrapper ${className}`}>
+    <div className={`tiptap-editor-wrapper ${className}`}>
       {label && (
         <label className="text-sm font-medium text-white/80 mb-2 block">
           {label}
@@ -296,11 +292,10 @@ export function SimpleTiptapEditor({
           )}
         </Toolbar>
 
-        <div style={{ minHeight }}>
+        <div style={{ minHeight }} className="tiptap-editor-content">
           <EditorContent
             editor={editor}
             role="presentation"
-            className="simple-editor-content"
           />
         </div>
       </EditorContext.Provider>

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox } from "@heroui/react";
-import { SimpleTiptapEditor } from "@/lib/simple-tiptap-editor";
+import { TiptapEditor } from "@/lib/tiptap-editor";
 import { MarkdownRenderer } from "@/lib/markdown-renderer";
 import { convertContentToMarkdown } from "@/lib/html-to-markdown";
 import { useAuth } from "@/lib/auth";
@@ -651,7 +651,7 @@ export default function TicketDetails() {
                   className="text-white/80 leading-relaxed"
                 />
               ) : (
-                <SimpleTiptapEditor 
+                <TiptapEditor 
                   value={contentEditForm.description} 
                   onChange={(value) => setContentEditForm(prev => ({ ...prev, description: value }))} 
                   placeholder={t('enterTicketDescription')}
@@ -829,7 +829,7 @@ export default function TicketDetails() {
                     </h3>
                   </CardHeader>
                   <CardBody className="space-y-4">
-                <SimpleTiptapEditor 
+                <TiptapEditor 
                   value={comment} 
                   onChange={setComment} 
                   placeholder={t('writeComment')}
