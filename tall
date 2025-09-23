@@ -1,0 +1,478 @@
+warning: in the working copy of 'pnpm-lock.yaml', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/pnpm-lock.yaml b/pnpm-lock.yaml[m
+[1mindex 5ce67da..68291a2 100644[m
+[1m--- a/pnpm-lock.yaml[m
+[1m+++ b/pnpm-lock.yaml[m
+[36m@@ -153,6 +153,9 @@[m [mimporters:[m
+       react-markdown:[m
+         specifier: ^10.1.0[m
+         version: 10.1.0(@types/react@18.3.3)(react@18.2.0)[m
+[32m+[m[32m      react-syntax-highlighter:[m
+[32m+[m[32m        specifier: ^15.6.6[m
+[32m+[m[32m        version: 15.6.6(react@18.2.0)[m
+       rehype-autolink-headings:[m
+         specifier: ^7.1.0[m
+         version: 7.1.0[m
+[36m@@ -205,6 +208,9 @@[m [mimporters:[m
+       '@types/react-dom':[m
+         specifier: 18.3.0[m
+         version: 18.3.0[m
+[32m+[m[32m      '@types/react-syntax-highlighter':[m
+[32m+[m[32m        specifier: ^15.5.13[m
+[32m+[m[32m        version: 15.5.13[m
+       '@vitest/coverage-v8':[m
+         specifier: 2.1.2[m
+         version: 2.1.2(vitest@2.1.2(@types/node@20.12.12)(jsdom@25.0.0)(lightningcss@1.30.1)(sass@1.93.1))[m
+[36m@@ -2514,6 +2520,9 @@[m [mpackages:[m
+   '@types/estree@1.0.8':[m
+     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}[m
+ [m
+[32m+[m[32m  '@types/hast@2.3.10':[m
+[32m+[m[32m    resolution: {integrity: sha512-McWspRw8xx8J9HurkVBfYj0xKoE25tOFlHGdx4MJ5xORQrMGZNqJhVQWaIbm6Oyla5kYOXtDiopzKRJzEOkwJw==}[m
+[32m+[m
+   '@types/hast@3.0.4':[m
+     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==}[m
+ [m
+[36m@@ -2547,6 +2556,9 @@[m [mpackages:[m
+   '@types/react-dom@18.3.0':[m
+     resolution: {integrity: sha512-EhwApuTmMBmXuFOikhQLIBUn6uFg81SwLMOAUgodJF14SOBOCMdU04gDoYi0WOJJHD144TL32z4yDqCW3dnkQg==}[m
+ [m
+[32m+[m[32m  '@types/react-syntax-highlighter@15.5.13':[m
+[32m+[m[32m    resolution: {integrity: sha512-uLGJ87j6Sz8UaBAooU0T6lWJ0dBmjZgN1PZTrj05TNql2/XpC6+4HhMT5syIdFUUt+FASfCeLLv4kBygNU+8qA==}[m
+[32m+[m
+   '@types/react@18.3.3':[m
+     resolution: {integrity: sha512-hti/R0pS0q1/xx+TsI73XIqk26eBsISZ2R0wUijXIngRK9R/e7Xw/cXVxQK7R5JjW+SV4zGcn5hXjudkN/pLIw==}[m
+ [m
+[36m@@ -2755,12 +2767,21 @@[m [mpackages:[m
+   character-entities-html4@2.1.0:[m
+     resolution: {integrity: sha512-1v7fgQRj6hnSwFpq1Eu0ynr/CDEw0rXo2B61qXrLNdHZmPKgb7fqS1a2JwF0rISo9q77jDI8VMEHoApn8qDoZA==}[m
+ [m
+[32m+[m[32m  character-entities-legacy@1.1.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-3Xnr+7ZFS1uxeiUDvV02wQ+QDbc55o97tIV5zHScSPJpcLm/r0DFPcoY3tYRp+VZukxuMeKgXYmsXQHO05zQeA==}[m
+[32m+[m
+   character-entities-legacy@3.0.0:[m
+     resolution: {integrity: sha512-RpPp0asT/6ufRm//AJVwpViZbGM/MkjQFxJccQRHmISF/22NBtsHqAWmL+/pmkPWoIUJdWyeVleTl1wydHATVQ==}[m
+ [m
+[32m+[m[32m  character-entities@1.2.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-iBMyeEHxfVnIakwOuDXpVkc54HijNgCyQB2w0VfGQThle6NXn50zU6V/u+LDhxHcDUPojn6Kpga3PTAD8W1bQw==}[m
+[32m+[m
+   character-entities@2.0.2:[m
+     resolution: {integrity: sha512-shx7oQ0Awen/BRIdkjkvz54PnEEI/EjwXDSIZp86/KKdbafHh1Df/RYGBhn4hbe2+uKC9FnT5UCEdyPz3ai9hQ==}[m
+ [m
+[32m+[m[32m  character-reference-invalid@1.1.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-mKKUkUbhPpQlCOfIuZkvSEgktjPFIsZKRRbC6KWVEMvlzblj3i3asQv5ODsrwt0N3pHAEvjP8KTQPHkp0+6jOg==}[m
+[32m+[m
+   character-reference-invalid@2.0.1:[m
+     resolution: {integrity: sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw==}[m
+ [m
+[36m@@ -2812,6 +2833,9 @@[m [mpackages:[m
+     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}[m
+     engines: {node: '>= 0.8'}[m
+ [m
+[32m+[m[32m  comma-separated-tokens@1.0.8:[m
+[32m+[m[32m    resolution: {integrity: sha512-GHuDRO12Sypu2cV70d1dkA2EUmXHgntrzbpvOB+Qy+49ypNfGgFQIC2fhhXbnyrJRynDCAARsT7Ou0M6hirpfw==}[m
+[32m+[m
+   comma-separated-tokens@2.0.3:[m
+     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}[m
+ [m
+[36m@@ -3039,6 +3063,9 @@[m [mpackages:[m
+   fastq@1.19.1:[m
+     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}[m
+ [m
+[32m+[m[32m  fault@1.0.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-CJ0HCB5tL5fYTEA7ToAq5+kTwd++Borf1/bifxd9iT70QcXr4MRrO3Llf8Ifs70q+SJcGHFtnIE/Nw6giCtECA==}[m
+[32m+[m
+   file-entry-cache@8.0.0:[m
+     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}[m
+     engines: {node: '>=16.0.0'}[m
+[36m@@ -3070,6 +3097,10 @@[m [mpackages:[m
+     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}[m
+     engines: {node: '>= 6'}[m
+ [m
+[32m+[m[32m  format@0.2.2:[m
+[32m+[m[32m    resolution: {integrity: sha512-wzsgA6WOq+09wrU1tsJ09udeR/YZRaeArL9e1wPbFg3GG2yDnC2ldKpxs4xunpFF9DgqCqOIra3bc1HWrJ37Ww==}[m
+[32m+[m[32m    engines: {node: '>=0.4.x'}[m
+[32m+[m
+   fraction.js@4.3.7:[m
+     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}[m
+ [m
+[36m@@ -3155,6 +3186,9 @@[m [mpackages:[m
+   hast-util-is-element@3.0.0:[m
+     resolution: {integrity: sha512-Val9mnv2IWpLbNPqc/pUem+a7Ipj2aHacCwgNfTiK0vJKl0LF+4Ba4+v1oPHFpf3bLYmreq0/l3Gud9S5OH42g==}[m
+ [m
+[32m+[m[32m  hast-util-parse-selector@2.2.5:[m
+[32m+[m[32m    resolution: {integrity: sha512-7j6mrk/qqkSehsM92wQjdIgWM2/BW61u/53G6xmC8i1OmEdKLHbk419QKQUjz6LglWsfqoiHmyMRkP1BGjecNQ==}[m
+[32m+[m
+   hast-util-parse-selector@4.0.0:[m
+     resolution: {integrity: sha512-wkQCkSYoOGCRKERFWcxMVMOcYE2K1AaNLU8DXS9arxnLOUEWbOXKXiJUNzEpqZ3JOKpnha3jkFrumEjVliDe7A==}[m
+ [m
+[36m@@ -3179,13 +3213,22 @@[m [mpackages:[m
+   hast-util-whitespace@3.0.0:[m
+     resolution: {integrity: sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw==}[m
+ [m
+[32m+[m[32m  hastscript@6.0.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-nDM6bvd7lIqDUiYEiu5Sl/+6ReP0BMk/2f4U/Rooccxkj0P5nm+acM5PrGJ/t5I8qPGiqZSE6hVAwZEdZIvP4w==}[m
+[32m+[m
+   hastscript@9.0.1:[m
+     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}[m
+ [m
+[32m+[m[32m  highlight.js@10.7.3:[m
+[32m+[m[32m    resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}[m
+[32m+[m
+   highlight.js@11.11.1:[m
+     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}[m
+     engines: {node: '>=12.0.0'}[m
+ [m
+[32m+[m[32m  highlightjs-vue@1.0.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-PDEfEF102G23vHmPhLyPboFCD+BkMGu+GuJe2d9/eH4FsCwvgBpnc9n0pGE+ffKdph38s6foEZiEjdgHdzp+IA==}[m
+[32m+[m
+   html-encoding-sniffer@4.0.0:[m
+     resolution: {integrity: sha512-Y22oTqIU4uuPgEemfz7NDJz6OeKf12Lsu+QC+s3BVpda64lTiMYCyGwg5ki4vFxkMwQdeZDl2adZoqUgdFuTgQ==}[m
+     engines: {node: '>=18'}[m
+[36m@@ -3242,9 +3285,15 @@[m [mpackages:[m
+   intl-messageformat@10.7.16:[m
+     resolution: {integrity: sha512-UmdmHUmp5CIKKjSoE10la5yfU+AYJAaiYLsodbjL4lji83JNvgOQUjGaGhGrpFCb0Uh7sl7qfP1IyILa8Z40ug==}[m
+ [m
+[32m+[m[32m  is-alphabetical@1.0.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-DwzsA04LQ10FHTZuL0/grVDk4rFoVH1pjAToYwBrHSxcrBIGQuXrQMtD5U1b0U2XVgKZCTLLP8u2Qxqhy3l2Vg==}[m
+[32m+[m
+   is-alphabetical@2.0.1:[m
+     resolution: {integrity: sha512-FWyyY60MeTNyeSRpkM2Iry0G9hpr7/9kD40mD/cGQEuilcZYS4okz8SN2Q6rLCJ8gbCt6fN+rC+6tMGS99LaxQ==}[m
+ [m
+[32m+[m[32m  is-alphanumerical@1.0.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-UzoZUr+XfVz3t3v4KyGEniVL9BDRoQtY7tOyrRybkVNjDFWyo1yhXNGrrBTQxp3ib9BLAWs7k2YKBQsFRkZG9A==}[m
+[32m+[m
+   is-alphanumerical@2.0.1:[m
+     resolution: {integrity: sha512-hmbYhX/9MUMF5uh7tOXyK/n0ZvWpad5caBA17GsC6vyuCqaWliRG5K1qS9inmUhEMaOBIW7/whAnSwveW/LtZw==}[m
+ [m
+[36m@@ -3259,6 +3308,9 @@[m [mpackages:[m
+     resolution: {integrity: sha512-UfoeMA6fIJ8wTYFEUjelnaGI67v6+N7qXJEvQuIGa99l4xsCruSYOVSQ0uPANn4dAzm8lkYPaKLrrijLq7x23w==}[m
+     engines: {node: '>= 0.4'}[m
+ [m
+[32m+[m[32m  is-decimal@1.0.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-RGdriMmQQvZ2aqaQq3awNA6dCGtKpiDFcOzrTWrDAT2MiWrKQVPmxLGHl7Y2nNu6led0kEyoX0enY0qXYsv9zw==}[m
+[32m+[m
+   is-decimal@2.0.1:[m
+     resolution: {integrity: sha512-AAB9hiomQs5DXWcRB1rqsxGUstbRroFOPPVAomNk/3XHR5JyEZChOyTWe2oayKnsSsr/kcGqF+z6yuH6HHpN0A==}[m
+ [m
+[36m@@ -3274,6 +3326,9 @@[m [mpackages:[m
+     resolution: {integrity: sha512-xelSayHH36ZgE7ZWhli7pW34hNbNl8Ojv5KVmkJD4hBdD3th8Tfk9vYasLM+mXWOZhFkgZfxhLSnrwRr4elSSg==}[m
+     engines: {node: '>=0.10.0'}[m
+ [m
+[32m+[m[32m  is-hexadecimal@1.0.4:[m
+[32m+[m[32m    resolution: {integrity: sha512-gyPJuv83bHMpocVYoqof5VDiZveEoGoFL8m3BXNb2VW8Xs+rz9kqO8LOQ5DH6EsuvilT1ApazU0pyl+ytbPtlw==}[m
+[32m+[m
+   is-hexadecimal@2.0.1:[m
+     resolution: {integrity: sha512-DgZQp241c8oO6cA1SbTEWiXeoxV42vlcJxgH+B3hi1AiqqKruZR3ZGF8In3fj4+/y/7rHvlOZLZtgJ/4ttYGZg==}[m
+ [m
+[36m@@ -3467,6 +3522,9 @@[m [mpackages:[m
+   loupe@3.2.1:[m
+     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}[m
+ [m
+[32m+[m[32m  lowlight@1.20.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-8Ktj+prEb1RoCPkEOrPMYUN/nCggB7qAWe3a7OpMjWQkh3l2RD5wKRQ+o8Q8YuI9RG/xs95waaI/E6ym/7NsTw==}[m
+[32m+[m
+   lowlight@3.3.0:[m
+     resolution: {integrity: sha512-0JNhgFoPvP6U6lE/UdVsSq99tn6DhjjpAj5MxG49ewd2mOBVtwWYIT8ClyABhq198aXXODMU6Ox8DrGy/CpTZQ==}[m
+ [m
+[36m@@ -3771,6 +3829,9 @@[m [mpackages:[m
+     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}[m
+     engines: {node: '>=6'}[m
+ [m
+[32m+[m[32m  parse-entities@2.0.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-kkywGpCcRYhqQIchaWqZ875wzpS/bMKhz5HnN3p7wveJTkTtyAB/AlnS0f8DFSqYW1T82t6yEAkEcB+A1I3MbQ==}[m
+[32m+[m
+   parse-entities@4.0.2:[m
+     resolution: {integrity: sha512-GG2AQYWoLgL877gQIKeRPGO1xF9+eG1ujIb5soS5gPvLQ1y2o8FL90w2QWNdf9I361Mpp7726c+lj3U0qK1uGw==}[m
+ [m
+[36m@@ -3876,6 +3937,17 @@[m [mpackages:[m
+     resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}[m
+     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}[m
+ [m
+[32m+[m[32m  prismjs@1.27.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-t13BGPUlFDR7wRB5kQDG4jjl7XeuH6jbJGt11JHPL96qwsEHNX2+68tFXqc1/k+/jALsbSWJKUOT/hcYAZ5LkA==}[m
+[32m+[m[32m    engines: {node: '>=6'}[m
+[32m+[m
+[32m+[m[32m  prismjs@1.30.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}[m
+[32m+[m[32m    engines: {node: '>=6'}[m
+[32m+[m
+[32m+[m[32m  property-information@5.6.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-YUHSPk+A30YPv+0Qf8i9Mbfe/C0hdPXk1s1jPVToV8pk8BQtpw10ct89Eo7OWkutrwqvT0eicAxlOg3dOAu8JA==}[m
+[32m+[m
+   property-information@6.5.0:[m
+     resolution: {integrity: sha512-PgTgs/BlvHxOu8QuEN7wi5A0OmXaBcHpmCSTehcs6Uuu9IkDIEo13Hy7n898RHfrQ49vKCoGeWZSaAK01nwVig==}[m
+ [m
+[36m@@ -4019,6 +4091,11 @@[m [mpackages:[m
+       '@types/react':[m
+         optional: true[m
+ [m
+[32m+[m[32m  react-syntax-highlighter@15.6.6:[m
+[32m+[m[32m    resolution: {integrity: sha512-DgXrc+AZF47+HvAPEmn7Ua/1p10jNoVZVI/LoPiYdtY+OM+/nG5yefLHKJwdKqY1adMuHFbeyBaG9j64ML7vTw==}[m
+[32m+[m[32m    peerDependencies:[m
+[32m+[m[32m      react: '>= 0.14.0'[m
+[32m+[m
+   react-textarea-autosize@8.5.9:[m
+     resolution: {integrity: sha512-U1DGlIQN5AwgjTyOEnI1oCcMuEr1pv1qOtklB2l4nyMGbHzWrI0eFsYK0zos2YWqAolJyG0IWJaqWmWj5ETh0A==}[m
+     engines: {node: '>=10'}[m
+[36m@@ -4044,6 +4121,9 @@[m [mpackages:[m
+     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}[m
+     engines: {node: '>=8'}[m
+ [m
+[32m+[m[32m  refractor@3.6.0:[m
+[32m+[m[32m    resolution: {integrity: sha512-MY9W41IOWxxk31o+YvFCNyNzdkc9M20NoZK5vq6jkv4I/uh2zkWcfudj0Q1fovjUQJrNewS9NMzeTtqPf+n5EA==}[m
+[32m+[m
+   rehype-autolink-headings@7.1.0:[m
+     resolution: {integrity: sha512-rItO/pSdvnvsP4QRB1pmPiNHUskikqtPojZKJPPPAVx9Hj8i8TwMBhofrrAYRhYOOBZH9tgmG5lPqDLuIWPWmw==}[m
+ [m
+[36m@@ -4156,6 +4236,9 @@[m [mpackages:[m
+     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}[m
+     engines: {node: '>=0.10.0'}[m
+ [m
+[32m+[m[32m  space-separated-tokens@1.1.5:[m
+[32m+[m[32m    resolution: {integrity: sha512-q/JSVd1Lptzhf5bkYm4ob4iWPjx0KiRe3sRFBNrVqbJkFaBm5vbbowy1mymoPNLRa52+oadOhJ+K49wsSeSjTA==}[m
+[32m+[m
+   space-separated-tokens@2.0.2:[m
+     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}[m
+ [m
+[36m@@ -4604,6 +4687,10 @@[m [mpackages:[m
+   xmlchars@2.2.0:[m
+     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}[m
+ [m
+[32m+[m[32m  xtend@4.0.2:[m
+[32m+[m[32m    resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}[m
+[32m+[m[32m    engines: {node: '>=0.4'}[m
+[32m+[m
+   yaml@2.8.1:[m
+     resolution: {integrity: sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw==}[m
+     engines: {node: '>= 14.6'}[m
+[36m@@ -7548,6 +7635,10 @@[m [msnapshots:[m
+ [m
+   '@types/estree@1.0.8': {}[m
+ [m
+[32m+[m[32m  '@types/hast@2.3.10':[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      '@types/unist': 2.0.11[m
+[32m+[m
+   '@types/hast@3.0.4':[m
+     dependencies:[m
+       '@types/unist': 3.0.3[m
+[36m@@ -7583,6 +7674,10 @@[m [msnapshots:[m
+     dependencies:[m
+       '@types/react': 18.3.3[m
+ [m
+[32m+[m[32m  '@types/react-syntax-highlighter@15.5.13':[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      '@types/react': 18.3.3[m
+[32m+[m
+   '@types/react@18.3.3':[m
+     dependencies:[m
+       '@types/prop-types': 15.7.15[m
+[36m@@ -7793,10 +7888,16 @@[m [msnapshots:[m
+ [m
+   character-entities-html4@2.1.0: {}[m
+ [m
+[32m+[m[32m  character-entities-legacy@1.1.4: {}[m
+[32m+[m
+   character-entities-legacy@3.0.0: {}[m
+ [m
+[32m+[m[32m  character-entities@1.2.4: {}[m
+[32m+[m
+   character-entities@2.0.2: {}[m
+ [m
+[32m+[m[32m  character-reference-invalid@1.1.4: {}[m
+[32m+[m
+   character-reference-invalid@2.0.1: {}[m
+ [m
+   chart.js@4.5.0:[m
+[36m@@ -7849,6 +7950,8 @@[m [msnapshots:[m
+     dependencies:[m
+       delayed-stream: 1.0.0[m
+ [m
+[32m+[m[32m  comma-separated-tokens@1.0.8: {}[m
+[32m+[m
+   comma-separated-tokens@2.0.3: {}[m
+ [m
+   commander@4.1.1: {}[m
+[36m@@ -8083,6 +8186,10 @@[m [msnapshots:[m
+     dependencies:[m
+       reusify: 1.1.0[m
+ [m
+[32m+[m[32m  fault@1.0.4:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      format: 0.2.2[m
+[32m+[m
+   file-entry-cache@8.0.0:[m
+     dependencies:[m
+       flat-cache: 4.0.1[m
+[36m@@ -8118,6 +8225,8 @@[m [msnapshots:[m
+       hasown: 2.0.2[m
+       mime-types: 2.1.35[m
+ [m
+[32m+[m[32m  format@0.2.2: {}[m
+[32m+[m
+   fraction.js@4.3.7: {}[m
+ [m
+   framer-motion@11.18.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0):[m
+[36m@@ -8208,6 +8317,8 @@[m [msnapshots:[m
+     dependencies:[m
+       '@types/hast': 3.0.4[m
+ [m
+[32m+[m[32m  hast-util-parse-selector@2.2.5: {}[m
+[32m+[m
+   hast-util-parse-selector@4.0.0:[m
+     dependencies:[m
+       '@types/hast': 3.0.4[m
+[36m@@ -8279,6 +8390,14 @@[m [msnapshots:[m
+     dependencies:[m
+       '@types/hast': 3.0.4[m
+ [m
+[32m+[m[32m  hastscript@6.0.0:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      '@types/hast': 2.3.10[m
+[32m+[m[32m      comma-separated-tokens: 1.0.8[m
+[32m+[m[32m      hast-util-parse-selector: 2.2.5[m
+[32m+[m[32m      property-information: 5.6.0[m
+[32m+[m[32m      space-separated-tokens: 1.1.5[m
+[32m+[m
+   hastscript@9.0.1:[m
+     dependencies:[m
+       '@types/hast': 3.0.4[m
+[36m@@ -8287,8 +8406,12 @@[m [msnapshots:[m
+       property-information: 7.1.0[m
+       space-separated-tokens: 2.0.2[m
+ [m
+[32m+[m[32m  highlight.js@10.7.3: {}[m
+[32m+[m
+   highlight.js@11.11.1: {}[m
+ [m
+[32m+[m[32m  highlightjs-vue@1.0.0: {}[m
+[32m+[m
+   html-encoding-sniffer@4.0.0:[m
+     dependencies:[m
+       whatwg-encoding: 3.1.1[m
+[36m@@ -8344,8 +8467,15 @@[m [msnapshots:[m
+       '@formatjs/icu-messageformat-parser': 2.11.2[m
+       tslib: 2.8.1[m
+ [m
+[32m+[m[32m  is-alphabetical@1.0.4: {}[m
+[32m+[m
+   is-alphabetical@2.0.1: {}[m
+ [m
+[32m+[m[32m  is-alphanumerical@1.0.4:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      is-alphabetical: 1.0.4[m
+[32m+[m[32m      is-decimal: 1.0.4[m
+[32m+[m
+   is-alphanumerical@2.0.1:[m
+     dependencies:[m
+       is-alphabetical: 2.0.1[m
+[36m@@ -8361,6 +8491,8 @@[m [msnapshots:[m
+     dependencies:[m
+       hasown: 2.0.2[m
+ [m
+[32m+[m[32m  is-decimal@1.0.4: {}[m
+[32m+[m
+   is-decimal@2.0.1: {}[m
+ [m
+   is-extglob@2.1.1: {}[m
+[36m@@ -8371,6 +8503,8 @@[m [msnapshots:[m
+     dependencies:[m
+       is-extglob: 2.1.1[m
+ [m
+[32m+[m[32m  is-hexadecimal@1.0.4: {}[m
+[32m+[m
+   is-hexadecimal@2.0.1: {}[m
+ [m
+   is-number@7.0.0: {}[m
+[36m@@ -8577,6 +8711,11 @@[m [msnapshots:[m
+ [m
+   loupe@3.2.1: {}[m
+ [m
+[32m+[m[32m  lowlight@1.20.0:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      fault: 1.0.4[m
+[32m+[m[32m      highlight.js: 10.7.3[m
+[32m+[m
+   lowlight@3.3.0:[m
+     dependencies:[m
+       '@types/hast': 3.0.4[m
+[36m@@ -9090,6 +9229,15 @@[m [msnapshots:[m
+     dependencies:[m
+       callsites: 3.1.0[m
+ [m
+[32m+[m[32m  parse-entities@2.0.0:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      character-entities: 1.2.4[m
+[32m+[m[32m      character-entities-legacy: 1.1.4[m
+[32m+[m[32m      character-reference-invalid: 1.1.4[m
+[32m+[m[32m      is-alphanumerical: 1.0.4[m
+[32m+[m[32m      is-decimal: 1.0.4[m
+[32m+[m[32m      is-hexadecimal: 1.0.4[m
+[32m+[m
+   parse-entities@4.0.2:[m
+     dependencies:[m
+       '@types/unist': 2.0.11[m
+[36m@@ -9186,6 +9334,14 @@[m [msnapshots:[m
+       ansi-styles: 5.2.0[m
+       react-is: 17.0.2[m
+ [m
+[32m+[m[32m  prismjs@1.27.0: {}[m
+[32m+[m
+[32m+[m[32m  prismjs@1.30.0: {}[m
+[32m+[m
+[32m+[m[32m  property-information@5.6.0:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      xtend: 4.0.2[m
+[32m+[m
+   property-information@6.5.0: {}[m
+ [m
+   property-information@7.1.0: {}[m
+[36m@@ -9372,6 +9528,16 @@[m [msnapshots:[m
+     optionalDependencies:[m
+       '@types/react': 18.3.3[m
+ [m
+[32m+[m[32m  react-syntax-highlighter@15.6.6(react@18.2.0):[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      '@babel/runtime': 7.28.4[m
+[32m+[m[32m      highlight.js: 10.7.3[m
+[32m+[m[32m      highlightjs-vue: 1.0.0[m
+[32m+[m[32m      lowlight: 1.20.0[m
+[32m+[m[32m      prismjs: 1.30.0[m
+[32m+[m[32m      react: 18.2.0[m
+[32m+[m[32m      refractor: 3.6.0[m
+[32m+[m
+   react-textarea-autosize@8.5.9(@types/react@18.3.3)(react@18.2.0):[m
+     dependencies:[m
+       '@babel/runtime': 7.28.4[m
+[36m@@ -9400,6 +9566,12 @@[m [msnapshots:[m
+       indent-string: 4.0.0[m
+       strip-indent: 3.0.0[m
+ [m
+[32m+[m[32m  refractor@3.6.0:[m
+[32m+[m[32m    dependencies:[m
+[32m+[m[32m      hastscript: 6.0.0[m
+[32m+[m[32m      parse-entities: 2.0.0[m
+[32m+[m[32m      prismjs: 1.27.0[m
+[32m+[m
+   rehype-autolink-headings@7.1.0:[m
+     dependencies:[m
+       '@types/hast': 3.0.4[m
+[36m@@ -9591,6 +9763,8 @@[m [msnapshots:[m
+ [m
+   source-map-js@1.2.1: {}[m
+ [m
+[32m+[m[32m  space-separated-tokens@1.1.5: {}[m
+[32m+[m
+   space-separated-tokens@2.0.2: {}[m
+ [m
+   stackback@0.0.2: {}[m
+[36m@@ -10019,6 +10193,8 @@[m [msnapshots:[m
+ [m
+   xmlchars@2.2.0: {}[m
+ [m
+[32m+[m[32m  xtend@4.0.2: {}[m
+[32m+[m
+   yaml@2.8.1: {}[m
+ [m
+   yocto-queue@0.1.0: {}[m
