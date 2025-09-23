@@ -278,8 +278,18 @@ const NetworkLogoHub: React.FC = () => {
 
           {/* Central Logo */}
           <div className="absolute inset-0 flex justify-center items-center z-10">
-            <div className="relative group/logo">
-              <div className="relative transition-all duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-12">
+            <div className="logo-container group/logo">
+              {/* Shimmer light effect */}
+              <div className="logo-shimmer"></div>
+              
+              {/* Glowing blue border */}
+              <div className="logo-border"></div>
+              
+              {/* Dimensional background */}
+              <div className="logo-background"></div>
+              
+              {/* Logo image */}
+              <div className="logo-image transition-all duration-500 group-hover/logo:scale-110 group-hover/logo:rotate-12">
                 <Image
                   src="/logo.svg"
                   alt="UniSight Logo"
@@ -287,9 +297,6 @@ const NetworkLogoHub: React.FC = () => {
                   height={80}
                   className="h-20 w-20 opacity-90 group-hover/logo:opacity-100 transition-all duration-500"
                 />
-                
-                {/* Subtle glow effect on hover */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500 blur-xl"></div>
               </div>
             </div>
           </div>
