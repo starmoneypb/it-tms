@@ -23,10 +23,6 @@ import {
   Redo,
   Eye,
   Edit3,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify
 } from 'lucide-react';
 import { Button } from '@heroui/react';
 
@@ -239,42 +235,6 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
           <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </ToolbarButton>
       </ToolbarGroup>
-
-      <ToolbarSeparator />
-
-      {/* Alignment */}
-      <ToolbarGroup>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          isActive={editor.isActive({ textAlign: 'left' })}
-          title="Align Left"
-        >
-          <AlignLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          isActive={editor.isActive({ textAlign: 'center' })}
-          title="Align Center"
-        >
-          <AlignCenter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          isActive={editor.isActive({ textAlign: 'right' })}
-          title="Align Right"
-        >
-          <AlignRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          isActive={editor.isActive({ textAlign: 'justify' })}
-          title="Justify"
-        >
-          <AlignJustify className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        </ToolbarButton>
-      </ToolbarGroup>
-
-      <ToolbarSeparator />
 
       {/* Other */}
       <ToolbarGroup>
