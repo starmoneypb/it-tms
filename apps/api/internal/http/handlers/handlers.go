@@ -488,7 +488,7 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	
     // Add automatic comment if there were changes
 	if len(changes) > 0 {
-		commentBody := strings.Join(changes, "\n")
+		commentBody := strings.Join(changes, " • ")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
         // If any ticket content changed, recompute priority on server side if we had inputs stored
         // Note: Priority still uses existing fields (impact/urgency/red flags) which are updated via dedicated endpoints.
@@ -668,7 +668,7 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(changes) > 0 {
-		commentBody := strings.Join(changes, "\n")
+		commentBody := strings.Join(changes, " • ")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
         // Recalculate score distribution if effort changed or final score changed for completed tickets
@@ -800,7 +800,7 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(assignmentChanges) > 0 {
-		commentBody := strings.Join(assignmentChanges, "\n")
+		commentBody := strings.Join(assignmentChanges, " • ")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
         // Recalculate score distribution if ticket is completed
@@ -891,7 +891,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 	
 	// Add automatic comment if there were changes
 	if len(unassignmentChanges) > 0 {
-		commentBody := strings.Join(unassignmentChanges, "\n")
+		commentBody := strings.Join(unassignmentChanges, " • ")
 		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
 		
         // Recalculate score distribution if ticket is completed

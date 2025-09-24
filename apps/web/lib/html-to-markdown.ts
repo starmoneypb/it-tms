@@ -25,6 +25,20 @@ function pickAttr(tagHtml: string, name: string): string | undefined {
   return m?.[1];
 }
 
+// Extract text-align style from HTML tag
+function extractTextAlign(tagHtml: string): string | null {
+  // Look for style attribute with text-align
+  const styleMatch = /style\s*=\s*["']([^"']*)["']/i.exec(tagHtml);
+  if (styleMatch) {
+    const styleContent = styleMatch[1];
+    const textAlignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(styleContent);
+    if (textAlignMatch) {
+      return `text-align: ${textAlignMatch[1]}`;
+    }
+  }
+  return null;
+}
+
 // Convert <img ...> to Markdown image: ![alt](src "title")
 function convertImages(html: string): string {
   return html.replace(/<img\b[^>]*?>/gi, (fullTag: string) => {
@@ -133,14 +147,32 @@ export function htmlToMarkdown(html: string): string {
   // Inline code (after block code to avoid conflicts)
   markdown = markdown.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m: string, c: string) => '`' + decodeEntities(c) + '`');
 
-  // Headings
+  // Headings with text-align preservation
   markdown = markdown
-    .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, (_m: string, c: string) => `# ${decodeEntities(c)}\n\n`)
-    .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, (_m: string, c: string) => `## ${decodeEntities(c)}\n\n`)
-    .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, (_m: string, c: string) => `### ${decodeEntities(c)}\n\n`)
-    .replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, (_m: string, c: string) => `#### ${decodeEntities(c)}\n\n`)
-    .replace(/<h5\b[^>]*>([\s\S]*?)<\/h5>/gi, (_m: string, c: string) => `##### ${decodeEntities(c)}\n\n`)
-    .replace(/<h6\b[^>]*>([\s\S]*?)<\/h6>/gi, (_m: string, c: string) => `###### ${decodeEntities(c)}\n\n`);
+    .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, (match: string, content: string) => {
+      const style = extractTextAlign(match);
+      return style ? `<h1 style="${style}">${decodeEntities(content)}</h1>\n\n` : `# ${decodeEntities(content)}\n\n`;
+    })
+    .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, (match: string, content: string) => {
+      const style = extractTextAlign(match);
+      return style ? `<h2 style="${style}">${decodeEntities(content)}</h2>\n\n` : `## ${decodeEntities(content)}\n\n`;
+    })
+    .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, (match: string, content: string) => {
+      const style = extractTextAlign(match);
+      return style ? `<h3 style="${style}">${decodeEntities(content)}</h3>\n\n` : `### ${decodeEntities(content)}\n\n`;
+    })
+    .replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, (match: string, content: string) => {
+      const style = extractTextAlign(match);
+      return style ? `<h4 style="${style}">${decodeEntities(content)}</h4>\n\n` : `#### ${decodeEntities(content)}\n\n`;
+    })
+    .replace(/<h5\b[^>]*>([\s\S]*?)<\/h5>/gi, (match: string, content: string) => {
+      const style = extractTextAlign(match);
+      return style ? `<h5 style="${style}">${decodeEntities(content)}</h5>\n\n` : `##### ${decodeEntities(content)}\n\n`;
+    })
+    .replace(/<h6\b[^>]*>([\s\S]*?)<\/h6>/gi, (match: string, content: string) => {
+      const style = extractTextAlign(match);
+      return style ? `<h6 style="${style}">${decodeEntities(content)}</h6>\n\n` : `###### ${decodeEntities(content)}\n\n`;
+    });
 
   // Horizontal rule
   markdown = markdown.replace(/<hr\s*\/?>/gi, `\n---\n\n`);
@@ -176,8 +208,11 @@ export function htmlToMarkdown(html: string): string {
   markdown = convertOrderedLists(markdown);
   markdown = convertUnorderedLists(markdown);
 
-  // Paragraphs
-  markdown = markdown.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_m: string, c: string) => `${decodeEntities(c)}\n\n`);
+  // Paragraphs with text-align preservation
+  markdown = markdown.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (match: string, content: string) => {
+    const style = extractTextAlign(match);
+    return style ? `<p style="${style}">${decodeEntities(content)}</p>\n\n` : `${decodeEntities(content)}\n\n`;
+  });
 
   // Highlighting: keep <mark> as raw HTML (preserve style/class/data-*)
   // If there is a background-color inline style, keep it so renderer can use it.

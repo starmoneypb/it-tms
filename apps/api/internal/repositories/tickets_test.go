@@ -119,13 +119,13 @@ func TestCommentGeneration_ChangeTracking(t *testing.T) {
 			name:     "Multiple field changes",
 			changes:  []string{"`Manager` performed `Priority Change` from `P3` to `P1`", "`Manager` performed `Impact Score Change` from `2` to `5`"},
 			role:     "Manager",
-			expected: "`Manager` performed `Priority Change` from `P3` to `P1`\n`Manager` performed `Impact Score Change` from `2` to `5`",
+			expected: "`Manager` performed `Priority Change` from `P3` to `P1` • `Manager` performed `Impact Score Change` from `2` to `5`",
 		},
 		{
 			name:     "Title and description changes",
 			changes:  []string{"`Supervisor` performed `Title Change` from `Old Title` to `New Title`", "`Supervisor` performed `Description Update`"},
 			role:     "Supervisor",
-			expected: "`Supervisor` performed `Title Change` from `Old Title` to `New Title`\n`Supervisor` performed `Description Update`",
+			expected: "`Supervisor` performed `Title Change` from `Old Title` to `New Title` • `Supervisor` performed `Description Update`",
 		},
 		{
 			name:     "Red flag changes",
