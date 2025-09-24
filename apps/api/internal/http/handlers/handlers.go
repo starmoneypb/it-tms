@@ -26,6 +26,7 @@ import (
 	"github.com/it-tms/apps/api/internal/priority"
 	"github.com/it-tms/apps/api/internal/repositories"
 	"github.com/it-tms/apps/api/internal/storage"
+	"github.com/it-tms/apps/api/internal/tracker"
 	"github.com/it-tms/apps/api/internal/websocket"
 	"github.com/it-tms/apps/api/pkg/config"
 )
@@ -503,10 +504,10 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	// Track changes for automatic comment generation
 	var changes []string
 	if body.Title != nil && *body.Title != ticket.Title {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Title Change` from `%s` to `%s`", escapedActor, escapeMarkdown(ticket.Title), escapeMarkdown(*body.Title)))
+		changes = append(changes, fmt.Sprintf("`%s` changed the title from `%s` to `%s`", escapedActor, escapeMarkdown(ticket.Title), escapeMarkdown(*body.Title)))
 	}
 	if body.Description != nil && *body.Description != ticket.Description {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Description Update`", escapedActor))
+		changes = append(changes, fmt.Sprintf("`%s` updated the description", escapedActor))
 	}
 
 	if err := h.repo.Tickets.Update(ctx, id, body.Title, body.Description, body.Details); err != nil {
@@ -515,8 +516,8 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 
 	// Add automatic comment if there were changes
 	if len(changes) > 0 {
-		commentBody := strings.Join(changes, " • ")
-		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+		commentBody := tracker.FormatComment(changes...)
+		h.repo.Tickets.AddSystemComment(ctx, id, commentBody)
 		// If any ticket content changed, recompute priority on server side if we had inputs stored
 		// Note: Priority still uses existing fields (impact/urgency/red flags) which are updated via dedicated endpoints.
 		// We ensure user scores use Effort only, handled elsewhere.
@@ -543,7 +544,7 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 			}
 
 			// Send notification to assignees
-			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, commentBody, &updatedTicket)
+			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, nil, commentBody, &updatedTicket)
 		}()
 	}
 
@@ -638,33 +639,33 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	var changes []string
 	finalScoreChanged := false
 	if body.InitialType != nil && *body.InitialType != ticket.InitialType {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Initial Type Change` from `%s` to `%s`", escapedActor, escapeMarkdown(string(ticket.InitialType)), escapeMarkdown(string(*body.InitialType))))
+		changes = append(changes, fmt.Sprintf("`%s` changed the initial type from `%s` to `%s`", escapedActor, escapeMarkdown(string(ticket.InitialType)), escapeMarkdown(string(*body.InitialType))))
 	}
 	if body.ResolvedType != nil && (ticket.ResolvedType == nil || *body.ResolvedType != *ticket.ResolvedType) {
 		if ticket.ResolvedType == nil {
-			changes = append(changes, fmt.Sprintf("`%s` performed `Resolved Type Set` from `(none)` to `%s`", escapedActor, escapeMarkdown(string(*body.ResolvedType))))
+			changes = append(changes, fmt.Sprintf("`%s` set the resolved type to `%s`", escapedActor, escapeMarkdown(string(*body.ResolvedType))))
 		} else {
-			changes = append(changes, fmt.Sprintf("`%s` performed `Resolved Type Change` from `%s` to `%s`", escapedActor, escapeMarkdown(string(*ticket.ResolvedType)), escapeMarkdown(string(*body.ResolvedType))))
+			changes = append(changes, fmt.Sprintf("`%s` changed the resolved type from `%s` to `%s`", escapedActor, escapeMarkdown(string(*ticket.ResolvedType)), escapeMarkdown(string(*body.ResolvedType))))
 		}
 	}
 	if body.Priority != nil && *body.Priority != ticket.Priority {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Priority Change` from `%s` to `%s`", escapedActor, escapeMarkdown(string(ticket.Priority)), escapeMarkdown(string(*body.Priority))))
+		changes = append(changes, fmt.Sprintf("`%s` changed the priority from `%s` to `%s`", escapedActor, escapeMarkdown(string(ticket.Priority)), escapeMarkdown(string(*body.Priority))))
 	}
 	if body.ImpactScore != nil && *body.ImpactScore != ticket.ImpactScore {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Impact Score Change` from `%d` to `%d`", escapedActor, ticket.ImpactScore, *body.ImpactScore))
+		changes = append(changes, fmt.Sprintf("`%s` updated the impact score from `%d` to `%d`", escapedActor, ticket.ImpactScore, *body.ImpactScore))
 	}
 	if body.UrgencyScore != nil && *body.UrgencyScore != ticket.UrgencyScore {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Urgency Score Change` from `%d` to `%d`", escapedActor, ticket.UrgencyScore, *body.UrgencyScore))
+		changes = append(changes, fmt.Sprintf("`%s` updated the urgency score from `%d` to `%d`", escapedActor, ticket.UrgencyScore, *body.UrgencyScore))
 	}
 	if body.FinalScore != nil && *body.FinalScore != ticket.FinalScore {
-		changes = append(changes, fmt.Sprintf("`%s` performed `Final Score Change` from `%d` to `%d`", escapedActor, ticket.FinalScore, *body.FinalScore))
+		changes = append(changes, fmt.Sprintf("`%s` updated the final score from `%d` to `%d`", escapedActor, ticket.FinalScore, *body.FinalScore))
 		finalScoreChanged = true
 	}
 	if body.RedFlag != nil && *body.RedFlag != ticket.RedFlag {
 		if *body.RedFlag {
-			changes = append(changes, fmt.Sprintf("`%s` performed `Red Flag Set` from `false` to `true`", escapedActor))
+			changes = append(changes, fmt.Sprintf("`%s` updated the red flag from `false` to `true`", escapedActor))
 		} else {
-			changes = append(changes, fmt.Sprintf("`%s` performed `Red Flag Clear` from `true` to `false`", escapedActor))
+			changes = append(changes, fmt.Sprintf("`%s` updated the red flag from `true` to `false`", escapedActor))
 		}
 	}
 
@@ -713,8 +714,8 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	commentBody := ""
 	hasComment := len(changes) > 0
 	if hasComment {
-		commentBody = strings.Join(changes, " • ")
-		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+		commentBody = tracker.FormatComment(changes...)
+		h.repo.Tickets.AddSystemComment(ctx, id, commentBody)
 	}
 
 	if shouldRecalculateScores {
@@ -759,7 +760,7 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 			}
 
 			// Send notification to assignees
-			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, commentBody, &updatedTicket)
+			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, nil, commentBody, &updatedTicket)
 		}(commentBody)
 	}
 
@@ -843,14 +844,14 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 
 	for _, assignee := range newAssignees {
 		if !currentAssigneeMap[assignee.ID] {
-			assignmentChanges = append(assignmentChanges, fmt.Sprintf("`%s` performed `Assignment` from `(unassigned)` to `%s (%s)`", escapedActor, escapeMarkdown(assignee.Name), escapeMarkdown(string(assignee.Role))))
+			assignmentChanges = append(assignmentChanges, fmt.Sprintf("`%s` assigned the ticket to `%s (%s)`", escapedActor, escapeMarkdown(assignee.Name), escapeMarkdown(string(assignee.Role))))
 		}
 	}
 
 	// Add automatic comment if there were changes
 	if len(assignmentChanges) > 0 {
-		commentBody := strings.Join(assignmentChanges, " • ")
-		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+		commentBody := tracker.FormatComment(assignmentChanges...)
+		h.repo.Tickets.AddSystemComment(ctx, id, commentBody)
 
 		// Recalculate score distribution if ticket is completed
 		ticket, err := h.repo.Tickets.GetByID(ctx, id)
@@ -923,7 +924,7 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 	for _, assignee := range currentAssignees {
 		for _, unassigneeID := range body.AssigneeIDs {
 			if assignee.ID == unassigneeID {
-				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("`%s` performed `Unassignment` from `%s (%s)` to `(unassigned)`", escapedActor, escapeMarkdown(assignee.Name), escapeMarkdown(string(assignee.Role))))
+				unassignmentChanges = append(unassignmentChanges, fmt.Sprintf("`%s` removed `%s (%s)` from the ticket assignments", escapedActor, escapeMarkdown(assignee.Name), escapeMarkdown(string(assignee.Role))))
 				break
 			}
 		}
@@ -942,8 +943,8 @@ func (h *Handlers) TicketsUnassign(c *fiber.Ctx) error {
 
 	// Add automatic comment if there were changes
 	if len(unassignmentChanges) > 0 {
-		commentBody := strings.Join(unassignmentChanges, " • ")
-		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+		commentBody := tracker.FormatComment(unassignmentChanges...)
+		h.repo.Tickets.AddSystemComment(ctx, id, commentBody)
 
 		// Recalculate score distribution if ticket is completed
 		ticket, err := h.repo.Tickets.GetByID(ctx, id)
@@ -1036,7 +1037,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 	// Track status change for automatic comment generation
 	var statusChangeComment string
 	if body.Status != ticket.Status {
-		statusChangeComment = fmt.Sprintf("`%s` performed `Status Change` from `%s` to `%s`", escapedActor, escapeMarkdown(string(ticket.Status)), escapeMarkdown(string(body.Status)))
+		statusChangeComment = tracker.FormatComment(fmt.Sprintf("`%s` changed the status from `%s` to `%s`", escapedActor, escapeMarkdown(string(ticket.Status)), escapeMarkdown(string(body.Status))))
 	}
 
 	if err := h.repo.Tickets.ChangeStatus(ctx, id, body.Status); err != nil {
@@ -1070,7 +1071,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 
 	// Add automatic comment if status changed
 	if statusChangeComment != "" {
-		h.repo.Tickets.AddComment(ctx, id, &userID, statusChangeComment)
+		h.repo.Tickets.AddSystemComment(ctx, id, statusChangeComment)
 
 		// Send notifications to assignees
 		go func() {
@@ -1094,7 +1095,7 @@ func (h *Handlers) TicketsStatus(c *fiber.Ctx) error {
 			}
 
 			// Send notification to assignees
-			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, statusChangeComment, &updatedTicket)
+			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, nil, statusChangeComment, &updatedTicket)
 		}()
 	}
 
@@ -1670,7 +1671,7 @@ func (h *Handlers) TicketsUpdateEffort(c *fiber.Ctx) error {
 		}
 
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("`%s` performed `Effort Score Update`", escapedActor)
+		commentBody := tracker.FormatComment(fmt.Sprintf("`%s` updated the effort score to `%d`", escapedActor, score))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 
@@ -1762,7 +1763,7 @@ func (h *Handlers) TicketsUpdateRedFlags(c *fiber.Ctx) error {
 		}
 
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("`%s` performed `Red Flags Update`", escapedActor)
+		commentBody := tracker.FormatComment(fmt.Sprintf("`%s` updated the red flags data", escapedActor))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 
@@ -1856,7 +1857,7 @@ func (h *Handlers) TicketsUpdateImpactAssessment(c *fiber.Ctx) error {
 		}
 
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("`%s` performed `Impact Assessment Update`", escapedActor)
+		commentBody := tracker.FormatComment(fmt.Sprintf("`%s` updated the impact assessment data", escapedActor))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 
@@ -1950,7 +1951,7 @@ func (h *Handlers) TicketsUpdateUrgencyTimeline(c *fiber.Ctx) error {
 		}
 
 		// Send notification to assignees
-		commentBody := fmt.Sprintf("`%s` performed `Urgency Timeline Update`", escapedActor)
+		commentBody := tracker.FormatComment(fmt.Sprintf("`%s` updated the urgency timeline data", escapedActor))
 		h.wsHub.NotifyCommentAdded(id, assigneeIDs, nil, commentBody, true, &updatedTicket)
 	}()
 
