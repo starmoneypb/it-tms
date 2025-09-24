@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1.7-labs
+
+ARG PNPM_VERSION=9.12.0
+
+FROM node:20-alpine AS base
+WORKDIR /workspace
+
+# Install useful tooling for local development
+RUN apk add --no-cache bash git openssh-client curl libc6-compat
+
+# Enable corepack and pin pnpm for reproducibility
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+
+ENV PNPM_HOME="/root/.local/share/pnpm"
+ENV PATH="${PNPM_HOME}:${PATH}"
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV WATCHPACK_POLLING=true
+ENV CHOKIDAR_USEPOLLING=true
+
+# Copy manifest files so pnpm can warm the store during image build
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/ui/package.json packages/ui/package.json
+
+# Warm pnpm store to speed up installs when the container starts
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm fetch
+
+# Default command can be overridden by docker compose
+CMD ["pnpm", "--filter", "@it-tms/web", "dev"]

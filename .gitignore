@@ -110,6 +110,7 @@ dist
 # Temporary folders
 tmp/
 temp/
+apps/api/tmp/
 
 # Go specific
 # Binaries for programs and plugins
