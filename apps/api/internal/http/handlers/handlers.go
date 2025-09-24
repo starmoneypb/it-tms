@@ -612,6 +612,7 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 
 	// Track changes for automatic comment generation
 	var changes []string
+	finalScoreChanged := false
 	if body.InitialType != nil && *body.InitialType != ticket.InitialType {
 		changes = append(changes, fmt.Sprintf("`%s` performed `Initial Type Change` from `%s` to `%s`", role, escapeMarkdown(string(ticket.InitialType)), escapeMarkdown(string(*body.InitialType))))
 	}
@@ -633,6 +634,7 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 	}
 	if body.FinalScore != nil && *body.FinalScore != ticket.FinalScore {
 		changes = append(changes, fmt.Sprintf("`%s` performed `Final Score Change` from `%d` to `%d`", role, ticket.FinalScore, *body.FinalScore))
+		finalScoreChanged = true
 	}
 	if body.RedFlag != nil && *body.RedFlag != ticket.RedFlag {
 		if *body.RedFlag {
@@ -641,81 +643,104 @@ func (h *Handlers) TicketsUpdateFields(c *fiber.Ctx) error {
 			changes = append(changes, fmt.Sprintf("`%s` performed `Red Flag Clear` from `true` to `false`", role))
 		}
 	}
-	
-    if err := h.repo.Tickets.UpdateTicketFields(ctx, id, body.InitialType, body.ResolvedType, body.Priority, body.ImpactScore, body.UrgencyScore, body.FinalScore, body.RedFlag); err != nil {
+
+	if err := h.repo.Tickets.UpdateTicketFields(ctx, id, body.InitialType, body.ResolvedType, body.Priority, body.ImpactScore, body.UrgencyScore, body.FinalScore, body.RedFlag); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"update failed"}})
 	}
 
-    // Optional effort direct update (admin fields)
-    if body.EffortScore != nil || body.EffortData != nil {
-        // Re-read ticket to merge existing
-        current, _ := h.repo.Tickets.GetByID(ctx, id)
-        newData := current.EffortData
-        if newData == nil { newData = map[string]any{} }
-        if body.EffortData != nil {
-            newData = body.EffortData
-        }
-        newScore := current.EffortScore
-        if body.EffortScore != nil { newScore = *body.EffortScore }
-        // Get user name for comment
-        userClaims, _ := c.Locals("user").(jwt.MapClaims)
-        userName, _ := userClaims["name"].(string)
-        if userName == "" { _, role, _ := middleware.GetUserFromContext(c); userName = role }
-        if err := h.repo.Tickets.UpdateEffort(ctx, id, newData, newScore, userName); err != nil {
-            return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"effort update failed"}})
-        }
-    }
-	
-	// Add automatic comment if there were changes
-	if len(changes) > 0 {
-		commentBody := strings.Join(changes, " • ")
-		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
-		
-        // Recalculate score distribution if effort changed or final score changed for completed tickets
-        if ticket.Status == models.StatusCompleted && (body.FinalScore != nil || body.EffortScore != nil || body.EffortData != nil) {
-			assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
-			if err == nil && len(assignees) > 0 {
-				// Extract assignee IDs
-				assigneeIDs := make([]string, len(assignees))
-				for i, assignee := range assignees {
-					assigneeIDs[i] = assignee.ID
-				}
-                // Redistribute points with new Effort (preferred)
-                updated, _ := h.repo.Tickets.GetByID(ctx, id)
-                total := float64(updated.EffortScore)
-                if len(assignees) > 0 {
-                    total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees))
-                }
-                h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
-			}
+	// Optional effort direct update (admin fields)
+	effortChanged := false
+	if body.EffortScore != nil || body.EffortData != nil {
+		// Re-read ticket to merge existing
+		current, err := h.repo.Tickets.GetByID(ctx, id)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"failed to get ticket"}})
 		}
-		
-		// Send notifications to assignees
-		go func() {
+		newData := current.EffortData
+		if newData == nil { newData = map[string]any{} }
+		if body.EffortData != nil {
+			newData = body.EffortData
+			effortChanged = true
+		}
+		newScore := current.EffortScore
+		if body.EffortScore != nil {
+			if *body.EffortScore != current.EffortScore {
+				effortChanged = true
+			}
+			newScore = *body.EffortScore
+		}
+		// Get user name for comment
+		userClaims, _ := c.Locals("user").(jwt.MapClaims)
+		userName, _ := userClaims["name"].(string)
+		if userName == "" { _, role, _ := middleware.GetUserFromContext(c); userName = role }
+		if err := h.repo.Tickets.UpdateEffort(ctx, id, newData, newScore, userName); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code":"SERVER_ERROR","message":"effort update failed"}})
+		}
+	}
+
+	shouldRecalculateScores := false
+	if ticket.Status == models.StatusCompleted {
+		if finalScoreChanged {
+			shouldRecalculateScores = true
+		}
+		if body.EffortScore != nil || body.EffortData != nil {
+			shouldRecalculateScores = shouldRecalculateScores || effortChanged
+		}
+	}
+
+	commentBody := ""
+	hasComment := len(changes) > 0
+	if hasComment {
+		commentBody = strings.Join(changes, " • ")
+		h.repo.Tickets.AddComment(ctx, id, &userID, commentBody)
+	}
+
+	if shouldRecalculateScores {
+		assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
+		if err == nil && len(assignees) > 0 {
+			assigneeIDs := make([]string, len(assignees))
+			for i, assignee := range assignees {
+				assigneeIDs[i] = assignee.ID
+			}
+			updated, err := h.repo.Tickets.GetByID(ctx, id)
+			if err == nil {
+				total := float64(updated.EffortScore)
+				if len(assignees) > 0 {
+					total += float64(effort.CollaborationExtraPerPerson(len(assignees)) * len(assignees))
+				}
+				h.repo.UserScores.DistributePoints(ctx, id, total, assigneeIDs)
+			}
+		} else if err == nil && len(assignees) == 0 {
+			h.repo.UserScores.RemoveAllPointsForTicket(ctx, id)
+		}
+	}
+
+	if hasComment {
+		go func(commentBody string) {
 			// Get updated ticket details and assignees
 			updatedTicket, err := h.repo.Tickets.GetByID(ctx, id)
 			if err != nil {
 				log.Printf("Failed to get updated ticket for fields update notification: %v", err)
 				return
 			}
-			
+
 			assignees, err := h.repo.Tickets.GetAssignees(ctx, id)
 			if err != nil {
 				log.Printf("Failed to get assignees for fields update notification: %v", err)
 				return
 			}
-			
+
 			// Extract assignee IDs
 			var assigneeIDs []string
 			for _, assignee := range assignees {
 				assigneeIDs = append(assigneeIDs, assignee.ID)
 			}
-			
+
 			// Send notification to assignees
 			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, &userID, commentBody, &updatedTicket)
-		}()
+		}(commentBody)
 	}
-	
+
 	h.repo.Audits.Insert(ctx, id, &userID, "update_ticket_fields", nil, body)
 	return c.JSON(h.envelope(fiber.Map{"id": id}))
 }
