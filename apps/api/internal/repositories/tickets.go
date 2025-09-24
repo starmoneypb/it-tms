@@ -206,7 +206,7 @@ func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ti
                 c.ticket_id,
                 c.author_id,
                 CASE WHEN c.is_system_generated THEN 'Tracker' ELSE u.name END AS author_name,
-                CASE WHEN c.is_system_generated THEN 'System' ELSE u.role END AS author_role,
+                CASE WHEN c.is_system_generated THEN 'System' ELSE u.role::text END AS author_role,
                 c.body,
                 c.is_system_generated,
                 c.created_at
@@ -401,7 +401,7 @@ func (r *TicketRepo) GetCommentsPaginated(ctx context.Context, ticketID string, 
                 c.ticket_id,
                 c.author_id,
                 CASE WHEN c.is_system_generated THEN 'Tracker' ELSE u.name END AS author_name,
-                CASE WHEN c.is_system_generated THEN 'System' ELSE u.role END AS author_role,
+                CASE WHEN c.is_system_generated THEN 'System' ELSE u.role::text END AS author_role,
                 c.body,
                 c.is_system_generated,
                 c.created_at
