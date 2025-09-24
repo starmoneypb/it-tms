@@ -1,12 +1,12 @@
 package repositories
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/it-tms/apps/api/internal/models"
+	"github.com/it-tms/apps/api/internal/tracker"
 )
 
 func TestTicketRepo_UpdateTicketFields(t *testing.T) {
@@ -111,41 +111,39 @@ func TestCommentGeneration_ChangeTracking(t *testing.T) {
 	}{
 		{
 			name:     "Single field change",
-			changes:  []string{"`Supervisor` performed `Priority Change` from `P3` to `P1`"},
+			changes:  []string{"`Supervisor` changed the priority from `P3` to `P1`"},
 			role:     "Supervisor",
-			expected: "`Supervisor` performed `Priority Change` from `P3` to `P1`",
+			expected: "**Tracker** • `Supervisor` changed the priority from `P3` to `P1`",
 		},
 		{
 			name:     "Multiple field changes",
-			changes:  []string{"`Manager` performed `Priority Change` from `P3` to `P1`", "`Manager` performed `Impact Score Change` from `2` to `5`"},
+			changes:  []string{"`Manager` changed the priority from `P3` to `P1`", "`Manager` updated the impact score from `2` to `5`"},
 			role:     "Manager",
-			expected: "`Manager` performed `Priority Change` from `P3` to `P1` • `Manager` performed `Impact Score Change` from `2` to `5`",
+			expected: "**Tracker** • `Manager` changed the priority from `P3` to `P1` • `Manager` updated the impact score from `2` to `5`",
 		},
 		{
 			name:     "Title and description changes",
-			changes:  []string{"`Supervisor` performed `Title Change` from `Old Title` to `New Title`", "`Supervisor` performed `Description Update`"},
+			changes:  []string{"`Supervisor` changed the title from `Old Title` to `New Title`", "`Supervisor` updated the description"},
 			role:     "Supervisor",
-			expected: "`Supervisor` performed `Title Change` from `Old Title` to `New Title` • `Supervisor` performed `Description Update`",
+			expected: "**Tracker** • `Supervisor` changed the title from `Old Title` to `New Title` • `Supervisor` updated the description",
 		},
 		{
 			name:     "Red flag changes",
-			changes:  []string{"`Manager` performed `Red Flag Set` from `false` to `true`"},
+			changes:  []string{"`Manager` updated the red flag from `false` to `true`"},
 			role:     "Manager",
-			expected: "`Manager` performed `Red Flag Set` from `false` to `true`",
+			expected: "**Tracker** • `Manager` updated the red flag from `false` to `true`",
 		},
 		{
 			name:     "Title with backticks (should be escaped)",
-			changes:  []string{"`Supervisor` performed `Title Change` from `Fix the \\`backtick\\` issue` to `Fix the \\`backtick\\` issue v2`"},
+			changes:  []string{"`Supervisor` changed the title from `Fix the \\`backtick\\` issue` to `Fix the \\`backtick\\` issue v2`"},
 			role:     "Supervisor",
-			expected: "`Supervisor` performed `Title Change` from `Fix the \\`backtick\\` issue` to `Fix the \\`backtick\\` issue v2`",
+			expected: "**Tracker** • `Supervisor` changed the title from `Fix the \\`backtick\\` issue` to `Fix the \\`backtick\\` issue v2`",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var commentBody string
-			commentBody = strings.Join(tt.changes, " • ")
-
+			commentBody := tracker.FormatComment(tt.changes...)
 			assert.Equal(t, tt.expected, commentBody)
 		})
 	}
