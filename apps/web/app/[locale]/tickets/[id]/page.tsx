@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox } from "@heroui/react";
+import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox, Avatar } from "@heroui/react";
 import { TiptapEditor } from "@/lib/tiptap-editor";
 import { MarkdownRenderer } from "@/lib/markdown-renderer";
 import { convertContentToMarkdown } from "@/lib/html-to-markdown";
@@ -722,9 +722,15 @@ export default function TicketDetails() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       {ticket.assignees.map((assignee: any) => (
                         <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
-                            {assignee.name.charAt(0).toUpperCase()}
-                          </div>
+                          <Avatar
+                            src={assignee.profilePicture ? `${API}/api/v1${assignee.profilePicture}` : undefined}
+                            name={assignee.name}
+                            className="w-6 h-6 text-xs"
+                            classNames={{
+                              base: "bg-gradient-to-br from-primary-400 to-primary-600",
+                              name: "text-white font-semibold"
+                            }}
+                          />
                           <span className="text-sm">{assignee.name}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             assignee.role === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
@@ -1076,9 +1082,15 @@ export default function TicketDetails() {
                     <div className="flex flex-wrap gap-2">
                       {data.ticket.assignees.map((assignee: any) => (
                         <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium">
-                            {assignee.name.charAt(0).toUpperCase()}
-                          </div>
+                          <Avatar
+                            src={assignee.profilePicture ? `${API}/api/v1${assignee.profilePicture}` : undefined}
+                            name={assignee.name}
+                            className="w-6 h-6 text-xs"
+                            classNames={{
+                              base: "bg-gradient-to-br from-primary-400 to-primary-600",
+                              name: "text-white font-semibold"
+                            }}
+                          />
                           <span className="text-sm">{assignee.name}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             assignee.role === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
