@@ -82,13 +82,13 @@ const sanitizeSchema = (() => {
     kbd: [...(schema.attributes?.kbd || []), "className"],
 
     // Allow inline style on headings and paragraphs to keep text-align from raw HTML
-    h1: [...(schema.attributes?.h1 || []), "style"],
-    h2: [...(schema.attributes?.h2 || []), "style"],
-    h3: [...(schema.attributes?.h3 || []), "style"],
-    h4: [...(schema.attributes?.h4 || []), "style"],
-    h5: [...(schema.attributes?.h5 || []), "style"],
-    h6: [...(schema.attributes?.h6 || []), "style"],
-    p: [...(schema.attributes?.p || []), "style"],
+    h1: [...(schema.attributes?.h1 || []), "style", "align"],
+    h2: [...(schema.attributes?.h2 || []), "style", "align"],
+    h3: [...(schema.attributes?.h3 || []), "style", "align"],
+    h4: [...(schema.attributes?.h4 || []), "style", "align"],
+    h5: [...(schema.attributes?.h5 || []), "style", "align"],
+    h6: [...(schema.attributes?.h6 || []), "style", "align"],
+    p: [...(schema.attributes?.p || []), "style", "align"],
   };
 
   return schema;
@@ -133,7 +133,17 @@ function pickMarkStyle(
   return { ...(styleProp as any), backgroundColor: picked.bg, color: picked.text };
 }
 
-function readTextAlignFromStyleProp(styleProp: unknown): "left" | "center" | "right" | "justify" {
+function readTextAlign(
+  styleProp: unknown,
+  alignProp?: unknown
+): "left" | "center" | "right" | "justify" {
+  if (typeof alignProp === "string") {
+    const v = alignProp.toLowerCase();
+    if (v === "left" || v === "center" || v === "right" || v === "justify") {
+      return v;
+    }
+  }
+
   if (styleProp && typeof styleProp === "object") {
     const ta = (styleProp as any).textAlign;
     if (ta && typeof ta === "string") {
@@ -175,37 +185,37 @@ export function MarkdownRenderer({
         components={{
           // Headings with alignment support (reads style even if it's a string)
           h1: ({ children, ...props }) => {
-            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const textAlign = readTextAlign((props as any).style, (props as any).align);
             const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h1 className={`text-2xl font-bold text-white mb-4 ${map[textAlign]}`} style={{ textAlign }}>
+              <h1 className={`text-2xl font-bold text-white mb-4 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
                 {children}
               </h1>
             );
           },
           h2: ({ children, ...props }) => {
-            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const textAlign = readTextAlign((props as any).style, (props as any).align);
             const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h2 className={`text-xl font-semibold text-white mb-3 ${map[textAlign]}`} style={{ textAlign }}>
+              <h2 className={`text-xl font-semibold text-white mb-3 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
                 {children}
               </h2>
             );
           },
           h3: ({ children, ...props }) => {
-            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const textAlign = readTextAlign((props as any).style, (props as any).align);
             const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h3 className={`text-lg font-medium text-white mb-2 ${map[textAlign]}`} style={{ textAlign }}>
+              <h3 className={`text-lg font-medium text-white mb-2 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
                 {children}
               </h3>
             );
           },
           h4: ({ children, ...props }) => {
-            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const textAlign = readTextAlign((props as any).style, (props as any).align);
             const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <h4 className={`text-base font-medium text-white mb-2 ${map[textAlign]}`} style={{ textAlign }}>
+              <h4 className={`text-base font-medium text-white mb-2 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
                 {children}
               </h4>
             );
@@ -213,7 +223,7 @@ export function MarkdownRenderer({
 
           // Basic text with alignment support
           p: ({ children, ...props }) => {
-            const textAlign = readTextAlignFromStyleProp((props as any).style);
+            const textAlign = readTextAlign((props as any).style, (props as any).align);
 
             // If this paragraph contains only a code block, don't wrap it in <p>
             if (React.Children.count(children) === 1) {
@@ -225,7 +235,7 @@ export function MarkdownRenderer({
 
             const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
             return (
-              <p className={`text-white/80 mb-3 leading-relaxed ${map[textAlign]}`} style={{ textAlign }}>
+              <p className={`text-white/80 mb-3 leading-relaxed ${map[textAlign] ?? ""}`} style={{ textAlign }}>
                 {children}
               </p>
             );
@@ -316,7 +326,15 @@ export function MarkdownRenderer({
             children?: React.ReactNode;
           } & React.HTMLAttributes<HTMLElement>) => {
             const raw = String(children ?? "");
-            if (inline) {
+            const languageMatch = /language-([\w-]+)/.exec(className || "");
+            const language = languageMatch?.[1] || undefined;
+            const hasLineBreak = /\n/.test(raw.trimEnd());
+
+            const shouldRenderInline =
+              inline === true ||
+              (inline === undefined && !language && !(className || "").includes("language-") && !hasLineBreak);
+
+            if (shouldRenderInline) {
               return (
                 <code
                   className="bg-white/10 text-white/90 px-1 py-0.5 rounded text-[0.9em] font-mono border border-white/10 not-prose"
@@ -326,10 +344,6 @@ export function MarkdownRenderer({
                 </code>
               );
             }
-
-            // language-xxx → xxx
-            const match = /language-([\w-]+)/.exec(className || "");
-            const language = match?.[1] || undefined;
 
             const content = raw.replace(/\n$/, "");
 
