@@ -12,7 +12,7 @@ import (
 func TestTicketRepo_UpdateTicketFields(t *testing.T) {
 	// This is a unit test for the UpdateTicketFields method
 	// In a real test environment, you would use a test database
-	
+
 	tests := []struct {
 		name           string
 		initialType    *models.TicketInitialType
@@ -26,7 +26,7 @@ func TestTicketRepo_UpdateTicketFields(t *testing.T) {
 	}{
 		{
 			name:           "Update priority only",
-			priority:      func() *models.TicketPriority { v := models.PriorityP1; return &v }(),
+			priority:       func() *models.TicketPriority { v := models.PriorityP1; return &v }(),
 			expectedFields: 1,
 		},
 		{
@@ -83,16 +83,16 @@ func TestTicketRepo_UpdateTicketFields(t *testing.T) {
 
 func TestModels_Validation(t *testing.T) {
 	// Test that the model enums work correctly
-	
+
 	// Test ticket types
 	assert.Equal(t, "ISSUE_REPORT", string(models.InitialIssueReport))
 	assert.Equal(t, "CHANGE_REQUEST_NORMAL", string(models.InitialChangeRequestNormal))
 	assert.Equal(t, "SERVICE_REQUEST_DATA_CORRECTION", string(models.InitialServiceDataCorrection))
-	
+
 	// Test resolved types
 	assert.Equal(t, "EMERGENCY_CHANGE", string(models.ResolvedEmergencyChange))
 	assert.Equal(t, "DATA_CORRECTION", string(models.ResolvedDataCorrection))
-	
+
 	// Test priorities
 	assert.Equal(t, "P0", string(models.PriorityP0))
 	assert.Equal(t, "P1", string(models.PriorityP1))
@@ -102,7 +102,7 @@ func TestModels_Validation(t *testing.T) {
 
 func TestCommentGeneration_ChangeTracking(t *testing.T) {
 	// Test the logic for generating automatic comments
-	
+
 	tests := []struct {
 		name     string
 		changes  []string
@@ -144,8 +144,8 @@ func TestCommentGeneration_ChangeTracking(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var commentBody string
-			commentBody = strings.Join(tt.changes, "\n")
-			
+			commentBody = strings.Join(tt.changes, " • ")
+
 			assert.Equal(t, tt.expected, commentBody)
 		})
 	}
@@ -153,53 +153,53 @@ func TestCommentGeneration_ChangeTracking(t *testing.T) {
 
 func TestChangeDetection_Logic(t *testing.T) {
 	// Test the logic for detecting changes
-	
+
 	tests := []struct {
-		name        string
-		oldValue    interface{}
-		newValue    interface{}
+		name         string
+		oldValue     interface{}
+		newValue     interface{}
 		shouldChange bool
 	}{
 		{
-			name:        "String values different",
-			oldValue:    "P3",
-			newValue:    "P1",
+			name:         "String values different",
+			oldValue:     "P3",
+			newValue:     "P1",
 			shouldChange: true,
 		},
 		{
-			name:        "String values same",
-			oldValue:    "P3",
-			newValue:    "P3",
+			name:         "String values same",
+			oldValue:     "P3",
+			newValue:     "P3",
 			shouldChange: false,
 		},
 		{
-			name:        "Int values different",
-			oldValue:    int32(2),
-			newValue:    int32(5),
+			name:         "Int values different",
+			oldValue:     int32(2),
+			newValue:     int32(5),
 			shouldChange: true,
 		},
 		{
-			name:        "Int values same",
-			oldValue:    int32(2),
-			newValue:    int32(2),
+			name:         "Int values same",
+			oldValue:     int32(2),
+			newValue:     int32(2),
 			shouldChange: false,
 		},
 		{
-			name:        "Bool values different",
-			oldValue:    false,
-			newValue:    true,
+			name:         "Bool values different",
+			oldValue:     false,
+			newValue:     true,
 			shouldChange: true,
 		},
 		{
-			name:        "Bool values same",
-			oldValue:    false,
-			newValue:    false,
+			name:         "Bool values same",
+			oldValue:     false,
+			newValue:     false,
 			shouldChange: false,
 		},
 		{
-			name:        "Nil to value",
-			oldValue:    nil,
-			newValue:    "EMERGENCY_CHANGE",
+			name:         "Nil to value",
+			oldValue:     nil,
+			newValue:     "EMERGENCY_CHANGE",
 			shouldChange: true,
 		},
 	}
@@ -212,7 +212,7 @@ func TestChangeDetection_Logic(t *testing.T) {
 			} else {
 				changed = tt.oldValue != tt.newValue
 			}
-			
+
 			assert.Equal(t, tt.shouldChange, changed)
 		})
 	}
