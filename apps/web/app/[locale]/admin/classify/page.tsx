@@ -5,6 +5,7 @@ import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangl
 import { useTranslations } from 'next-intl';
 import { MarkdownRenderer } from '@/lib/markdown-renderer';
 import { convertContentToMarkdown } from '@/lib/html-to-markdown';
+import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
 import {
   filterClassifiableIssueReports,
   type ClassificationTicket as Ticket,
@@ -23,6 +24,7 @@ export default function ClassifyPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const {isOpen, onOpen, onClose} = useDisclosure();
+  const permissionedFetch = usePermissionAwareFetch();
 
   // Debug function to log selection changes
   const handleSelectionChange = (ticketId: string, keys: any) => {
@@ -74,12 +76,26 @@ export default function ClassifyPage() {
       payload = { resolvedType: rt };
     }
     
-    await fetch(`${API}/api/v1/tickets/${id}/classify`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const response = await permissionedFetch(
+      `${API}/api/v1/tickets/${id}/classify`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      { feature: "classify tickets" }
+    );
+
+    if (!response) {
+      return;
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error("Failed to classify ticket:", errorData?.error?.message || response.statusText);
+      return;
+    }
     load();
   }
 

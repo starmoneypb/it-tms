@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader, Input, Button, Avatar, Progress } from "@he
 import { useAuth } from "@/lib/auth";
 import { AlertTriangle, Camera, User, BarChart3, TrendingUp } from "lucide-react";
 import { useTranslations } from 'next-intl';
+import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
 
 // Use current hostname with port 8000 for production-like environment
 const API = typeof window !== 'undefined' && window.location.port === '8000'
@@ -44,6 +45,7 @@ export default function ProfilePage() {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const { user, isLoading, refreshUser } = useAuth();
+  const permissionedFetch = usePermissionAwareFetch();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [performanceStats, setPerformanceStats] = useState<PerformanceStats | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -107,14 +109,28 @@ export default function ProfilePage() {
     setUpdateSuccess(null);
     
     try {
-      const response = await fetch(`${API}/api/v1/profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await permissionedFetch(
+        `${API}/api/v1/profile`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(data),
         },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
+        {
+          feature: "update profile information",
+          hideSignInCta: Boolean(user),
+          message: user
+            ? "Your current role does not allow profile updates. Please contact your administrator to request access."
+            : undefined,
+        }
+      );
+
+      if (!response) {
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -160,14 +176,28 @@ export default function ProfilePage() {
 
       console.log('Uploading profile picture:', file.name, file.type, file.size);
 
-      const response = await fetch(`${API}/api/v1/profile/picture`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const response = await permissionedFetch(
+        `${API}/api/v1/profile/picture`,
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        },
+        {
+          feature: "upload a profile picture",
+          hideSignInCta: Boolean(user),
+          message: user
+            ? "You don't have permission to update the profile picture for this account."
+            : undefined,
+        }
+      );
+
+      if (!response) {
+        return;
+      }
 
       const result = await response.json();
-      
+
       if (!response.ok) {
         const errorMessage = result?.error?.message || 'Failed to upload profile picture';
         console.error('Upload failed:', result);

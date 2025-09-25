@@ -4,6 +4,7 @@ import { Button, Card, CardBody, CardHeader, Input, Textarea, Checkbox } from "@
 import { computePriority, PriorityInput } from "@/lib/priority";
 import { TiptapEditor } from "@/lib/tiptap-editor";
 import { useAuth } from "@/lib/auth";
+import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
 import { useLocale, useTranslations } from 'next-intl';
 import { 
   AlertTriangle, 
@@ -65,6 +66,7 @@ export default function NewTicket() {
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [submitting, setSubmitting] = useState(false);
   const { user, isLoading, canCreateTicketType } = useAuth();
+  const permissionedFetch = usePermissionAwareFetch();
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -157,13 +159,28 @@ export default function NewTicket() {
       };
       
       // Create ticket first
-      const res = await fetch(`${API}/api/v1/tickets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      
+      const res = await permissionedFetch(
+        `${API}/api/v1/tickets`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        },
+        {
+          feature: "create a new ticket",
+          hideSignInCta: Boolean(user && user.role !== "Anonymous"),
+          message: user && user.role !== "Anonymous"
+            ? "Your current role does not allow creating this type of ticket. Please contact your supervisor for assistance."
+            : undefined,
+        }
+      );
+
+      if (!res) {
+        setSubmitting(false);
+        return;
+      }
+
       if (!res.ok) {
         const errorData = await res.text();
         console.error("Failed to create ticket:", errorData);
@@ -171,7 +188,7 @@ export default function NewTicket() {
         setSubmitting(false);
         return;
       }
-      
+
       const { data } = await res.json();
       const ticketId = data.id;
       
@@ -182,12 +199,24 @@ export default function NewTicket() {
           formData.append('files', file);
         });
         
-        const uploadRes = await fetch(`${API}/api/v1/tickets/${ticketId}/attachments`, {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        });
-        
+        const uploadRes = await permissionedFetch(
+          `${API}/api/v1/tickets/${ticketId}/attachments`,
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          },
+          {
+            feature: "upload attachments",
+            hideSignInCta: Boolean(user && user.role !== "Anonymous"),
+          }
+        );
+
+        if (!uploadRes) {
+          setSubmitting(false);
+          return;
+        }
+
         if (!uploadRes.ok) {
           const errorData = await uploadRes.text();
           console.error("Failed to upload attachments:", errorData);
