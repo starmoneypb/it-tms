@@ -870,6 +870,22 @@ export default function TicketDetails() {
 
     try {
       const hideSignInCta = Boolean(user && user.role !== "Anonymous");
+
+      if (typeof window !== "undefined") {
+        try {
+          const resolvedUrl = new URL(url, window.location.href);
+
+          if (resolvedUrl.origin !== window.location.origin) {
+            window.open(resolvedUrl.toString(), "_blank", "noopener,noreferrer");
+            return;
+          }
+        } catch (error) {
+          console.warn("Falling back to direct download for attachment URL", error);
+          window.open(url, "_blank", "noopener,noreferrer");
+          return;
+        }
+      }
+
       const response = await permissionedFetch(
         url,
         { credentials: "include" },
