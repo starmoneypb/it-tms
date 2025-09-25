@@ -381,13 +381,103 @@ func (r *TicketRepo) AddCommentWithID(ctx context.Context, id string, authorID *
 	return commentID, err
 }
 
+func (r *TicketRepo) GetCommentByID(ctx context.Context, commentID string) (models.Comment, error) {
+	var c models.Comment
+	var authorID *string
+	var authorName *string
+	var authorRole *string
+	var editedAt *time.Time
+	var editedBy *string
+	var hiddenAt *time.Time
+	var hiddenBy *string
+	row := r.pool.QueryRow(ctx, `
+                SELECT
+                        c.id,
+                        c.ticket_id,
+                        c.author_id,
+                        CASE WHEN c.is_system_generated THEN 'Tracker' ELSE u.name END AS author_name,
+                        CASE WHEN c.is_system_generated THEN 'System' ELSE u.role::text END AS author_role,
+                        c.body,
+                        c.is_system_generated,
+                        c.created_at,
+                        c.updated_at,
+                        c.edited_at,
+                        c.edited_by,
+                        c.is_hidden,
+                        c.hidden_at,
+                        c.hidden_by
+                FROM comments c
+                LEFT JOIN users u ON c.author_id = u.id
+                WHERE c.id=$1
+        `, commentID)
+	if err := row.Scan(
+		&c.ID,
+		&c.TicketID,
+		&authorID,
+		&authorName,
+		&authorRole,
+		&c.Body,
+		&c.IsSystemGenerated,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+		&editedAt,
+		&editedBy,
+		&c.IsHidden,
+		&hiddenAt,
+		&hiddenBy,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return c, ErrNotFound
+		}
+		return c, err
+	}
+	c.AuthorID = authorID
+	c.AuthorName = authorName
+	c.AuthorRole = authorRole
+	c.EditedAt = editedAt
+	c.EditedBy = editedBy
+	c.HiddenAt = hiddenAt
+	c.HiddenBy = hiddenBy
+
+	if c.IsHidden {
+		c.Body = "_This comment has been hidden._"
+	}
+
+	if !c.IsHidden {
+		attachments, _ := r.GetCommentAttachments(ctx, c.ID)
+		c.Attachments = attachments
+	}
+
+	return c, nil
+}
+
+func (r *TicketRepo) UpdateComment(ctx context.Context, commentID string, body string, editedBy string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE comments SET body=$1, updated_at=NOW(), edited_at=NOW(), edited_by=$2 WHERE id=$3`, body, editedBy, commentID)
+	return err
+}
+
+func (r *TicketRepo) HideComment(ctx context.Context, commentID string, hiddenBy string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE comments SET is_hidden=TRUE, hidden_at=NOW(), hidden_by=$1, updated_at=NOW() WHERE id=$2`, hiddenBy, commentID)
+	return err
+}
+
 func (r *TicketRepo) AddAttachment(ctx context.Context, id, filename, mime string, size int64, path string) error {
 	_, err := r.pool.Exec(ctx, `INSERT INTO attachments (ticket_id, filename, mime, size, path) VALUES ($1,$2,$3,$4,$5)`, id, filename, mime, size, path)
 	return err
 }
 
+func (r *TicketRepo) DeleteAttachment(ctx context.Context, attachmentID string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM attachments WHERE id=$1`, attachmentID)
+	return err
+}
+
 func (r *TicketRepo) AddCommentAttachment(ctx context.Context, commentID, filename, mime string, size int64, path string) error {
 	_, err := r.pool.Exec(ctx, `INSERT INTO comment_attachments (comment_id, filename, mime, size, path) VALUES ($1,$2,$3,$4,$5)`, commentID, filename, mime, size, path)
+	return err
+}
+
+func (r *TicketRepo) HideCommentAttachment(ctx context.Context, attachmentID string, hiddenBy string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE comment_attachments SET is_hidden=TRUE, hidden_at=NOW(), hidden_by=$1 WHERE id=$2`, hiddenBy, attachmentID)
 	return err
 }
 
@@ -404,7 +494,13 @@ func (r *TicketRepo) GetCommentsPaginated(ctx context.Context, ticketID string, 
                 CASE WHEN c.is_system_generated THEN 'System' ELSE u.role::text END AS author_role,
                 c.body,
                 c.is_system_generated,
-                c.created_at
+                c.created_at,
+                c.updated_at,
+                c.edited_at,
+                c.edited_by,
+                c.is_hidden,
+                c.hidden_at,
+                c.hidden_by
             FROM comments c
             LEFT JOIN users u ON c.author_id = u.id
             WHERE c.ticket_id=$1
@@ -418,13 +514,45 @@ func (r *TicketRepo) GetCommentsPaginated(ctx context.Context, ticketID string, 
 	comments := []models.Comment{}
 	for rows.Next() {
 		var c models.Comment
-		if err := rows.Scan(&c.ID, &c.TicketID, &c.AuthorID, &c.AuthorName, &c.AuthorRole, &c.Body, &c.IsSystemGenerated, &c.CreatedAt); err != nil {
+		var editedAt *time.Time
+		var editedBy *string
+		var hiddenAt *time.Time
+		var hiddenBy *string
+		if err := rows.Scan(
+			&c.ID,
+			&c.TicketID,
+			&c.AuthorID,
+			&c.AuthorName,
+			&c.AuthorRole,
+			&c.Body,
+			&c.IsSystemGenerated,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+			&editedAt,
+			&editedBy,
+			&c.IsHidden,
+			&hiddenAt,
+			&hiddenBy,
+		); err != nil {
 			return nil, 0, err
 		}
 
+		c.EditedAt = editedAt
+		c.EditedBy = editedBy
+		c.HiddenAt = hiddenAt
+		c.HiddenBy = hiddenBy
+
+		if c.IsHidden {
+			c.Body = "_This comment has been hidden._"
+		}
+
 		// Get comment attachments
-		commentAttachments, _ := r.GetCommentAttachments(ctx, c.ID)
-		c.Attachments = commentAttachments
+		if !c.IsHidden {
+			commentAttachments, _ := r.GetCommentAttachments(ctx, c.ID)
+			c.Attachments = commentAttachments
+		} else {
+			c.Attachments = []models.CommentAttachment{}
+		}
 
 		comments = append(comments, c)
 	}
@@ -440,7 +568,7 @@ func (r *TicketRepo) GetCommentsPaginated(ctx context.Context, ticketID string, 
 }
 
 func (r *TicketRepo) GetCommentAttachments(ctx context.Context, commentID string) ([]models.CommentAttachment, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, comment_id, filename, mime, size, path, created_at FROM comment_attachments WHERE comment_id=$1 ORDER BY created_at`, commentID)
+	rows, err := r.pool.Query(ctx, `SELECT id, comment_id, filename, mime, size, path, created_at, is_hidden, hidden_at, hidden_by FROM comment_attachments WHERE comment_id=$1 AND is_hidden=FALSE ORDER BY created_at`, commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +577,7 @@ func (r *TicketRepo) GetCommentAttachments(ctx context.Context, commentID string
 	var attachments []models.CommentAttachment
 	for rows.Next() {
 		var a models.CommentAttachment
-		if err := rows.Scan(&a.ID, &a.CommentID, &a.Filename, &a.MIME, &a.Size, &a.Path, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.CommentID, &a.Filename, &a.MIME, &a.Size, &a.Path, &a.CreatedAt, &a.IsHidden, &a.HiddenAt, &a.HiddenBy); err != nil {
 			return nil, err
 		}
 		attachments = append(attachments, a)
@@ -526,8 +654,8 @@ func (r *TicketRepo) GetAttachmentByID(ctx context.Context, attachmentID string)
 
 func (r *TicketRepo) GetCommentAttachmentByID(ctx context.Context, attachmentID string) (models.CommentAttachment, error) {
 	var attachment models.CommentAttachment
-	row := r.pool.QueryRow(ctx, `SELECT id, comment_id, filename, mime, size, path, created_at FROM comment_attachments WHERE id=$1`, attachmentID)
-	err := row.Scan(&attachment.ID, &attachment.CommentID, &attachment.Filename, &attachment.MIME, &attachment.Size, &attachment.Path, &attachment.CreatedAt)
+	row := r.pool.QueryRow(ctx, `SELECT id, comment_id, filename, mime, size, path, created_at, is_hidden, hidden_at, hidden_by FROM comment_attachments WHERE id=$1`, attachmentID)
+	err := row.Scan(&attachment.ID, &attachment.CommentID, &attachment.Filename, &attachment.MIME, &attachment.Size, &attachment.Path, &attachment.CreatedAt, &attachment.IsHidden, &attachment.HiddenAt, &attachment.HiddenBy)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return attachment, ErrNotFound

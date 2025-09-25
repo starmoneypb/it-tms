@@ -66,6 +66,10 @@ export default function TicketDetails() {
   const [comment, setComment] = useState("");
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [commentPosting, setCommentPosting] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState("");
+  const [removingAttachmentId, setRemovingAttachmentId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -73,6 +77,12 @@ export default function TicketDetails() {
   const [statusError, setStatusError] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
+
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentContent, setEditingCommentContent] = useState("");
+  const [commentActionError, setCommentActionError] = useState<string | null>(null);
+  const [commentActionLoadingId, setCommentActionLoadingId] = useState<string | null>(null);
+  const [commentAttachmentLoadingId, setCommentAttachmentLoadingId] = useState<string | null>(null);
   
   // Ticket editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -128,7 +138,8 @@ export default function TicketDetails() {
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [contentEditForm, setContentEditForm] = useState({
     title: "",
-    description: ""
+    description: "",
+    steps: "",
   });
   
   // Original data for display when editing
@@ -286,9 +297,10 @@ export default function TicketDetails() {
         // Initialize content edit form
         setContentEditForm({
           title: ticket.title || "",
-          description: ticket.description || ""
+          description: ticket.description || "",
+          steps: (ticket.details?.steps as string) || ""
         });
-        
+
         // Store original data for display when editing
         setOriginalData({
           title: ticket.title || "",
@@ -394,22 +406,37 @@ export default function TicketDetails() {
 
   async function updateTicketContent() {
     if (!canEditTicketContent(data.ticket.createdBy, data.ticket.assignees)) return;
-    
+
     setContentEditLoading(true);
     setContentEditError("");
     
     try {
       const payload: any = {};
-      
-      // Only include fields that have been changed
-      if (contentEditForm.title && contentEditForm.title !== data.ticket.title) {
+      let hasChanges = false;
+
+      if (contentEditForm.title !== undefined && contentEditForm.title !== data.ticket.title) {
         payload.title = contentEditForm.title;
+        hasChanges = true;
       }
-      if (contentEditForm.description && contentEditForm.description !== data.ticket.description) {
+      if (contentEditForm.description !== undefined && contentEditForm.description !== data.ticket.description) {
         payload.description = contentEditForm.description;
+        hasChanges = true;
       }
-      
-      if (Object.keys(payload).length === 0) {
+
+      const currentSteps = (data.ticket.details?.steps as string) || "";
+      const desiredSteps = contentEditForm.steps ?? "";
+      if (desiredSteps !== currentSteps) {
+        const newDetails: Record<string, any> = { ...(data.ticket.details || {}) };
+        if (desiredSteps && desiredSteps.trim()) {
+          newDetails.steps = desiredSteps;
+        } else {
+          delete newDetails.steps;
+        }
+        payload.details = newDetails;
+        hasChanges = true;
+      }
+
+      if (!hasChanges) {
         setContentEditError("No changes detected");
         return;
       }
@@ -449,6 +476,263 @@ export default function TicketDetails() {
       setContentEditError(error instanceof Error ? error.message : "Failed to update ticket content");
     } finally {
       setContentEditLoading(false);
+    }
+  }
+
+  function handleTicketAttachmentSelection(filesList: FileList | null) {
+    if (!filesList) return;
+    const newFiles = Array.from(filesList);
+    setAttachmentFiles(newFiles);
+    setAttachmentError("");
+  }
+
+  async function uploadTicketAttachments() {
+    if (!attachmentFiles.length) {
+      setAttachmentError("Select at least one file to upload");
+      return;
+    }
+    setAttachmentUploading(true);
+    setAttachmentError("");
+
+    try {
+      const formData = new FormData();
+      attachmentFiles.forEach((file) => formData.append("files", file));
+
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/attachments`,
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        },
+        {
+          feature: "upload attachments",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        let message = "Failed to upload attachments";
+        try {
+          const errorData = await response.json();
+          message = errorData.error?.message || message;
+        } catch (err) {
+          const fallback = await response.text();
+          if (fallback) {
+            message = fallback;
+          }
+        }
+        throw new Error(message);
+      }
+
+      setAttachmentFiles([]);
+      load();
+      loadCommentsWithRetry(commentPagination.page);
+    } catch (error) {
+      setAttachmentError(error instanceof Error ? error.message : "Failed to upload attachments");
+    } finally {
+      setAttachmentUploading(false);
+    }
+  }
+
+  async function removeTicketAttachment(attachmentId: string) {
+    setRemovingAttachmentId(attachmentId);
+    setAttachmentError("");
+
+    try {
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/attachments/${attachmentId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+        {
+          feature: "remove attachments",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        let message = "Failed to remove attachment";
+        try {
+          const errorData = await response.json();
+          message = errorData.error?.message || message;
+        } catch (err) {
+          const fallback = await response.text();
+          if (fallback) {
+            message = fallback;
+          }
+        }
+        throw new Error(message);
+      }
+
+      load();
+      loadCommentsWithRetry(commentPagination.page);
+    } catch (error) {
+      setAttachmentError(error instanceof Error ? error.message : "Failed to remove attachment");
+    } finally {
+      setRemovingAttachmentId(null);
+    }
+  }
+
+  function beginCommentEdit(comment: any) {
+    setEditingCommentId(comment.id);
+    setEditingCommentContent(comment.body);
+    setCommentActionError(null);
+  }
+
+  function cancelCommentEdit() {
+    setEditingCommentId(null);
+    setEditingCommentContent("");
+    setCommentActionError(null);
+  }
+
+  async function saveCommentEdit() {
+    if (!editingCommentId) return;
+    if (!editingCommentContent.trim()) {
+      setCommentActionError("Comment cannot be empty");
+      return;
+    }
+
+    setCommentActionLoadingId(editingCommentId);
+    setCommentActionError(null);
+
+    try {
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/comments/${editingCommentId}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: editingCommentContent }),
+        },
+        {
+          feature: "edit comments",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        let message = "Failed to update comment";
+        try {
+          const errorData = await response.json();
+          message = errorData.error?.message || message;
+        } catch (err) {
+          const fallback = await response.text();
+          if (fallback) {
+            message = fallback;
+          }
+        }
+        throw new Error(message);
+      }
+
+      cancelCommentEdit();
+      loadCommentsWithRetry(commentPagination.page);
+    } catch (error) {
+      setCommentActionError(error instanceof Error ? error.message : "Failed to update comment");
+    } finally {
+      setCommentActionLoadingId(null);
+    }
+  }
+
+  async function hideComment(commentId: string) {
+    setCommentActionLoadingId(commentId);
+    setCommentActionError(null);
+
+    try {
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/comments/${commentId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+        {
+          feature: "hide comments",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        let message = "Failed to hide comment";
+        try {
+          const errorData = await response.json();
+          message = errorData.error?.message || message;
+        } catch (err) {
+          const fallback = await response.text();
+          if (fallback) {
+            message = fallback;
+          }
+        }
+        throw new Error(message);
+      }
+
+      if (editingCommentId === commentId) {
+        cancelCommentEdit();
+      }
+      loadCommentsWithRetry(commentPagination.page);
+    } catch (error) {
+      setCommentActionError(error instanceof Error ? error.message : "Failed to hide comment");
+    } finally {
+      setCommentActionLoadingId(null);
+    }
+  }
+
+  async function removeCommentAttachment(commentId: string, attachmentId: string) {
+    setCommentAttachmentLoadingId(attachmentId);
+    setCommentActionError(null);
+
+    try {
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/comments/${commentId}/attachments/${attachmentId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+        {
+          feature: "remove comment attachments",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        let message = "Failed to remove attachment";
+        try {
+          const errorData = await response.json();
+          message = errorData.error?.message || message;
+        } catch (err) {
+          const fallback = await response.text();
+          if (fallback) {
+            message = fallback;
+          }
+        }
+        throw new Error(message);
+      }
+
+      loadCommentsWithRetry(commentPagination.page);
+    } catch (error) {
+      setCommentActionError(error instanceof Error ? error.message : "Failed to remove attachment");
+    } finally {
+      setCommentAttachmentLoadingId(null);
     }
   }
 
@@ -722,7 +1006,8 @@ export default function TicketDetails() {
                         // Reset form to original values
                         setContentEditForm({
                           title: ticket.title,
-                          description: ticket.description
+                          description: ticket.description,
+                          steps: (ticket.details?.steps as string) || ""
                         });
                       }}
                     >
@@ -782,42 +1067,104 @@ export default function TicketDetails() {
             </div>
 
             {/* Ticket Attachments */}
-            {data.attachments && data.attachments.length > 0 && (
-              <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Paperclip size={18} className="text-primary-400" />
-                      {t('attachments')}
-                    </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {data.attachments.map((att: any) => (
-                    <button
-                      key={att.id}
-                      type="button"
-                      onClick={() => handleAttachmentDownload(`${API}/api/v1/attachments/${att.id}/download`, att.filename, att.id, 'download attachments')}
-                      className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group text-left"
-                      disabled={downloadingAttachmentId === att.id}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <Paperclip size={18} className="text-primary-400" />
+                {t('attachments')}
+              </h3>
+              {attachmentError && (
+                <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+                  {attachmentError}
+                </div>
+              )}
+              {canEditTicketContent(ticket.createdBy, ticket.assignees) && (
+                <div className="mb-4 bg-white/5 rounded-lg p-4 space-y-3">
+                  <div>
+                    <label className="block text-sm text-white/70 mb-2">{t('uploadFiles')}</label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(event) => handleTicketAttachmentSelection(event.target.files)}
+                      className="block w-full text-sm text-white/70 file:mr-4 file:rounded-md file:border-0 file:bg-primary-500/20 file:text-primary-200 file:px-3 file:py-2"
+                    />
+                  </div>
+                  {attachmentFiles.length > 0 && (
+                    <div className="space-y-2">
+                      {attachmentFiles.map((file, index) => (
+                        <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2 text-sm text-white/80">
+                          <span className="truncate mr-3">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                          <button
+                            type="button"
+                            onClick={() => setAttachmentFiles(prev => prev.filter((_, i) => i !== index))}
+                            className="text-red-300 hover:text-red-200"
+                          >
+                            {t('remove')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex justify-end">
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onPress={uploadTicketAttachments}
+                      isLoading={attachmentUploading}
+                      isDisabled={attachmentUploading}
                     >
-                      <div className="flex-shrink-0">
-                        {downloadingAttachmentId === att.id ? (
-                          <div className="w-5 h-5 border-2 border-primary-400/70 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Paperclip size={20} className="text-primary-400 group-hover:text-primary-300" />
+                      {attachmentUploading ? 'Uploading…' : t('uploadFiles')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {data.attachments && data.attachments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {data.attachments.map((att: any) => {
+                    const isRemoving = removingAttachmentId === att.id;
+                    return (
+                      <div key={att.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                        <button
+                          type="button"
+                          onClick={() => handleAttachmentDownload(`${API}/api/v1/attachments/${att.id}/download`, att.filename, att.id, 'download attachments')}
+                          className="flex-1 flex items-center gap-3 text-left hover:bg-white/5 rounded-md px-2 py-1 transition-colors"
+                          disabled={downloadingAttachmentId === att.id || isRemoving}
+                        >
+                          <div className="flex-shrink-0">
+                            {downloadingAttachmentId === att.id ? (
+                              <div className="w-5 h-5 border-2 border-primary-400/70 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Paperclip size={20} className="text-primary-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-white/90 truncate">{att.filename}</p>
+                            <p className="text-xs text-white/60">
+                              {(att.size / 1024 / 1024).toFixed(2)} MB • {att.mime}
+                              {att.mime === 'application/pdf' && (
+                                <span className="ml-2 px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs">PDF</span>
+                              )}
+                            </p>
+                          </div>
+                        </button>
+                        {canEditTicketContent(ticket.createdBy, ticket.assignees) && (
+                          <button
+                            type="button"
+                            onClick={() => removeTicketAttachment(att.id)}
+                            className="text-red-300 hover:text-red-200 text-xs"
+                            disabled={isRemoving}
+                          >
+                            {isRemoving ? 'Removing…' : t('remove')}
+                          </button>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white/90 truncate">{att.filename}</p>
-                        <p className="text-xs text-white/60">
-                          {(att.size / 1024 / 1024).toFixed(2)} MB • {att.mime}
-                          {att.mime === 'application/pdf' && (
-                            <span className="ml-2 px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs">PDF</span>
-                          )}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm text-white/60">{t('noAttachments')}</p>
+              )}
+            </div>
 
             <Divider />
 
@@ -873,17 +1220,30 @@ export default function TicketDetails() {
             </div>
 
             {/* Steps to Reproduce section for Issue Reports */}
-            {ticket.initialType === 'ISSUE_REPORT' && ticket.details?.steps && (
+            {ticket.initialType === 'ISSUE_REPORT' && (ticket.details?.steps || isEditingContent) && (
               <>
                 <Divider />
                 <div>
                   <h3 className="text-lg font-semibold mb-3">{t('stepsToReproduce')}</h3>
-                  <div className="bg-white/5 p-6 rounded-lg">
-                    <MarkdownRenderer 
-                      content={convertContentToMarkdown(ticket.details.steps)}
-                      className="text-white/80 leading-relaxed"
+                  {!isEditingContent ? (
+                    <div className="bg-white/5 p-6 rounded-lg">
+                      {ticket.details?.steps ? (
+                        <MarkdownRenderer
+                          content={convertContentToMarkdown(ticket.details.steps)}
+                          className="text-white/80 leading-relaxed"
+                        />
+                      ) : (
+                        <p className="text-sm text-white/60">{t('noDescriptionProvided')}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <TiptapEditor
+                      value={contentEditForm.steps}
+                      onChange={(value) => setContentEditForm(prev => ({ ...prev, steps: value }))}
+                      placeholder={t('stepsToReproduce')}
+                      minHeight="150px"
                     />
-                  </div>
+                  )}
                 </div>
               </>
             )}
@@ -991,60 +1351,142 @@ export default function TicketDetails() {
                 </div>
               ) : comments.length > 0 ? (
                 <>
+                  {commentActionError && (
+                    <div className="mb-3 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+                      {commentActionError}
+                    </div>
+                  )}
                   <div className="space-y-3">
-                    {comments.map((c: any) => (
-                      <div key={c.id} className="p-4 bg-white/5 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          {c.authorName && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-white/90">
-                                {c.authorName}
-                              </span>
-                              {c.authorRole && (
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  c.authorRole === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
-                                  c.authorRole === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
-                                  'bg-gray-500/20 text-gray-300'
-                                }`}>
-                                  {c.authorRole}
+                    {comments.map((c: any) => {
+                      const canManageComment = !c.isSystemGenerated && user && (user.role === 'Supervisor' || user.role === 'Manager' || c.authorId === user.id);
+                      const isEditingComment = editingCommentId === c.id;
+                      const isHidden = c.isHidden;
+                      return (
+                        <div key={c.id} className="p-4 bg-white/5 rounded-lg">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            {c.authorName && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-white/90">
+                                  {c.authorName}
+                                </span>
+                                {c.authorRole && (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    c.authorRole === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
+                                    c.authorRole === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
+                                    'bg-gray-500/20 text-gray-300'
+                                  }`}>
+                                    {c.authorRole}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <span className="text-xs text-white/60">
+                              {new Date(c.createdAt).toLocaleString()}
+                              {c.editedAt && (
+                                <span className="ml-2 italic text-white/50">
+                                  • Edited {new Date(c.editedAt).toLocaleString()}
                                 </span>
                               )}
+                            </span>
+                          </div>
+
+                          {isHidden ? (
+                            <p className="text-sm text-white/60 italic">This comment has been hidden.</p>
+                          ) : isEditingComment ? (
+                            <div className="space-y-3">
+                              <TiptapEditor
+                                value={editingCommentContent}
+                                onChange={setEditingCommentContent}
+                                minHeight="150px"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  color="primary"
+                                  onPress={saveCommentEdit}
+                                  isLoading={commentActionLoadingId === c.id}
+                                  isDisabled={commentActionLoadingId === c.id}
+                                >
+                                  {t('save')}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="bordered"
+                                  onPress={cancelCommentEdit}
+                                  isDisabled={commentActionLoadingId === c.id}
+                                >
+                                  {t('cancel')}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <MarkdownRenderer
+                              content={convertContentToMarkdown(c.body)}
+                              className="text-sm text-white/80"
+                            />
+                          )}
+
+                          {!isHidden && c.attachments && c.attachments.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <h4 className="text-xs font-medium text-white/60">{t('attachmentsColon')}</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {c.attachments.map((att: any) => (
+                                  <div key={att.id} className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg text-xs text-white/80">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAttachmentDownload(`${API}/api/v1/comment-attachments/${att.id}/download`, att.filename, att.id, 'download comment attachments')}
+                                      className="flex items-center gap-2"
+                                      disabled={downloadingAttachmentId === att.id || commentAttachmentLoadingId === att.id}
+                                    >
+                                      {downloadingAttachmentId === att.id ? (
+                                        <div className="w-4 h-4 border-2 border-primary-300/80 border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <Paperclip size={14} />
+                                      )}
+                                      <span>{att.filename}</span>
+                                      <span className="text-white/60">({(att.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                    </button>
+                                    {canManageComment && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeCommentAttachment(c.id, att.id)}
+                                        className="text-red-300 hover:text-red-200"
+                                        disabled={commentAttachmentLoadingId === att.id}
+                                      >
+                                        {commentAttachmentLoadingId === att.id ? 'Removing…' : t('remove')}
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
-                          <span className="text-xs text-white/60">
-                            {new Date(c.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        <MarkdownRenderer 
-                          content={convertContentToMarkdown(c.body)}
-                          className="text-sm text-white/80"
-                        />
-                        {c.attachments && c.attachments.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            <h4 className="text-xs font-medium text-white/60">{t('attachmentsColon')}</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {c.attachments.map((att: any) => (
-                                <button
-                                  key={att.id}
-                                  type="button"
-                                  onClick={() => handleAttachmentDownload(`${API}/api/v1/comment-attachments/${att.id}/download`, att.filename, att.id, 'download comment attachments')}
-                                  className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors text-left"
-                                  disabled={downloadingAttachmentId === att.id}
-                                >
-                                  {downloadingAttachmentId === att.id ? (
-                                    <div className="w-4 h-4 border-2 border-primary-300/80 border-t-transparent rounded-full animate-spin" />
-                                  ) : (
-                                    <Paperclip size={14} />
-                                  )}
-                                  <span>{att.filename}</span>
-                                  <span className="text-white/60">({(att.size / 1024 / 1024).toFixed(2)} MB)</span>
-                                </button>
-                              ))}
+
+                          {!isHidden && canManageComment && !isEditingComment && (
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="bordered"
+                                onPress={() => beginCommentEdit(c)}
+                                isDisabled={commentActionLoadingId === c.id}
+                              >
+                                {t('editContent')}
+                              </Button>
+                              <Button
+                                size="sm"
+                                color="danger"
+                                variant="flat"
+                                onPress={() => hideComment(c.id)}
+                                isLoading={commentActionLoadingId === c.id}
+                                isDisabled={commentActionLoadingId === c.id}
+                              >
+                                Hide
+                              </Button>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   {/* Pagination Controls */}

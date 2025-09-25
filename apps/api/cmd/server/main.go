@@ -131,12 +131,16 @@ func main() {
 	protected.Post("/tickets/:id/comments", h.TicketsAddComment)
 	protected.Get("/tickets/:id/comments", h.TicketsGetComments)
 	protected.Post("/tickets/:id/comments/:commentId/attachments", h.CommentsUploadAttachments)
-	
+	protected.Patch("/tickets/:id/comments/:commentId", h.CommentsUpdate)
+	protected.Delete("/tickets/:id/comments/:commentId", h.CommentsHide)
+	protected.Delete("/tickets/:id/comments/:commentId/attachments/:attachmentId", h.CommentsDeleteAttachment)
+	protected.Delete("/tickets/:id/attachments/:attachmentId", h.TicketsDeleteAttachment)
+
 	// Download routes (require auth with redirect for browser requests)
 	signInURL := cfg.WebAppURL + "/sign-in"
 	v1.Get("/attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadAttachment)
 	v1.Get("/comment-attachments/:attachmentId/download", middleware.AuthRequiredWithRedirect(cfg.JWTSecret, signInURL), h.DownloadCommentAttachment)
-	
+
 	// Profile picture download (public access for images)
 	v1.Get("/profile-pictures/:profilePictureId/download", h.DownloadProfilePicture)
 
@@ -147,7 +151,7 @@ func main() {
 	admin.Put("/tickets/:id/impact-assessment", h.TicketsUpdateImpactAssessment)
 	admin.Put("/tickets/:id/urgency-timeline", h.TicketsUpdateUrgencyTimeline)
 	admin.Post("/tickets/:id/effort", h.TicketsUpdateEffort)
-	
+
 	// Swagger UI
 	app.Static("/swagger", "./public")
 	app.Get("/", func(c *fiber.Ctx) error {

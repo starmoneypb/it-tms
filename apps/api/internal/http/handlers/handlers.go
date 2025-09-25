@@ -505,6 +505,24 @@ func (h *Handlers) TicketsUpdate(c *fiber.Ctx) error {
 	if body.Description != nil && *body.Description != ticket.Description {
 		changes = append(changes, fmt.Sprintf("`%s` updated the description", escapedActor))
 	}
+	if body.Details != nil {
+		var existingSteps string
+		if current, ok := ticket.Details["steps"].(string); ok {
+			existingSteps = current
+		}
+		if newStepsRaw, ok := body.Details["steps"]; ok {
+			newSteps, _ := newStepsRaw.(string)
+			if strings.TrimSpace(newSteps) != strings.TrimSpace(existingSteps) {
+				if strings.TrimSpace(newSteps) == "" {
+					changes = append(changes, fmt.Sprintf("`%s` cleared the steps to reproduce", escapedActor))
+				} else if strings.TrimSpace(existingSteps) == "" {
+					changes = append(changes, fmt.Sprintf("`%s` provided steps to reproduce", escapedActor))
+				} else {
+					changes = append(changes, fmt.Sprintf("`%s` updated the steps to reproduce", escapedActor))
+				}
+			}
+		}
+	}
 
 	if err := h.repo.Tickets.Update(ctx, id, body.Title, body.Description, body.Details); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "update failed"}})
@@ -1125,6 +1143,10 @@ type CommentReq struct {
 	Body string `json:"body"`
 }
 
+type CommentUpdateReq struct {
+	Body string `json:"body"`
+}
+
 func (h *Handlers) TicketsAddComment(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var body CommentReq
@@ -1240,6 +1262,105 @@ func (h *Handlers) TicketsGetComments(c *fiber.Ctx) error {
 	}))
 }
 
+func (h *Handlers) CommentsUpdate(c *fiber.Ctx) error {
+	ticketID := c.Params("id")
+	commentID := c.Params("commentId")
+
+	var body CommentUpdateReq
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "BAD_REQUEST", "message": "invalid payload"}})
+	}
+
+	if strings.TrimSpace(body.Body) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "BAD_REQUEST", "message": "comment body cannot be empty"}})
+	}
+
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, role, _ := middleware.GetUserFromContext(c)
+
+	ctx := context.Background()
+	comment, err := h.repo.Tickets.GetCommentByID(ctx, commentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "comment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to load comment"}})
+	}
+
+	if comment.TicketID != ticketID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "comment does not belong to ticket"}})
+	}
+
+	if comment.IsSystemGenerated {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "system comments cannot be edited"}})
+	}
+
+	if comment.IsHidden {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "hidden comments cannot be edited"}})
+	}
+
+	if !(role == "Supervisor" || role == "Manager") {
+		if comment.AuthorID == nil || *comment.AuthorID != userID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions to edit comment"}})
+		}
+	}
+
+	if err := h.repo.Tickets.UpdateComment(ctx, commentID, body.Body, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to update comment"}})
+	}
+
+	return c.JSON(h.envelope(fiber.Map{"commentId": commentID}))
+}
+
+func (h *Handlers) CommentsHide(c *fiber.Ctx) error {
+	ticketID := c.Params("id")
+	commentID := c.Params("commentId")
+
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, role, _ := middleware.GetUserFromContext(c)
+
+	ctx := context.Background()
+	comment, err := h.repo.Tickets.GetCommentByID(ctx, commentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "comment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to load comment"}})
+	}
+
+	if comment.TicketID != ticketID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "comment does not belong to ticket"}})
+	}
+
+	if comment.IsSystemGenerated {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "system comments cannot be hidden"}})
+	}
+
+	if !(role == "Supervisor" || role == "Manager") {
+		if comment.AuthorID == nil || *comment.AuthorID != userID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions to hide comment"}})
+		}
+	}
+
+	if comment.IsHidden {
+		return c.SendStatus(fiber.StatusNoContent)
+	}
+
+	if err := h.repo.Tickets.HideComment(ctx, commentID, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to hide comment"}})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 // -------------------- Attachments --------------------
 
 var allowedMimes = map[string]struct{}{
@@ -1250,6 +1371,43 @@ const maxUploadSize = 10 * 1024 * 1024 // 10MB
 
 func (h *Handlers) TicketsUploadAttachments(c *fiber.Ctx) error {
 	id := c.Params("id")
+
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, role, _ := middleware.GetUserFromContext(c)
+	actorDisplay := getUserDisplayName(c, role)
+	escapedActor := escapeMarkdown(actorDisplay)
+
+	ctx := context.Background()
+
+	ticket, err := h.repo.Tickets.GetByID(ctx, id)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "ticket not found"}})
+	}
+
+	canManage := false
+	if role == "Supervisor" || role == "Manager" {
+		canManage = true
+	} else {
+		if ticket.CreatedBy != nil && *ticket.CreatedBy == userID {
+			canManage = true
+		}
+		if !canManage {
+			assigned, assignErr := h.repo.Tickets.IsUserAssignedToTicket(ctx, id, userID)
+			if assignErr != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to check assignment"}})
+			}
+			canManage = assigned
+		}
+	}
+
+	if !canManage {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions to modify attachments"}})
+	}
+
 	form, err := c.MultipartForm()
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "BAD_REQUEST", "message": "invalid form"}})
@@ -1258,17 +1416,16 @@ func (h *Handlers) TicketsUploadAttachments(c *fiber.Ctx) error {
 	if len(files) == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "BAD_REQUEST", "message": "no files"}})
 	}
-	ctx := context.Background()
+
 	res := []any{}
+	addedFiles := []string{}
 	for _, fh := range files {
 		if fh.Size > maxUploadSize {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "BAD_REQUEST", "message": "file too large"}})
 		}
-		// Rely on client-provided content-type, better to sniff in prod
 		mime := fh.Header.Get("Content-Type")
-		// Allow all file types as requested - no restrictions
 		if mime == "" {
-			mime = "application/octet-stream" // Default for unknown types
+			mime = "application/octet-stream"
 		}
 		path, err := h.saveUpload(fh)
 		if err != nil {
@@ -1278,8 +1435,133 @@ func (h *Handlers) TicketsUploadAttachments(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "db failed"}})
 		}
 		res = append(res, fiber.Map{"filename": fh.Filename})
+		addedFiles = append(addedFiles, fh.Filename)
 	}
+
+	if len(addedFiles) > 0 {
+		escapedNames := make([]string, 0, len(addedFiles))
+		for _, name := range addedFiles {
+			escapedNames = append(escapedNames, fmt.Sprintf("`%s`", escapeMarkdown(name)))
+		}
+		change := "added an attachment"
+		if len(escapedNames) > 1 {
+			change = "added attachments"
+		}
+		commentBody := tracker.FormatComment(fmt.Sprintf("`%s` %s: %s", escapedActor, change, strings.Join(escapedNames, ", ")))
+		if err := h.repo.Tickets.AddSystemComment(ctx, id, commentBody); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to add tracker comment"}})
+		}
+
+		go func() {
+			bgCtx := context.Background()
+			updatedTicket, err := h.repo.Tickets.GetByID(bgCtx, id)
+			if err != nil {
+				log.Printf("Failed to load ticket for attachment notification: %v", err)
+				return
+			}
+			assignees, err := h.repo.Tickets.GetAssignees(bgCtx, id)
+			if err != nil {
+				log.Printf("Failed to load assignees for attachment notification: %v", err)
+				return
+			}
+			var assigneeIDs []string
+			for _, a := range assignees {
+				assigneeIDs = append(assigneeIDs, a.ID)
+			}
+			h.wsHub.NotifyTicketUpdated(id, assigneeIDs, nil, commentBody, &updatedTicket)
+		}()
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(res))
+}
+
+func (h *Handlers) TicketsDeleteAttachment(c *fiber.Ctx) error {
+	ticketID := c.Params("id")
+	attachmentID := c.Params("attachmentId")
+
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, role, _ := middleware.GetUserFromContext(c)
+	actorDisplay := getUserDisplayName(c, role)
+	escapedActor := escapeMarkdown(actorDisplay)
+
+	ctx := context.Background()
+
+	ticket, err := h.repo.Tickets.GetByID(ctx, ticketID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "ticket not found"}})
+	}
+
+	canManage := false
+	if role == "Supervisor" || role == "Manager" {
+		canManage = true
+	} else {
+		if ticket.CreatedBy != nil && *ticket.CreatedBy == userID {
+			canManage = true
+		}
+		if !canManage {
+			assigned, assignErr := h.repo.Tickets.IsUserAssignedToTicket(ctx, ticketID, userID)
+			if assignErr != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to check assignment"}})
+			}
+			canManage = assigned
+		}
+	}
+
+	if !canManage {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions to modify attachments"}})
+	}
+
+	attachment, err := h.repo.Tickets.GetAttachmentByID(ctx, attachmentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "attachment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to get attachment"}})
+	}
+
+	if attachment.TicketID != ticketID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "attachment does not belong to ticket"}})
+	}
+
+	if h.storage != nil {
+		if err := h.storage.DeleteFile(ctx, attachment.Path); err != nil {
+			log.Printf("Failed to delete attachment file %s from storage: %v", attachmentID, err)
+		}
+	}
+
+	if err := h.repo.Tickets.DeleteAttachment(ctx, attachmentID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to delete attachment"}})
+	}
+
+	commentBody := tracker.FormatComment(fmt.Sprintf("`%s` removed attachment `%s`", escapedActor, escapeMarkdown(attachment.Filename)))
+	if err := h.repo.Tickets.AddSystemComment(ctx, ticketID, commentBody); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to add tracker comment"}})
+	}
+
+	go func() {
+		bgCtx := context.Background()
+		updatedTicket, err := h.repo.Tickets.GetByID(bgCtx, ticketID)
+		if err != nil {
+			log.Printf("Failed to load ticket for attachment removal notification: %v", err)
+			return
+		}
+		assignees, err := h.repo.Tickets.GetAssignees(bgCtx, ticketID)
+		if err != nil {
+			log.Printf("Failed to load assignees for attachment removal notification: %v", err)
+			return
+		}
+		var assigneeIDs []string
+		for _, a := range assignees {
+			assigneeIDs = append(assigneeIDs, a.ID)
+		}
+		h.wsHub.NotifyTicketUpdated(ticketID, assigneeIDs, nil, commentBody, &updatedTicket)
+	}()
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *Handlers) CommentsUploadAttachments(c *fiber.Ctx) error {
@@ -1315,6 +1597,64 @@ func (h *Handlers) CommentsUploadAttachments(c *fiber.Ctx) error {
 		res = append(res, fiber.Map{"filename": fh.Filename})
 	}
 	return c.Status(fiber.StatusCreated).JSON(h.envelope(res))
+}
+
+func (h *Handlers) CommentsDeleteAttachment(c *fiber.Ctx) error {
+	ticketID := c.Params("id")
+	commentID := c.Params("commentId")
+	attachmentID := c.Params("attachmentId")
+
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, role, _ := middleware.GetUserFromContext(c)
+
+	ctx := context.Background()
+	comment, err := h.repo.Tickets.GetCommentByID(ctx, commentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "comment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to load comment"}})
+	}
+
+	if comment.TicketID != ticketID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "comment does not belong to ticket"}})
+	}
+
+	if comment.IsSystemGenerated {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "system comments cannot be modified"}})
+	}
+
+	if !(role == "Supervisor" || role == "Manager") {
+		if comment.AuthorID == nil || *comment.AuthorID != userID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions to modify attachment"}})
+		}
+	}
+
+	attachment, err := h.repo.Tickets.GetCommentAttachmentByID(ctx, attachmentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "attachment not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to load attachment"}})
+	}
+
+	if attachment.CommentID != commentID {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "attachment does not belong to comment"}})
+	}
+
+	if attachment.IsHidden {
+		return c.SendStatus(fiber.StatusNoContent)
+	}
+
+	if err := h.repo.Tickets.HideCommentAttachment(ctx, attachmentID, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to hide attachment"}})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *Handlers) DownloadAttachment(c *fiber.Ctx) error {
