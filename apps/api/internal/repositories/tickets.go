@@ -665,7 +665,7 @@ func (r *TicketRepo) GetCommentAttachmentByID(ctx context.Context, attachmentID 
 	return attachment, nil
 }
 
-func (r *TicketRepo) Classify(ctx context.Context, id string, resolved models.TicketResolvedType) error {
+func (r *TicketRepo) Classify(ctx context.Context, id string, resolved models.TicketResolvedType, actorName string) error {
 	// only classify Issue Report
 	row := r.pool.QueryRow(ctx, `SELECT initial_type FROM tickets WHERE id=$1`, id)
 	var initial string
@@ -678,11 +678,15 @@ func (r *TicketRepo) Classify(ctx context.Context, id string, resolved models.Ti
 	if initial != string(models.InitialIssueReport) {
 		return errors.New("only ISSUE_REPORT can be classified")
 	}
-	_, err := r.pool.Exec(ctx, `UPDATE tickets SET resolved_type=$1, updated_at=NOW() WHERE id=$2`, resolved, id)
-	return err
+	if _, err := r.pool.Exec(ctx, `UPDATE tickets SET resolved_type=$1, updated_at=NOW() WHERE id=$2`, resolved, id); err != nil {
+		return err
+	}
+
+	commentBody := tracker.FormatComment(fmt.Sprintf("`%s` classified the issue report as `%s`", escapeMarkdown(actorName), escapeMarkdown(string(resolved))))
+	return r.AddSystemComment(ctx, id, commentBody)
 }
 
-func (r *TicketRepo) RejectIssueReport(ctx context.Context, id string) error {
+func (r *TicketRepo) RejectIssueReport(ctx context.Context, id string, actorName string) error {
 	// only reject Issue Report
 	row := r.pool.QueryRow(ctx, `SELECT initial_type FROM tickets WHERE id=$1`, id)
 	var initial string
@@ -696,8 +700,12 @@ func (r *TicketRepo) RejectIssueReport(ctx context.Context, id string) error {
 		return errors.New("only ISSUE_REPORT can be rejected")
 	}
 	now := time.Now()
-	_, err := r.pool.Exec(ctx, `UPDATE tickets SET status=$1, closed_at=$2, updated_at=NOW() WHERE id=$3`, models.StatusCanceled, &now, id)
-	return err
+	if _, err := r.pool.Exec(ctx, `UPDATE tickets SET status=$1, closed_at=$2, updated_at=NOW() WHERE id=$3`, models.StatusCanceled, &now, id); err != nil {
+		return err
+	}
+
+	commentBody := tracker.FormatComment(fmt.Sprintf("`%s` rejected the issue report", escapeMarkdown(actorName)))
+	return r.AddSystemComment(ctx, id, commentBody)
 }
 
 // Multi-assignee methods
