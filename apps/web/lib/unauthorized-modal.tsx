@@ -3,6 +3,13 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from "@heroui/react";
 import { ShieldAlert } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+
+const THAI_FONT_CLASS = "font-['IBM_Plex_Sans_Thai']";
+
+function classNames(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 
 const THAI_FONT_CLASS = "font-['IBM_Plex_Sans_Thai']";
 
@@ -41,8 +48,8 @@ interface ModalAction {
 
 interface UnauthorizedModalState {
   isOpen: boolean;
-  title: ReactNode;
-  description: ReactNode;
+  title?: ReactNode;
+  description?: ReactNode;
   primaryAction?: ModalAction;
   secondaryLabel?: ReactNode;
 }
@@ -53,6 +60,7 @@ interface UnauthorizedModalContextValue {
 }
 
 const UnauthorizedModalContext = createContext<UnauthorizedModalContextValue | undefined>(undefined);
+
 
 const defaultState: UnauthorizedModalState = {
   isOpen: false,
@@ -81,22 +89,21 @@ const defaultState: UnauthorizedModalState = {
 };
 
 export function UnauthorizedModalProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<UnauthorizedModalState>(defaultState);
+  const [state, setState] = useState<UnauthorizedModalState>({ isOpen: false });
+  const t = useTranslations("unauthorizedModal");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
+  const isThai = useMemo(() => locale?.toLowerCase().startsWith("th") ?? false, [locale]);
 
   const showUnauthorizedModal = useCallback((options?: Partial<Omit<UnauthorizedModalState, "isOpen">>) => {
     setState({
-      ...defaultState,
-      ...options,
       isOpen: true,
-      title: options?.title ?? defaultState.title,
-      description: options?.description ?? defaultState.description,
-      secondaryLabel: options?.secondaryLabel ?? defaultState.secondaryLabel,
-      primaryAction: options?.primaryAction,
+      ...options,
     });
   }, []);
 
   const hideUnauthorizedModal = useCallback(() => {
-    setState(prev => ({ ...prev, isOpen: false }));
+    setState({ isOpen: false });
   }, []);
 
   const value = useMemo(
@@ -130,7 +137,7 @@ export function UnauthorizedModalProvider({ children }: { children: ReactNode })
         isOpen={state.isOpen}
         onOpenChange={(isOpen) => !isOpen && hideUnauthorizedModal()}
         classNames={{
-          base: "bg-[#0f172a]/90 backdrop-blur-xl border border-white/10 text-white", // slate-900
+          base: "bg-[#0f172a]/90 backdrop-blur-xl border border-white/10 text-white",
           header: "pb-0",
           body: "pt-3",
         }}
@@ -142,21 +149,25 @@ export function UnauthorizedModalProvider({ children }: { children: ReactNode })
                 <ShieldAlert size={24} />
               </div>
               <div className="space-y-1">
-                <BilingualText
-                  as="p"
-                  className="text-sm tracking-wide text-white/70"
-                  en="Permission needed"
-                  th="จำเป็นต้องได้รับสิทธิ์"
-                  englishClassName="uppercase"
-                  thaiClassName="text-xs normal-case text-white/60"
-                />
-                <h3 className="text-xl font-semibold text-white">{state.title}</h3>
+                <p
+                  className={classNames(
+                    "text-sm tracking-wide text-white/70",
+                    !isThai && "uppercase",
+                    isThai && THAI_FONT_CLASS,
+                    isThai && "text-xs text-white/60"
+                  )}
+                >
+                  {t("badge")}
+                </p>
+                <h3 className={classNames("text-xl font-semibold text-white", isThai && THAI_FONT_CLASS)}>
+                  {state.title ?? t("title")}
+                </h3>
               </div>
             </div>
           </ModalHeader>
           <ModalBody>
-            <div className="text-sm text-white/70 leading-relaxed space-y-2">
-              {state.description}
+            <div className={classNames("text-sm text-white/70 leading-relaxed space-y-2", isThai && THAI_FONT_CLASS)}>
+              {state.description ?? <p>{t("description")}</p>}
             </div>
             <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -164,42 +175,50 @@ export function UnauthorizedModalProvider({ children }: { children: ReactNode })
                   <span className="text-lg">🔒</span>
                 </div>
                 <div className="space-y-1">
-                  <BilingualText
-                    as="p"
-                    className="text-sm font-medium text-white/90"
-                    en="Why am I seeing this?"
-                    th="ทำไมฉันจึงเห็นข้อความนี้?"
-                    thaiClassName="text-xs font-normal text-white/70"
-                  />
-                  <BilingualText
-                    as="p"
-                    className="text-xs text-white/60"
-                    en="This action is limited to users with elevated permissions. Sign in with an authorized account or reach out to your team lead for access."
-                    th="การดำเนินการนี้จำกัดเฉพาะผู้ใช้ที่มีสิทธิ์ระดับสูง โปรดลงชื่อเข้าใช้ด้วยบัญชีที่ได้รับอนุญาตหรือ ติดต่อหัวหน้าทีมของคุณเพื่อขอสิทธิ์เข้าถึง"
-                    thaiClassName="text-[11px] text-white/70"
-                  />
+                  <p
+                    className={classNames(
+                      "text-sm font-medium text-white/90",
+                      isThai && THAI_FONT_CLASS,
+                      isThai && "text-xs text-white/70"
+                    )}
+                  >
+                    {t("whyTitle")}
+                  </p>
+                  <p
+                    className={classNames(
+                      "text-xs text-white/60",
+                      isThai && THAI_FONT_CLASS,
+                      isThai && "text-[11px] text-white/70"
+                    )}
+                  >
+                    {t("whyDescription")}
+                  </p>
                 </div>
               </div>
               <div className="flex flex-col gap-2 text-xs text-white/50 sm:flex-row sm:items-center sm:gap-3">
                 <div className="flex items-start gap-1">
                   <span className="text-sm leading-none">•</span>
-                  <BilingualText
-                    as="span"
-                    en="Authentication required for sensitive data"
-                    th="ต้องยืนยันตัวตนเพื่อเข้าถึงข้อมูลสำคัญ"
-                    englishClassName="leading-tight"
-                    thaiClassName="text-[11px] text-white/60"
-                  />
+                  <span
+                    className={classNames(
+                      "leading-tight text-white/60",
+                      isThai && THAI_FONT_CLASS,
+                      isThai && "text-[11px]"
+                    )}
+                  >
+                    {t("guidance.authentication")}
+                  </span>
                 </div>
                 <div className="flex items-start gap-1">
                   <span className="text-sm leading-none">•</span>
-                  <BilingualText
-                    as="span"
-                    en="Role-based access control enforced"
-                    th="ระบบควบคุมการเข้าถึงตามบทบาทกำลังทำงาน"
-                    englishClassName="leading-tight"
-                    thaiClassName="text-[11px] text-white/60"
-                  />
+                  <span
+                    className={classNames(
+                      "leading-tight text-white/60",
+                      isThai && THAI_FONT_CLASS,
+                      isThai && "text-[11px]"
+                    )}
+                  >
+                    {t("guidance.roleBasedAccess")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -212,7 +231,7 @@ export function UnauthorizedModalProvider({ children }: { children: ReactNode })
                 onPress={hideUnauthorizedModal}
                 fullWidth
               >
-                {state.secondaryLabel ?? "Close / ปิด"}
+                {state.secondaryLabel ?? tCommon("close")}
               </Button>
               {state.primaryAction && (
                 <Button

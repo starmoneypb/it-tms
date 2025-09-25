@@ -156,6 +156,17 @@
     "thai": "ไทย",
     "switchLanguage": "Switch Language"
   },
+  "unauthorizedModal": {
+    "badge": "Permission needed",
+    "title": "Access restricted",
+    "description": "You don't have permission to perform this action. Please sign in or contact your administrator if you believe this is a mistake.",
+    "whyTitle": "Why am I seeing this?",
+    "whyDescription": "This action is limited to users with elevated permissions. Sign in with an authorized account or reach out to your team lead for access.",
+    "guidance": {
+      "authentication": "Authentication required for sensitive data",
+      "roleBasedAccess": "Role-based access control enforced"
+    }
+  },
   "newTicket": {
     "title": "Create New Ticket",
     "subtitle": "Submit a new support request or issue report",
