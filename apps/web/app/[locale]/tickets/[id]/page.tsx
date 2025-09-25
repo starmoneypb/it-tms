@@ -870,7 +870,7 @@ export default function TicketDetails() {
 
     try {
       const hideSignInCta = Boolean(user && user.role !== "Anonymous");
-
+      
       const response = await permissionedFetch(
         url,
         { credentials: "include", redirect: "manual" },
