@@ -1080,23 +1080,23 @@ export default function TicketDetails() {
               {canEditTicketContent(ticket.createdBy, ticket.assignees) && (
                 <div className="mb-4 bg-white/5 rounded-lg p-4 space-y-3">
                   <div>
-                    <label className="block text-sm text-white/70 mb-2">{t('uploadFiles')}</label>
+                    <label className="text-sm font-medium text-white/80 mb-2 block">{t('uploadFiles')}</label>
                     <input
                       type="file"
                       multiple
                       onChange={(event) => handleTicketAttachmentSelection(event.target.files)}
-                      className="block w-full text-sm text-white/70 file:mr-4 file:rounded-md file:border-0 file:bg-primary-500/20 file:text-primary-200 file:px-3 file:py-2"
+                      className="w-full p-2 border border-white/20 rounded-lg bg-white/5 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
                     />
                   </div>
                   {attachmentFiles.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="mt-2 space-y-1">
                       {attachmentFiles.map((file, index) => (
-                        <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2 text-sm text-white/80">
+                        <div key={`${file.name}-${index}`} className="text-sm text-white/70 flex items-center justify-between bg-white/5 p-2 rounded">
                           <span className="truncate mr-3">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                           <button
                             type="button"
                             onClick={() => setAttachmentFiles(prev => prev.filter((_, i) => i !== index))}
-                            className="text-red-300 hover:text-red-200"
+                            className="text-red-400 hover:text-red-300"
                           >
                             {t('remove')}
                           </button>
