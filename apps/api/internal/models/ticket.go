@@ -3,31 +3,31 @@ package models
 import "time"
 
 type Ticket struct {
-	ID                     string             `json:"id"`
-	Code                   int32              `json:"code"`
-	CreatedBy              *string            `json:"createdBy,omitempty"`
-	InitialType            TicketInitialType  `json:"initialType"`
-	ResolvedType           *TicketResolvedType `json:"resolvedType,omitempty"`
-	Status                 TicketStatus       `json:"status"`
-	Title                  string             `json:"title"`
-	Description            string             `json:"description"`
-	Details                map[string]any     `json:"details"`
-	ImpactScore            int32              `json:"impactScore"`
-	UrgencyScore           int32              `json:"urgencyScore"`
-	FinalScore             int32              `json:"finalScore"`
-	RedFlag                bool               `json:"redFlag"`
-	Priority               TicketPriority     `json:"priority"`
-	AssigneeID             *string            `json:"assigneeId,omitempty"` // Deprecated: use Assignees
-	Assignees              []User             `json:"assignees,omitempty"`
-	LatestComment          *string            `json:"latestComment,omitempty"`
-	RedFlagsData           map[string]any     `json:"redFlagsData,omitempty"`
-	ImpactAssessmentData   map[string]any     `json:"impactAssessmentData,omitempty"`
-	UrgencyTimelineData    map[string]any     `json:"urgencyTimelineData,omitempty"`
-	EffortData             map[string]any     `json:"effortData,omitempty"`
-	EffortScore            int32              `json:"effortScore"`
-	CreatedAt              time.Time          `json:"createdAt"`
-	UpdatedAt              time.Time          `json:"updatedAt"`
-	ClosedAt               *time.Time         `json:"closedAt,omitempty"`
+	ID                   string              `json:"id"`
+	Code                 int32               `json:"code"`
+	CreatedBy            *string             `json:"createdBy,omitempty"`
+	InitialType          TicketInitialType   `json:"initialType"`
+	ResolvedType         *TicketResolvedType `json:"resolvedType,omitempty"`
+	Status               TicketStatus        `json:"status"`
+	Title                string              `json:"title"`
+	Description          string              `json:"description"`
+	Details              map[string]any      `json:"details"`
+	ImpactScore          int32               `json:"impactScore"`
+	UrgencyScore         int32               `json:"urgencyScore"`
+	FinalScore           int32               `json:"finalScore"`
+	RedFlag              bool                `json:"redFlag"`
+	Priority             TicketPriority      `json:"priority"`
+	AssigneeID           *string             `json:"assigneeId,omitempty"` // Deprecated: use Assignees
+	Assignees            []User              `json:"assignees,omitempty"`
+	LatestComment        *string             `json:"latestComment,omitempty"`
+	RedFlagsData         map[string]any      `json:"redFlagsData,omitempty"`
+	ImpactAssessmentData map[string]any      `json:"impactAssessmentData,omitempty"`
+	UrgencyTimelineData  map[string]any      `json:"urgencyTimelineData,omitempty"`
+	EffortData           map[string]any      `json:"effortData,omitempty"`
+	EffortScore          int32               `json:"effortScore"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	UpdatedAt            time.Time           `json:"updatedAt"`
+	ClosedAt             *time.Time          `json:"closedAt,omitempty"`
 }
 
 type Comment struct {
@@ -39,6 +39,12 @@ type Comment struct {
 	Body              string              `json:"body"`
 	IsSystemGenerated bool                `json:"isSystemGenerated"`
 	CreatedAt         time.Time           `json:"createdAt"`
+	UpdatedAt         time.Time           `json:"updatedAt"`
+	EditedAt          *time.Time          `json:"editedAt,omitempty"`
+	EditedBy          *string             `json:"editedBy,omitempty"`
+	IsHidden          bool                `json:"isHidden"`
+	HiddenAt          *time.Time          `json:"hiddenAt,omitempty"`
+	HiddenBy          *string             `json:"hiddenBy,omitempty"`
 	Attachments       []CommentAttachment `json:"attachments,omitempty"`
 }
 
@@ -72,13 +78,16 @@ type UserRanking struct {
 }
 
 type CommentAttachment struct {
-	ID        string    `json:"id"`
-	CommentID string    `json:"commentId"`
-	Filename  string    `json:"filename"`
-	MIME      string    `json:"mime"`
-	Size      int64     `json:"size"`
-	Path      string    `json:"path"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID        string     `json:"id"`
+	CommentID string     `json:"commentId"`
+	Filename  string     `json:"filename"`
+	MIME      string     `json:"mime"`
+	Size      int64      `json:"size"`
+	Path      string     `json:"path"`
+	CreatedAt time.Time  `json:"createdAt"`
+	IsHidden  bool       `json:"isHidden"`
+	HiddenAt  *time.Time `json:"hiddenAt,omitempty"`
+	HiddenBy  *string    `json:"hiddenBy,omitempty"`
 }
 
 type TicketAssignment struct {
