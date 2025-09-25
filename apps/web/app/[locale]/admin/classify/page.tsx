@@ -5,31 +5,15 @@ import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangl
 import { useTranslations } from 'next-intl';
 import { MarkdownRenderer } from '@/lib/markdown-renderer';
 import { convertContentToMarkdown } from '@/lib/html-to-markdown';
+import {
+  filterClassifiableIssueReports,
+  type ClassificationTicket as Ticket,
+} from './classification-utils';
 
 // Use current hostname with port 8000 for production-like environment
 const API = typeof window !== 'undefined' && window.location.port === '8000'
   ? '' // Use relative URLs when accessed through port 8000 (production-like)
   : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
-
-type Ticket = { 
-  id: string; 
-  code: number;
-  title: string; 
-  description: string;
-  initialType: string; 
-  resolvedType?: string | null;
-  priority: string;
-  impactScore: number;
-  urgencyScore: number;
-  finalScore: number;
-  redFlag: boolean;
-  effortData?: any;
-  effortScore?: number;
-  createdBy?: string;
-  latestComment?: string;
-  createdAt: string;
-  updatedAt: string;
-};
 
 export default function ClassifyPage() {
   const t = useTranslations('admin');
@@ -69,9 +53,12 @@ export default function ClassifyPage() {
 
   function load() {
     setLoading(true);
-    fetch(`${API}/api/v1/tickets?status=pending`, { credentials: "include" })
+    fetch(`${API}/api/v1/tickets?pageSize=100`, { credentials: "include" })
       .then((r) => r.json())
-      .then((j) => setItems(j.data.filter((t: Ticket) => t.initialType === "ISSUE_REPORT" && !t.resolvedType)))
+      .then((j) => {
+        const tickets = Array.isArray(j.data) ? j.data : [];
+        setItems(filterClassifiableIssueReports(tickets));
+      })
       .finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
