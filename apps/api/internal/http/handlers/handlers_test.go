@@ -129,11 +129,10 @@ func TestRBAC_TicketCreation(t *testing.T) {
 			expectedStatus: 500, // Will fail due to mock DB, but should not be forbidden
 		},
 		{
-			name:           "User cannot create Data Correction",
+			name:           "User can create Data Correction",
 			userRole:       "User",
 			ticketType:     "SERVICE_REQUEST_DATA_CORRECTION",
-			expectedStatus: 403,
-			expectedError:  "insufficient permissions for this ticket type",
+			expectedStatus: 500, // Will fail due to mock DB, but should not be forbidden
 		},
 		{
 			name:           "Supervisor can create any ticket type",
