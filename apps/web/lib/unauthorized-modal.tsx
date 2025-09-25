@@ -11,6 +11,35 @@ function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+const THAI_FONT_CLASS = "font-['IBM_Plex_Sans_Thai']";
+
+function cx(...classes: (string | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function BilingualText({
+  as: Component = "span",
+  en,
+  th,
+  className,
+  englishClassName,
+  thaiClassName,
+}: {
+  as?: keyof JSX.IntrinsicElements;
+  en: string;
+  th: string;
+  className?: string;
+  englishClassName?: string;
+  thaiClassName?: string;
+}) {
+  return (
+    <Component className={className}>
+      <span className={cx("block", englishClassName)}>{en}</span>
+      <span className={cx("block", THAI_FONT_CLASS, thaiClassName)}>{th}</span>
+    </Component>
+  );
+}
+
 interface ModalAction {
   label: string;
   href?: string;
@@ -31,6 +60,33 @@ interface UnauthorizedModalContextValue {
 }
 
 const UnauthorizedModalContext = createContext<UnauthorizedModalContextValue | undefined>(undefined);
+
+
+const defaultState: UnauthorizedModalState = {
+  isOpen: false,
+  title: (
+    <BilingualText
+      as="span"
+      en="Access restricted"
+      th="จำกัดการเข้าถึง"
+      className="flex flex-col leading-tight"
+      englishClassName="text-white"
+      thaiClassName="text-white/80 text-base font-normal"
+    />
+  ),
+  description: (
+    <BilingualText
+      as="div"
+      en="You don't have permission to perform this action. Please sign in or contact your administrator if you believe this is a mistake."
+      th="คุณไม่มีสิทธิ์ในการดำเนินการนี้ หากคุณเชื่อว่าเป็นความผิดพลาด โปรดลงชื่อเข้าใช้หรือ ติดต่อผู้ดูแลระบบของคุณ"
+      className="space-y-2 text-sm"
+      englishClassName="text-white/70"
+      thaiClassName="text-white/80"
+    />
+  ),
+  primaryAction: undefined,
+  secondaryLabel: "Close / ปิด"
+};
 
 export function UnauthorizedModalProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<UnauthorizedModalState>({ isOpen: false });
