@@ -105,6 +105,9 @@ jobs:
           sleep 10
           sudo $COMPOSE -f docker-compose.gcp.yml ps
 
+          echo 'Cleaning up unused Docker resources to save space...'
+          sudo docker system prune -af
+
           echo 'Deployment completed successfully!'
           if [ -f "/etc/letsencrypt/live/unisight.dev/fullchain.pem" ]; then
             echo "✅ SSL is enabled - your site is accessible via HTTPS"
