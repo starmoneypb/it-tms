@@ -11,12 +11,6 @@ function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-const THAI_FONT_CLASS = "font-['IBM_Plex_Sans_Thai']";
-
-function cx(...classes: (string | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
-}
-
 function BilingualText({
   as: Component = "span",
   en,
@@ -34,8 +28,8 @@ function BilingualText({
 }) {
   return (
     <Component className={className}>
-      <span className={cx("block", englishClassName)}>{en}</span>
-      <span className={cx("block", THAI_FONT_CLASS, thaiClassName)}>{th}</span>
+      <span className={classNames("block", englishClassName)}>{en}</span>
+      <span className={classNames("block", THAI_FONT_CLASS, thaiClassName)}>{th}</span>
     </Component>
   );
 }
