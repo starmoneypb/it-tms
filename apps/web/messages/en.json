@@ -131,6 +131,7 @@
     "anyStatus": "Any status",
     "anyPriority": "Any priority",
     "anyAssignee": "Any assignee",
+    "anyType": "Any type",
     "any": "Any",
     "loadingTickets": "Loading tickets...",
     "noTicketsFound": "No tickets found",
@@ -142,14 +143,16 @@
     },
     "priority": {
       "P0": "P0",
-      "P1": "P1", 
+      "P1": "P1",
       "P2": "P2",
       "P3": "P3"
     },
     "statusLabel": "Status",
     "priorityLabel": "Priority",
+    "typeLabel": "Ticket type",
     "assignee": "Assignee",
-    "clearFilter": "Clear filter"
+    "clearFilter": "Clear filter",
+    "showCanceled": "Show canceled tickets"
   },
   "language": {
     "english": "English",

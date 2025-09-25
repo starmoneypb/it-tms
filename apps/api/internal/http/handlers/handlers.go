@@ -381,12 +381,15 @@ func (h *Handlers) TicketsList(c *fiber.Ctx) error {
 	}
 	offset := (page - 1) * pageSize
 
+	includeCanceled, _ := strconv.ParseBool(c.Query("includeCanceled", "false"))
 	filters := repositories.TicketFilters{
-		Status:     c.Query("status"),
-		Priority:   c.Query("priority"),
-		AssigneeID: c.Query("assigneeId"),
-		CreatedBy:  c.Query("createdBy"),
-		Query:      c.Query("q"),
+		Status:          c.Query("status"),
+		Priority:        c.Query("priority"),
+		AssigneeID:      c.Query("assigneeId"),
+		CreatedBy:       c.Query("createdBy"),
+		Query:           c.Query("q"),
+		Type:            c.Query("ticketType"),
+		IncludeCanceled: includeCanceled,
 	}
 
 	ctx := context.Background()
