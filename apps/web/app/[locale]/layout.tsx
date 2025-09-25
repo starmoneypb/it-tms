@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { HeroUIProvider } from "@heroui/react";
 import { AuthProvider } from "../../lib/auth";
 import { NotificationProvider } from "../../lib/notifications";
+import { UnauthorizedModalProvider } from "../../lib/unauthorized-modal";
 import { Navigation } from "../../components/Navigation";
 import { NotificationToast } from "../../components/NotificationToast";
 import { locales } from "../../i18n";
@@ -47,18 +48,20 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages} locale={locale}>
       <HeroUIProvider>
         <AuthProvider>
-          <NotificationProvider>
-            <div 
-              className={locale === 'th' ? ibmPlexSansThai.className : undefined}
-              lang={locale}
-            >
-              <header className="sticky top-0 z-50 glass border-b border-white/10">
-                <Navigation />
-              </header>
-              <main className="min-h-screen pt-6 pb-6">{children}</main>
-              <NotificationToast />
-            </div>
-          </NotificationProvider>
+          <UnauthorizedModalProvider>
+            <NotificationProvider>
+              <div
+                className={locale === 'th' ? ibmPlexSansThai.className : undefined}
+                lang={locale}
+              >
+                <header className="sticky top-0 z-50 glass border-b border-white/10">
+                  <Navigation />
+                </header>
+                <main className="min-h-screen pt-6 pb-6">{children}</main>
+                <NotificationToast />
+              </div>
+            </NotificationProvider>
+          </UnauthorizedModalProvider>
         </AuthProvider>
       </HeroUIProvider>
     </NextIntlClientProvider>

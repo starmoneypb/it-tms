@@ -11,6 +11,7 @@ import UserSearchSelect from "@/components/UserSearchSelect";
 import EffortAssessmentExplanation from "@/components/EffortAssessmentExplanation";
 import TicketCompletionCelebration from "@/components/TicketCompletionCelebration";
 import { useTranslations, useLocale } from 'next-intl';
+import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
 import { 
   AlertTriangle, 
   Paperclip, 
@@ -51,6 +52,7 @@ export default function TicketDetails() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { user, canEditTicket, canCancelTicket, canAssignTicket, canModifyTicketFields, canEditTicketContent } = useAuth();
+  const permissionedFetch = usePermissionAwareFetch();
   const [data, setData] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [commentPagination, setCommentPagination] = useState({
@@ -69,6 +71,7 @@ export default function TicketDetails() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
   
   // Ticket editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -362,13 +365,27 @@ export default function TicketDetails() {
       ].filter(Boolean).length;
       payload.effortScore = effortBase;
       
-      const response = await fetch(`${API}/api/v1/tickets/${id}/fields`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/fields`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        {
+          feature: "edit ticket fields",
+          hideSignInCta: Boolean(user),
+          message: user
+            ? "You don't have the required role to modify this ticket's workflow fields."
+            : undefined,
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error?.message || "Failed to update ticket fields");
@@ -408,13 +425,27 @@ export default function TicketDetails() {
         return;
       }
       
-      const response = await fetch(`${API}/api/v1/tickets/${id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        {
+          feature: "edit ticket content",
+          hideSignInCta: Boolean(user),
+          message: user
+            ? "You don't have permission to update this ticket's title or description."
+            : undefined,
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error?.message || "Failed to update ticket content");
@@ -437,18 +468,32 @@ export default function TicketDetails() {
     
     try {
       // Create comment first
-      const res = await fetch(`${API}/api/v1/tickets/${id}/comments`, {
-        method: "POST", 
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: comment }),
-      });
-      
+      const res = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/comments`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: comment }),
+        },
+        {
+          feature: "post comments",
+          hideSignInCta: Boolean(user),
+          message: user
+            ? "You don't have permission to add comments to this ticket."
+            : undefined,
+        }
+      );
+
+      if (!res) {
+        return;
+      }
+
       if (!res.ok) {
         alert("Failed to post comment");
         return;
       }
-      
+
       // Always consume the response to get the comment ID
       const response = await res.json();
       
@@ -461,12 +506,23 @@ export default function TicketDetails() {
           formData.append('files', file);
         });
         
-        const uploadRes = await fetch(`${API}/api/v1/tickets/${id}/comments/${commentId}/attachments`, {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        });
-        
+        const uploadRes = await permissionedFetch(
+          `${API}/api/v1/tickets/${id}/comments/${commentId}/attachments`,
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          },
+          {
+            feature: "upload comment attachments",
+            hideSignInCta: Boolean(user),
+          }
+        );
+
+        if (!uploadRes) {
+          return;
+        }
+
         if (!uploadRes.ok) {
           const errorData = await uploadRes.text();
           alert("Comment posted successfully, but some attachments failed to upload. Please try adding them again.");
@@ -484,18 +540,32 @@ export default function TicketDetails() {
 
   async function changeStatus() {
     if (!status.trim()) return;
-    
+
     setStatusLoading(true);
     setStatusError("");
     
     try {
-      const response = await fetch(`${API}/api/v1/tickets/${id}/status`, {
-        method: "POST", 
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/status`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        },
+        {
+          feature: "update ticket status",
+          hideSignInCta: Boolean(user),
+          message: user
+            ? "You don't have permission to transition this ticket to a new status."
+            : undefined,
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error?.message || "Failed to update status");
@@ -515,6 +585,65 @@ export default function TicketDetails() {
       setStatusError(error instanceof Error ? error.message : "Failed to update status");
     } finally {
       setStatusLoading(false);
+    }
+  }
+
+  async function handleAttachmentDownload(url: string, fallbackName: string, attachmentId: string, featureDescription: string) {
+    setDownloadingAttachmentId(attachmentId);
+
+    try {
+      const hideSignInCta = Boolean(user && user.role !== "Anonymous");
+      const response = await permissionedFetch(
+        url,
+        { credentials: "include" },
+        {
+          feature: featureDescription,
+          hideSignInCta,
+          primaryActionLabel: "Sign in to download",
+          message: hideSignInCta
+            ? "You don't have permission to download attachments for this ticket. Please contact your administrator if you need access."
+            : undefined,
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => null);
+        throw new Error(errorText || "Failed to download attachment");
+      }
+
+      const blob = await response.blob();
+      let downloadName = fallbackName;
+      const disposition = response.headers.get("Content-Disposition");
+      if (disposition) {
+        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+        const rawName = utf8Match?.[1] || asciiMatch?.[1];
+        if (rawName) {
+          try {
+            downloadName = decodeURIComponent(rawName);
+          } catch {
+            downloadName = rawName;
+          }
+        }
+      }
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Failed to download attachment:", error);
+      alert("We couldn't download this attachment. Please try again or contact support if the issue persists.");
+    } finally {
+      setDownloadingAttachmentId(null);
     }
   }
 
@@ -669,15 +798,19 @@ export default function TicketDetails() {
                     </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {data.attachments.map((att: any) => (
-                    <a
+                    <button
                       key={att.id}
-                      href={`${API}/api/v1/attachments/${att.id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
+                      type="button"
+                      onClick={() => handleAttachmentDownload(`${API}/api/v1/attachments/${att.id}/download`, att.filename, att.id, 'download attachments')}
+                      className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group text-left"
+                      disabled={downloadingAttachmentId === att.id}
                     >
                       <div className="flex-shrink-0">
-                        <Paperclip size={20} className="text-primary-400 group-hover:text-primary-300" />
+                        {downloadingAttachmentId === att.id ? (
+                          <div className="w-5 h-5 border-2 border-primary-400/70 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Paperclip size={20} className="text-primary-400 group-hover:text-primary-300" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-white/90 truncate">{att.filename}</p>
@@ -688,7 +821,7 @@ export default function TicketDetails() {
                           )}
                         </p>
                       </div>
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -918,17 +1051,21 @@ export default function TicketDetails() {
                             <h4 className="text-xs font-medium text-white/60">{t('attachmentsColon')}</h4>
                             <div className="flex flex-wrap gap-2">
                               {c.attachments.map((att: any) => (
-                                <a
+                                <button
                                   key={att.id}
-                                  href={`${API}/api/v1/comment-attachments/${att.id}/download`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors"
+                                  type="button"
+                                  onClick={() => handleAttachmentDownload(`${API}/api/v1/comment-attachments/${att.id}/download`, att.filename, att.id, 'download comment attachments')}
+                                  className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs transition-colors text-left"
+                                  disabled={downloadingAttachmentId === att.id}
                                 >
-                                  <Paperclip size={14} />
+                                  {downloadingAttachmentId === att.id ? (
+                                    <div className="w-4 h-4 border-2 border-primary-300/80 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Paperclip size={14} />
+                                  )}
                                   <span>{att.filename}</span>
                                   <span className="text-white/60">({(att.size / 1024 / 1024).toFixed(2)} MB)</span>
-                                </a>
+                                </button>
                               ))}
                             </div>
                           </div>
@@ -1105,12 +1242,29 @@ export default function TicketDetails() {
                               color="danger"
                               variant="light"
                               onPress={async () => {
-                                await fetch(`${API}/api/v1/tickets/${id}/assign`, {
-                                  method: "DELETE",
-                                  credentials: "include",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ assigneeIds: [assignee.id] }),
-                                });
+                                const response = await permissionedFetch(
+                                  `${API}/api/v1/tickets/${id}/assign`,
+                                  {
+                                    method: "DELETE",
+                                    credentials: "include",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ assigneeIds: [assignee.id] }),
+                                  },
+                                  {
+                                    feature: "update ticket assignments",
+                                    hideSignInCta: Boolean(user),
+                                  }
+                                );
+
+                                if (!response) {
+                                  return;
+                                }
+
+                                if (!response.ok) {
+                                  const errorData = await response.json().catch(() => null);
+                                  console.error("Failed to unassign user:", errorData?.error?.message || response.statusText);
+                                  return;
+                                }
                                 load();
                                 // Reload comments with retry mechanism to ensure auto-comment is visible
                                 loadCommentsWithRetry(1);
@@ -1127,16 +1281,33 @@ export default function TicketDetails() {
                 )}
 
                 {/* Quick Self-Assign */}
-                <Button 
-                  color="secondary" 
+                <Button
+                  color="secondary"
                   variant="flat"
                   onPress={async () => {
-                    await fetch(`${API}/api/v1/tickets/${id}/assign`, {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ self: true }),
-                    });
+                    const response = await permissionedFetch(
+                      `${API}/api/v1/tickets/${id}/assign`,
+                      {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ self: true }),
+                      },
+                      {
+                        feature: "assign yourself to the ticket",
+                        hideSignInCta: Boolean(user),
+                      }
+                    );
+
+                    if (!response) {
+                      return;
+                    }
+
+                    if (!response.ok) {
+                      const errorData = await response.json().catch(() => null);
+                      console.error("Failed to assign ticket to current user:", errorData?.error?.message || response.statusText);
+                      return;
+                    }
                     load();
                     // Reload comments with retry mechanism to ensure auto-comment is visible
                     loadCommentsWithRetry(1);
@@ -1160,12 +1331,29 @@ export default function TicketDetails() {
                       color="primary"
                       onPress={async () => {
                         if (selectedAssignees.length > 0) {
-                          await fetch(`${API}/api/v1/tickets/${id}/assign`, {
-                            method: "POST",
-                            credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ assigneeIds: selectedAssignees }),
-                          });
+                          const response = await permissionedFetch(
+                            `${API}/api/v1/tickets/${id}/assign`,
+                            {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ assigneeIds: selectedAssignees }),
+                            },
+                            {
+                              feature: "assign ticket collaborators",
+                              hideSignInCta: Boolean(user),
+                            }
+                          );
+
+                          if (!response) {
+                            return;
+                          }
+
+                          if (!response.ok) {
+                            const errorData = await response.json().catch(() => null);
+                            console.error("Failed to assign selected users:", errorData?.error?.message || response.statusText);
+                            return;
+                          }
                           setSelectedAssignees([]);
                           load();
                           // Reload comments with retry mechanism to ensure auto-comment is visible
@@ -1194,16 +1382,33 @@ export default function TicketDetails() {
                 </h3>
               </CardHeader>
               <CardBody>
-                <Button 
-                  color="secondary" 
+                <Button
+                  color="secondary"
                   variant="flat"
                   onPress={async () => {
-                    await fetch(`${API}/api/v1/tickets/${id}/assign`, {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ self: true }),
-                    });
+                    const response = await permissionedFetch(
+                      `${API}/api/v1/tickets/${id}/assign`,
+                      {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ self: true }),
+                      },
+                      {
+                        feature: "assign yourself to the ticket",
+                        hideSignInCta: Boolean(user),
+                      }
+                    );
+
+                    if (!response) {
+                      return;
+                    }
+
+                    if (!response.ok) {
+                      const errorData = await response.json().catch(() => null);
+                      console.error("Failed to self-assign ticket:", errorData?.error?.message || response.statusText);
+                      return;
+                    }
                     load();
                     // Reload comments with retry mechanism to ensure auto-comment is visible
                     loadCommentsWithRetry(1);
