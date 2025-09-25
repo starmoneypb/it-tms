@@ -65,6 +65,7 @@ export default function TicketDetails() {
   });
   const [comment, setComment] = useState("");
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
+  const [commentPosting, setCommentPosting] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -213,59 +214,73 @@ export default function TicketDetails() {
         setStatus(j.data.ticket.status);
         // Initialize edit form with current ticket data
         const ticket = j.data.ticket;
-        
-        // Reconstruct priority input from stored data (if available) or use defaults
-        const hasRedFlags = ticket.redFlagsData && ticket.redFlagsData.criticalIssues && 
-          Object.values(ticket.redFlagsData.criticalIssues).some(v => v === true);
-        const hasImpact = ticket.impactAssessmentData && ticket.impactAssessmentData.impacts && 
-          Object.values(ticket.impactAssessmentData.impacts).some(v => v === true);
-        
-        const priorityInput: PriorityInput = {
-          redFlags: hasRedFlags ? ticket.redFlagsData.criticalIssues : {
-            outage: false,
-            paymentsFailing: false,
-            securityBreach: false,
-            nonCompliance: false
-          },
-          impact: hasImpact ? ticket.impactAssessmentData.impacts : {
-            lostRevenue: false,
-            coreProcesses: false,
-            dataLoss: false
-          },
-          urgency: (ticket.urgencyTimelineData && ticket.urgencyTimelineData.timeline) ? ticket.urgencyTimelineData.timeline : "none"
+
+        const toBoolean = (value: unknown) => {
+          if (typeof value === "boolean") return value;
+          if (typeof value === "number") return value === 1;
+          if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            return normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on";
+          }
+          return false;
         };
-        
+
+        const redFlagSource = ticket.redFlagsData?.criticalIssues ?? {};
+        const impactSource = ticket.impactAssessmentData?.impacts ?? {};
+
+        const priorityInput: PriorityInput = {
+          redFlags: {
+            outage: toBoolean(redFlagSource.outage),
+            paymentsFailing: toBoolean(redFlagSource.paymentsFailing),
+            securityBreach: toBoolean(redFlagSource.securityBreach),
+            nonCompliance: toBoolean(redFlagSource.nonCompliance),
+          },
+          impact: {
+            lostRevenue: toBoolean(impactSource.lostRevenue),
+            coreProcesses: toBoolean(impactSource.coreProcesses),
+            dataLoss: toBoolean(impactSource.dataLoss),
+          },
+          urgency:
+            (typeof ticket.urgencyTimelineData?.timeline === "string"
+              ? (ticket.urgencyTimelineData.timeline as PriorityInput["urgency"])
+              : undefined) || "none",
+        };
+
+        const hasEffortData =
+          ticket.effortData &&
+          typeof ticket.effortData === "object" &&
+          Object.keys(ticket.effortData).length > 0;
+
+        const effortData = (hasEffortData ? ticket.effortData : {}) as any;
+
+        const effort = {
+          development: {
+            versionControl: toBoolean(effortData?.development?.versionControl),
+            externalService: toBoolean(effortData?.development?.externalService),
+            internalIntegration: toBoolean(effortData?.development?.internalIntegration),
+          },
+          security: {
+            legalCompliance: toBoolean(effortData?.security?.legalCompliance),
+            accessControl: toBoolean(effortData?.security?.accessControl),
+            personalData: toBoolean(effortData?.security?.personalData),
+          },
+          data: {
+            migration: toBoolean(effortData?.data?.migration),
+            dataPreparation: toBoolean(effortData?.data?.dataPreparation),
+            encryption: toBoolean(effortData?.data?.encryption),
+          },
+          operations: {
+            offHours: toBoolean(effortData?.operations?.offHours),
+            training: toBoolean(effortData?.operations?.training),
+            uat: toBoolean(effortData?.operations?.uat),
+          },
+        };
+
         const newEditForm = {
           initialType: ticket.initialType || "",
           resolvedType: ticket.resolvedType || "",
           priorityInput,
-          effort: (ticket.effortData && ticket.effortData !== null && 
-            typeof ticket.effortData === 'object' && Object.keys(ticket.effortData).length > 0 && 
-            Object.values(ticket.effortData).some(section => 
-              typeof section === 'object' && section !== null && 
-              Object.values(section).some(v => v === true)
-            )) ? ticket.effortData : { 
-            development: {
-              versionControl: false,
-              externalService: false,
-              internalIntegration: false
-            }, 
-            security: {
-              legalCompliance: false,
-              accessControl: false,
-              personalData: false
-            }, 
-            data: {
-              migration: false,
-              dataPreparation: false,
-              encryption: false
-            }, 
-            operations: {
-              offHours: false,
-              training: false,
-              uat: false
-            }
-          }
+          effort,
         };
         setEditForm(newEditForm);
         // Initialize content edit form
@@ -282,33 +297,7 @@ export default function TicketDetails() {
           resolvedType: ticket.resolvedType || "",
           priority: ticket.priority || "",
           priorityInput: priorityInput,
-          effort: (ticket.effortData && ticket.effortData !== null && 
-            typeof ticket.effortData === 'object' && Object.keys(ticket.effortData).length > 0 && 
-            Object.values(ticket.effortData).some(section => 
-              typeof section === 'object' && section !== null && 
-              Object.values(section).some(v => v === true)
-            )) ? ticket.effortData : { 
-            development: {
-              versionControl: false,
-              externalService: false,
-              internalIntegration: false
-            }, 
-            security: {
-              legalCompliance: false,
-              accessControl: false,
-              personalData: false
-            }, 
-            data: {
-              migration: false,
-              dataPreparation: false,
-              encryption: false
-            }, 
-            operations: {
-              offHours: false,
-              training: false,
-              uat: false
-            }
-          }
+          effort,
         });
       })
       .finally(() => setLoading(false));
@@ -464,8 +453,9 @@ export default function TicketDetails() {
   }
 
   async function postComment() {
-    if (!comment.trim()) return;
-    
+    if (!comment.trim() || commentPosting) return;
+
+    setCommentPosting(true);
     try {
       // Create comment first
       const res = await permissionedFetch(
@@ -488,7 +478,7 @@ export default function TicketDetails() {
       if (!res) {
         return;
       }
-
+        
       if (!res.ok) {
         alert("Failed to post comment");
         return;
@@ -535,6 +525,8 @@ export default function TicketDetails() {
       loadComments(1); // Reload comments to show the new one
     } catch (error) {
       alert("Failed to post comment");
+    } finally {
+      setCommentPosting(false);
     }
   }
 
@@ -1000,10 +992,11 @@ export default function TicketDetails() {
                         </div>
                       )}
                     </div>
-                    <Button 
-                      color="primary" 
+                    <Button
+                      color="primary"
                       onPress={postComment}
-                      isDisabled={!comment.trim()}
+                      isDisabled={!comment.trim() || commentPosting}
+                      isLoading={commentPosting}
                       className="w-full"
                     >
                       {t('postComment')}

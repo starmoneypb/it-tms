@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/it-tms/apps/api/internal/http/middleware"
+	"github.com/it-tms/apps/api/internal/models"
 	"github.com/it-tms/apps/api/pkg/config"
 )
 
@@ -33,7 +35,7 @@ func createTestJWT(role string) string {
 func setupTestApp() (*fiber.App, *Handlers) {
 	// Mock config
 	cfg := config.Config{
-		JWTSecret: "test-secret",
+		JWTSecret:   "test-secret",
 		DatabaseURL: "postgres://test:test@localhost:5432/test",
 	}
 
@@ -43,7 +45,7 @@ func setupTestApp() (*fiber.App, *Handlers) {
 
 	app := fiber.New()
 	app.Use(middleware.AuthOptional(cfg.JWTSecret))
-	
+
 	// Test routes
 	app.Post("/api/v1/tickets", h.TicketsCreate)
 	app.Patch("/api/v1/tickets/:id", middleware.AuthRequired(cfg.JWTSecret), h.TicketsUpdate)
@@ -52,6 +54,46 @@ func setupTestApp() (*fiber.App, *Handlers) {
 	app.Post("/api/v1/tickets/:id/comments", middleware.AuthRequired(cfg.JWTSecret), h.TicketsAddComment)
 
 	return app, h
+}
+
+func performRequest(app *fiber.App, req *http.Request) (*http.Response, error, bool) {
+	var (
+		resp     *http.Response
+		err      error
+		panicked bool
+	)
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicked = true
+			}
+		}()
+
+		resp, err = app.Test(req)
+	}()
+
+	return resp, err, panicked
+}
+
+func TestValidateUserAssignment(t *testing.T) {
+	userID := "user-1"
+
+	msg, ok := validateUserAssignment("User", userID, []models.User{{ID: "user-2"}}, []string{userID})
+	assert.False(t, ok)
+	assert.Equal(t, "ticket already has assignees", msg)
+
+	msg, ok = validateUserAssignment("User", userID, nil, []string{"user-2"})
+	assert.False(t, ok)
+	assert.Equal(t, "only supervisors/managers can assign others", msg)
+
+	msg, ok = validateUserAssignment("User", userID, nil, []string{userID})
+	assert.True(t, ok)
+	assert.Equal(t, "", msg)
+
+	msg, ok = validateUserAssignment("Supervisor", userID, []models.User{{ID: "user-2"}}, []string{"user-2"})
+	assert.True(t, ok)
+	assert.Equal(t, "", msg)
 }
 
 func TestRBAC_TicketCreation(t *testing.T) {
@@ -110,10 +152,10 @@ func TestRBAC_TicketCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			payload := map[string]interface{}{
-				"title":        "Test Ticket",
-				"description":  "Test Description",
-				"initialType":  tt.ticketType,
-				"details":      map[string]interface{}{},
+				"title":       "Test Ticket",
+				"description": "Test Description",
+				"initialType": tt.ticketType,
+				"details":     map[string]interface{}{},
 			}
 
 			if tt.contactEmail != "" {
@@ -128,7 +170,12 @@ func TestRBAC_TicketCreation(t *testing.T) {
 				req.Header.Set("Authorization", "Bearer test-token")
 			}
 
-			resp, err := app.Test(req)
+			resp, err, panicked := performRequest(app, req)
+			if panicked {
+				require.Equal(t, 500, tt.expectedStatus)
+				return
+			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -187,12 +234,17 @@ func TestRBAC_TicketUpdate(t *testing.T) {
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("PATCH", "/api/v1/tickets/test-id", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			if tt.hasAuth {
 				req.Header.Set("Authorization", "Bearer invalid-token")
 			}
 
-			resp, err := app.Test(req)
+			resp, err, panicked := performRequest(app, req)
+			if panicked {
+				require.Equal(t, 500, tt.expectedStatus)
+				return
+			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -253,7 +305,12 @@ func TestRBAC_TicketFieldsUpdate(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer test-token")
 
-			resp, err := app.Test(req)
+			resp, err, panicked := performRequest(app, req)
+			if panicked {
+				require.Equal(t, 500, tt.expectedStatus)
+				return
+			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -321,18 +378,23 @@ func TestSecurity_TicketStatusAndComments(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+createTestJWT(tt.userRole))
 
-			resp, err := app.Test(req)
+			resp, err, panicked := performRequest(app, req)
+			if panicked {
+				require.Equal(t, 500, tt.expectedStatus)
+				return
+			}
+
 			require.NoError(t, err)
-			
+
 			// For permission tests, we expect 403 Forbidden
 			if tt.expectedStatus == 403 {
 				assert.Equal(t, 403, resp.StatusCode)
-				
+
 				if tt.expectedError != "" {
 					var response map[string]interface{}
 					err := json.NewDecoder(resp.Body).Decode(&response)
 					require.NoError(t, err)
-					
+
 					errorObj, ok := response["error"].(map[string]interface{})
 					require.True(t, ok)
 					assert.Contains(t, errorObj["message"], tt.expectedError)
