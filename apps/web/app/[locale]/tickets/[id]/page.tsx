@@ -12,14 +12,15 @@ import EffortAssessmentExplanation from "@/components/EffortAssessmentExplanatio
 import TicketCompletionCelebration from "@/components/TicketCompletionCelebration";
 import { useTranslations, useLocale } from 'next-intl';
 import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
-import { 
-  AlertTriangle, 
-  Paperclip, 
-  MessageSquare, 
-  RotateCcw, 
-  Users, 
+import {
+  AlertTriangle,
+  Paperclip,
+  MessageSquare,
+  RotateCcw,
+  Users,
   Flag,
-  Settings
+  Settings,
+  X
 } from "lucide-react";
 
 // Use current hostname with port 8000 for production-like environment
@@ -1096,9 +1097,10 @@ export default function TicketDetails() {
                           <button
                             type="button"
                             onClick={() => setAttachmentFiles(prev => prev.filter((_, i) => i !== index))}
-                            className="text-red-400 hover:text-red-300"
+                            className="text-red-400 hover:text-red-300 flex items-center justify-center"
+                            aria-label={t('remove')}
                           >
-                            {t('remove')}
+                            <X className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -1151,10 +1153,18 @@ export default function TicketDetails() {
                           <button
                             type="button"
                             onClick={() => removeTicketAttachment(att.id)}
-                            className="text-red-300 hover:text-red-200 text-xs"
+                            className="text-red-300 hover:text-red-200 text-xs flex items-center justify-center"
                             disabled={isRemoving}
+                            aria-label={t('remove')}
                           >
-                            {isRemoving ? 'Removing…' : t('remove')}
+                            {isRemoving ? (
+                              <div
+                                className="w-4 h-4 border-2 border-red-200/80 border-t-transparent rounded-full animate-spin"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <X className="w-4 h-4" aria-hidden="true" />
+                            )}
                           </button>
                         )}
                       </div>
