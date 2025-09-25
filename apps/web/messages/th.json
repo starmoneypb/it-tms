@@ -131,6 +131,7 @@
     "anyStatus": "สถานะใดก็ได้",
     "anyPriority": "ความสำคัญใดก็ได้",
     "anyAssignee": "ผู้รับผิดชอบใดก็ได้",
+    "anyType": "ประเภทใดก็ได้",
     "any": "แบบใดก็ได้",
     "loadingTickets": "กำลังโหลดตั๋ว...",
     "noTicketsFound": "ไม่พบตั๋ว",
@@ -148,8 +149,10 @@
     },
     "statusLabel": "สถานะ",
     "priorityLabel": "ความสำคัญ",
+    "typeLabel": "ประเภทตั๋ว",
     "assignee": "ผู้รับผิดชอบ",
-    "clearFilter": "ล้างตัวกรอง"
+    "clearFilter": "ล้างตัวกรอง",
+    "showCanceled": "แสดงตั๋วที่ถูกยกเลิก"
   },
   "language": {
     "english": "English",

@@ -40,11 +40,13 @@ func (r *TicketRepo) Create(ctx context.Context, t *models.Ticket) error {
 }
 
 type TicketFilters struct {
-	Status     string
-	Priority   string
-	AssigneeID string
-	CreatedBy  string
-	Query      string
+	Status          string
+	Priority        string
+	AssigneeID      string
+	CreatedBy       string
+	Query           string
+	Type            string
+	IncludeCanceled bool
 }
 
 func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit int) ([]models.Ticket, int64, error) {
@@ -59,6 +61,11 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 	if f.Priority != "" {
 		clauses = append(clauses, fmt.Sprintf("priority = $%d", arg))
 		args = append(args, f.Priority)
+		arg++
+	}
+	if f.Type != "" {
+		clauses = append(clauses, fmt.Sprintf("initial_type = $%d", arg))
+		args = append(args, f.Type)
 		arg++
 	}
 	if f.AssigneeID != "" {
@@ -76,6 +83,9 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 		clauses = append(clauses, fmt.Sprintf("to_tsvector('english', title || ' ' || description) @@ plainto_tsquery('english', $%d)", arg))
 		args = append(args, f.Query)
 		arg++
+	}
+	if !f.IncludeCanceled && f.Status == "" {
+		clauses = append(clauses, fmt.Sprintf("status != '%s'", models.StatusCanceled))
 	}
 
 	where := strings.Join(clauses, " AND ")

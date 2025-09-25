@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Chip } from "@heroui/react";
+import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Checkbox } from "@heroui/react";
 import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle, Plus } from "lucide-react";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
@@ -139,11 +139,14 @@ function StatusIndicator({ status }: { status: string }) {
 export default function TicketsPage() {
   const t = useTranslations('tickets');
   const tCommon = useTranslations('common');
+  const tTypeOptions = useTranslations('typeOptions');
   const locale = useLocale();
   const { user, isLoading: authLoading } = useAuth();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
+  const [ticketType, setTicketType] = useState<string>("");
+  const [includeCanceled, setIncludeCanceled] = useState(false);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -156,13 +159,15 @@ export default function TicketsPage() {
     if (q) params.set("q", q);
     if (status) params.set("status", status);
     if (priority) params.set("priority", priority);
+    if (ticketType) params.set("ticketType", ticketType);
+    if (includeCanceled) params.set("includeCanceled", "true");
     // For now, we'll use the first assignee ID for backward compatibility with the API
     if (assigneeIds.length > 0) params.set("assigneeId", assigneeIds[0]);
     fetch(`${API}/api/v1/tickets?` + params.toString(), { credentials: "include" })
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false));
-  }, [page, pageSize, q, status, priority, assigneeIds.join(',')]);
+  }, [page, pageSize, q, status, priority, ticketType, includeCanceled, assigneeIds.join(',')]);
 
   // Debounced search for text input - resets to page 1
   useEffect(() => {
@@ -176,7 +181,7 @@ export default function TicketsPage() {
   // Immediate search for status, priority, and assignee changes - resets to page 1
   useEffect(() => {
     setPage(1);
-  }, [status, priority, assigneeIds.join(',')]);
+  }, [status, priority, ticketType, includeCanceled, assigneeIds.join(',')]);
 
   // Set default assignee to current user when auth loads
   useEffect(() => {
@@ -206,18 +211,19 @@ export default function TicketsPage() {
               {t('searchAndFilter')}
             </h2>
           </CardHeader>
-          <CardBody className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Input 
-              label={tCommon('search')} 
+          <CardBody className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <Input
+              label={tCommon('search')}
               placeholder={t('searchPlaceholder')}
-              value={q} 
-              onValueChange={setQ} 
+              value={q}
+              onValueChange={setQ}
               variant="bordered"
+              className="md:col-span-2 lg:col-span-2 xl:col-span-3"
             />
-            <Select 
-              label="Status" 
+            <Select
+              label={t('statusLabel')}
               placeholder={t('anyStatus')}
-              selectedKeys={status ? [status] : []} 
+              selectedKeys={status ? [status] : []}
               onChange={(e)=>setStatus(e.target.value)}
               variant="bordered"
             >
@@ -225,12 +231,11 @@ export default function TicketsPage() {
               <SelectItem key="pending">{t('status.pending')}</SelectItem>
               <SelectItem key="in_progress">{t('status.in_progress')}</SelectItem>
               <SelectItem key="completed">{t('status.completed')}</SelectItem>
-              <SelectItem key="canceled">{t('status.canceled')}</SelectItem>
             </Select>
-            <Select 
-              label="Priority" 
+            <Select
+              label={t('priorityLabel')}
               placeholder={t('anyPriority')}
-              selectedKeys={priority ? [priority] : []} 
+              selectedKeys={priority ? [priority] : []}
               onChange={(e)=>setPriority(e.target.value)}
               variant="bordered"
             >
@@ -238,15 +243,42 @@ export default function TicketsPage() {
                 <SelectItem key={s}>{s || t('any')}</SelectItem>
               ))}
             </Select>
-            <UserSearchSelect
-              selectedUserIds={assigneeIds}
-              onSelectionChange={setAssigneeIds}
-              placeholder={t('anyAssignee')}
-              label="Assignee"
+            <Select
+              label={t('typeLabel')}
+              placeholder={t('anyType')}
+              selectedKeys={ticketType ? [ticketType] : []}
+              onChange={(e)=>setTicketType(e.target.value)}
               variant="bordered"
-              isMultiple={false}
-              allowClear={true}
-            />
+              className="md:col-span-2 lg:col-span-1 xl:col-span-1"
+            >
+              <SelectItem key="">{t('any')}</SelectItem>
+              <SelectItem key="ISSUE_REPORT">{tTypeOptions('ISSUE_REPORT')}</SelectItem>
+              <SelectItem key="CHANGE_REQUEST_NORMAL">{tTypeOptions('CHANGE_REQUEST_NORMAL')}</SelectItem>
+              <SelectItem key="SERVICE_REQUEST_DATA_CORRECTION">{tTypeOptions('SERVICE_REQUEST_DATA_CORRECTION')}</SelectItem>
+              <SelectItem key="SERVICE_REQUEST_DATA_EXTRACTION">{tTypeOptions('SERVICE_REQUEST_DATA_EXTRACTION')}</SelectItem>
+              <SelectItem key="SERVICE_REQUEST_ADVISORY">{tTypeOptions('SERVICE_REQUEST_ADVISORY')}</SelectItem>
+              <SelectItem key="SERVICE_REQUEST_GENERAL">{tTypeOptions('SERVICE_REQUEST_GENERAL')}</SelectItem>
+            </Select>
+            <div className="md:col-span-2 lg:col-span-2 xl:col-span-2">
+              <UserSearchSelect
+                selectedUserIds={assigneeIds}
+                onSelectionChange={setAssigneeIds}
+                placeholder={t('anyAssignee')}
+                label={t('assignee')}
+                variant="bordered"
+                isMultiple={false}
+                allowClear={true}
+              />
+            </div>
+            <div className="flex items-center px-2 py-1 rounded-lg border border-white/10 bg-white/5 text-white/80 md:col-span-2 lg:col-span-2 xl:col-span-1 w-full">
+              <Checkbox
+                isSelected={includeCanceled}
+                onValueChange={setIncludeCanceled}
+                className="text-white"
+              >
+                {t('showCanceled')}
+              </Checkbox>
+            </div>
           </CardBody>
         </Card>
 
@@ -383,8 +415,8 @@ export default function TicketsPage() {
                   <Inbox size={32} className="text-primary-400" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3 gradient-text">{t('noTicketsFound')}</h3>
-                <p className="text-white/70 text-lg max-w-md mx-auto leading-relaxed">
-                  {q || status || priority || assigneeIds.length > 0
+                  <p className="text-white/70 text-lg max-w-md mx-auto leading-relaxed">
+                    {q || status || priority || ticketType || includeCanceled || assigneeIds.length > 0
                     ? tCommon('tryAdjusting')
                     : tCommon('getStartedFirst')
                   }
@@ -401,12 +433,14 @@ export default function TicketsPage() {
                   <span className="relative z-10">{tCommon('createTicket')}</span>
                 </a>
                 
-                {(q || status || priority || assigneeIds.length > 0) && (
+                {(q || status || priority || ticketType || includeCanceled || assigneeIds.length > 0) && (
                   <button
                     onClick={() => {
                       setQ("");
                       setStatus("");
                       setPriority("");
+                      setTicketType("");
+                      setIncludeCanceled(false);
                       setAssigneeIds([]);
                     }}
                     className="inline-flex items-center justify-center px-8 py-4 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-xl transition-all duration-300 hover:bg-white/5 min-w-[200px] font-semibold"
