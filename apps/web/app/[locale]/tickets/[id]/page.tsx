@@ -63,6 +63,7 @@ export default function TicketDetails() {
   });
   const [comment, setComment] = useState("");
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
+  const [commentPosting, setCommentPosting] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -421,12 +422,13 @@ export default function TicketDetails() {
   }
 
   async function postComment() {
-    if (!comment.trim()) return;
-    
+    if (!comment.trim() || commentPosting) return;
+
+    setCommentPosting(true);
     try {
       // Create comment first
       const res = await fetch(`${API}/api/v1/tickets/${id}/comments`, {
-        method: "POST", 
+        method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: comment }),
@@ -436,7 +438,7 @@ export default function TicketDetails() {
         alert("Failed to post comment");
         return;
       }
-      
+
       // Always consume the response to get the comment ID
       const response = await res.json();
       
@@ -467,6 +469,8 @@ export default function TicketDetails() {
       loadComments(1); // Reload comments to show the new one
     } catch (error) {
       alert("Failed to post comment");
+    } finally {
+      setCommentPosting(false);
     }
   }
 
@@ -855,10 +859,11 @@ export default function TicketDetails() {
                         </div>
                       )}
                     </div>
-                    <Button 
-                      color="primary" 
+                    <Button
+                      color="primary"
                       onPress={postComment}
-                      isDisabled={!comment.trim()}
+                      isDisabled={!comment.trim() || commentPosting}
+                      isLoading={commentPosting}
                       className="w-full"
                     >
                       {t('postComment')}
