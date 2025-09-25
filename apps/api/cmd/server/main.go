@@ -145,7 +145,7 @@ func main() {
 	v1.Get("/profile-pictures/:profilePictureId/download", h.DownloadProfilePicture)
 
 	// Admin routes (require Supervisor or Manager roles)
-	admin := v1.Group("/", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
+	admin := v1.Group("", middleware.RequireSupervisorOrManager(cfg.JWTSecret))
 	admin.Post("/tickets/:id/classify", h.TicketsClassify)
 	admin.Put("/tickets/:id/red-flags", h.TicketsUpdateRedFlags)
 	admin.Put("/tickets/:id/impact-assessment", h.TicketsUpdateImpactAssessment)

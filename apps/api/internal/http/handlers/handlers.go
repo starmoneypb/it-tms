@@ -1919,17 +1919,19 @@ func (h *Handlers) TicketsClassify(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	userIDValue, role, ok := middleware.GetUserFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "auth required"}})
+	}
+	actorDisplay := getUserDisplayName(c, role)
 	var userID *string
-	if userClaims != nil {
-		if sid, ok := userClaims["sub"].(string); ok {
-			userID = &sid
-		}
+	if userIDValue != "" {
+		userID = &userIDValue
 	}
 
 	if body.Reject != nil && *body.Reject {
 		// Handle rejection by setting status to canceled
-		if err := h.repo.Tickets.RejectIssueReport(ctx, id); err != nil {
+		if err := h.repo.Tickets.RejectIssueReport(ctx, id, actorDisplay); err != nil {
 			if errors.Is(err, repositories.ErrNotFound) {
 				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "ticket not found"}})
 			}
@@ -1939,7 +1941,7 @@ func (h *Handlers) TicketsClassify(c *fiber.Ctx) error {
 		return c.JSON(h.envelope(fiber.Map{"id": id, "status": "rejected"}))
 	} else {
 		// Handle normal classification
-		if err := h.repo.Tickets.Classify(ctx, id, *body.ResolvedType); err != nil {
+		if err := h.repo.Tickets.Classify(ctx, id, *body.ResolvedType, actorDisplay); err != nil {
 			if errors.Is(err, repositories.ErrNotFound) {
 				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "ticket not found"}})
 			}
