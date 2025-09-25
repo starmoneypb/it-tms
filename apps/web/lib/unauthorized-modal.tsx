@@ -4,6 +4,35 @@ import { createContext, ReactNode, useCallback, useContext, useMemo, useState } 
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from "@heroui/react";
 import { ShieldAlert } from "lucide-react";
 
+const THAI_FONT_CLASS = "font-['IBM_Plex_Sans_Thai']";
+
+function cx(...classes: (string | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function BilingualText({
+  as: Component = "span",
+  en,
+  th,
+  className,
+  englishClassName,
+  thaiClassName,
+}: {
+  as?: keyof JSX.IntrinsicElements;
+  en: string;
+  th: string;
+  className?: string;
+  englishClassName?: string;
+  thaiClassName?: string;
+}) {
+  return (
+    <Component className={className}>
+      <span className={cx("block", englishClassName)}>{en}</span>
+      <span className={cx("block", THAI_FONT_CLASS, thaiClassName)}>{th}</span>
+    </Component>
+  );
+}
+
 interface ModalAction {
   label: string;
   href?: string;
@@ -12,10 +41,10 @@ interface ModalAction {
 
 interface UnauthorizedModalState {
   isOpen: boolean;
-  title: string;
-  description: string;
+  title: ReactNode;
+  description: ReactNode;
   primaryAction?: ModalAction;
-  secondaryLabel?: string;
+  secondaryLabel?: ReactNode;
 }
 
 interface UnauthorizedModalContextValue {
@@ -27,10 +56,28 @@ const UnauthorizedModalContext = createContext<UnauthorizedModalContextValue | u
 
 const defaultState: UnauthorizedModalState = {
   isOpen: false,
-  title: "Access restricted",
-  description: "You don't have permission to perform this action. Please sign in or contact your administrator if you believe this is a mistake.",
+  title: (
+    <BilingualText
+      as="span"
+      en="Access restricted"
+      th="จำกัดการเข้าถึง"
+      className="flex flex-col leading-tight"
+      englishClassName="text-white"
+      thaiClassName="text-white/80 text-base font-normal"
+    />
+  ),
+  description: (
+    <BilingualText
+      as="div"
+      en="You don't have permission to perform this action. Please sign in or contact your administrator if you believe this is a mistake."
+      th="คุณไม่มีสิทธิ์ในการดำเนินการนี้ หากคุณเชื่อว่าเป็นความผิดพลาด โปรดลงชื่อเข้าใช้หรือ ติดต่อผู้ดูแลระบบของคุณ"
+      className="space-y-2 text-sm"
+      englishClassName="text-white/70"
+      thaiClassName="text-white/80"
+    />
+  ),
   primaryAction: undefined,
-  secondaryLabel: "Close"
+  secondaryLabel: "Close / ปิด"
 };
 
 export function UnauthorizedModalProvider({ children }: { children: ReactNode }) {
@@ -94,36 +141,65 @@ export function UnauthorizedModalProvider({ children }: { children: ReactNode })
               <div className="p-2 rounded-xl bg-gradient-to-br from-rose-500/80 via-orange-500/80 to-amber-400/80 text-white shadow-lg">
                 <ShieldAlert size={24} />
               </div>
-              <div>
-                <p className="text-sm uppercase tracking-wide text-white/70">Permission needed</p>
+              <div className="space-y-1">
+                <BilingualText
+                  as="p"
+                  className="text-sm tracking-wide text-white/70"
+                  en="Permission needed"
+                  th="จำเป็นต้องได้รับสิทธิ์"
+                  englishClassName="uppercase"
+                  thaiClassName="text-xs normal-case text-white/60"
+                />
                 <h3 className="text-xl font-semibold text-white">{state.title}</h3>
               </div>
             </div>
           </ModalHeader>
           <ModalBody>
-            <p className="text-white/70 leading-relaxed">
+            <div className="text-sm text-white/70 leading-relaxed space-y-2">
               {state.description}
-            </p>
+            </div>
             <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-4 space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/30 to-indigo-500/30 flex items-center justify-center">
                   <span className="text-lg">🔒</span>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-white/90">Why am I seeing this?</p>
-                  <p className="text-xs text-white/60">
-                    This action is limited to users with elevated permissions. Sign in with an authorized account or reach out to your team lead for access.
-                  </p>
+                <div className="space-y-1">
+                  <BilingualText
+                    as="p"
+                    className="text-sm font-medium text-white/90"
+                    en="Why am I seeing this?"
+                    th="ทำไมฉันจึงเห็นข้อความนี้?"
+                    thaiClassName="text-xs font-normal text-white/70"
+                  />
+                  <BilingualText
+                    as="p"
+                    className="text-xs text-white/60"
+                    en="This action is limited to users with elevated permissions. Sign in with an authorized account or reach out to your team lead for access."
+                    th="การดำเนินการนี้จำกัดเฉพาะผู้ใช้ที่มีสิทธิ์ระดับสูง โปรดลงชื่อเข้าใช้ด้วยบัญชีที่ได้รับอนุญาตหรือ ติดต่อหัวหน้าทีมของคุณเพื่อขอสิทธิ์เข้าถึง"
+                    thaiClassName="text-[11px] text-white/70"
+                  />
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-white/50">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm">•</span>
-                  <span>Authentication required for sensitive data</span>
+              <div className="flex flex-col gap-2 text-xs text-white/50 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-start gap-1">
+                  <span className="text-sm leading-none">•</span>
+                  <BilingualText
+                    as="span"
+                    en="Authentication required for sensitive data"
+                    th="ต้องยืนยันตัวตนเพื่อเข้าถึงข้อมูลสำคัญ"
+                    englishClassName="leading-tight"
+                    thaiClassName="text-[11px] text-white/60"
+                  />
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm">•</span>
-                  <span>Role-based access control enforced</span>
+                <div className="flex items-start gap-1">
+                  <span className="text-sm leading-none">•</span>
+                  <BilingualText
+                    as="span"
+                    en="Role-based access control enforced"
+                    th="ระบบควบคุมการเข้าถึงตามบทบาทกำลังทำงาน"
+                    englishClassName="leading-tight"
+                    thaiClassName="text-[11px] text-white/60"
+                  />
                 </div>
               </div>
             </div>
@@ -136,7 +212,7 @@ export function UnauthorizedModalProvider({ children }: { children: ReactNode })
                 onPress={hideUnauthorizedModal}
                 fullWidth
               >
-                {state.secondaryLabel ?? "Close"}
+                {state.secondaryLabel ?? "Close / ปิด"}
               </Button>
               {state.primaryAction && (
                 <Button
