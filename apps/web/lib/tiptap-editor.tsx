@@ -5,6 +5,19 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight } from '@tiptap/extension-highlight';
+import type { LanguageFn } from 'highlight.js';
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
+import python from 'highlight.js/lib/languages/python';
+import java from 'highlight.js/lib/languages/java';
+import cpp from 'highlight.js/lib/languages/cpp';
+import css from 'highlight.js/lib/languages/css';
+import xml from 'highlight.js/lib/languages/xml';
+import json from 'highlight.js/lib/languages/json';
+import sql from 'highlight.js/lib/languages/sql';
+import bash from 'highlight.js/lib/languages/bash';
+import markdown from 'highlight.js/lib/languages/markdown';
 import { 
   Bold, 
   Italic, 
@@ -26,28 +39,25 @@ import {
 } from 'lucide-react';
 import { Button } from '@heroui/react';
 
-// Load highlight.js for syntax highlighting
-const loadHighlightJS = () => {
-  if (typeof window !== 'undefined' && !(window as any).hljs) {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
-    script.onload = () => {
-      // Load common languages
-      const languages = ['javascript', 'typescript', 'python', 'java', 'cpp', 'css', 'xml', 'json', 'sql', 'bash', 'markdown'];
-      languages.forEach(lang => {
-        const langScript = document.createElement('script');
-        langScript.src = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/${lang}.min.js`;
-        document.head.appendChild(langScript);
-      });
-    };
-    document.head.appendChild(script);
-    
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
-    document.head.appendChild(link);
-  }
+const languages: Record<string, LanguageFn> = {
+  javascript,
+  typescript,
+  python,
+  java,
+  cpp,
+  css,
+  xml,
+  json,
+  sql,
+  bash,
+  markdown,
 };
+
+Object.entries(languages).forEach(([name, language]) => {
+  if (!hljs.listLanguages().includes(name)) {
+    hljs.registerLanguage(name, language);
+  }
+});
 
 interface TiptapEditorProps {
   value?: string;
@@ -305,32 +315,33 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     },
   });
 
-  // Load highlight.js and apply syntax highlighting
+  // Apply syntax highlighting to code blocks
   useEffect(() => {
-    loadHighlightJS();
-    
-    if (editor) {
-      const applyHighlighting = () => {
-        if (typeof window !== 'undefined' && (window as any).hljs) {
-          const codeBlocks = document.querySelectorAll('.ProseMirror pre code');
-          codeBlocks.forEach((block) => {
-            (window as any).hljs.highlightElement(block);
-          });
-        }
-      };
-
-      // Apply highlighting on content updates
-      editor.on('update', applyHighlighting);
-      editor.on('create', applyHighlighting);
-      
-      // Apply highlighting after a short delay to ensure DOM is ready
-      setTimeout(applyHighlighting, 100);
-      
-      return () => {
-        editor.off('update', applyHighlighting);
-        editor.off('create', applyHighlighting);
-      };
+    if (!editor) {
+      return;
     }
+
+    const applyHighlighting = () => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const codeBlocks = document.querySelectorAll('.ProseMirror pre code');
+      codeBlocks.forEach((block) => {
+        hljs.highlightElement(block as HTMLElement);
+      });
+    };
+
+    editor.on('update', applyHighlighting);
+    editor.on('create', applyHighlighting);
+
+    // Run once when the editor is ready
+    applyHighlighting();
+
+    return () => {
+      editor.off('update', applyHighlighting);
+      editor.off('create', applyHighlighting);
+    };
   }, [editor]);
 
   // Update editor content when value prop changes
