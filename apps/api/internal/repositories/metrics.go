@@ -55,7 +55,7 @@ func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, yea
 			t.assignee_id,
 			u.name as assignee_name,
 			t.updated_at,
-			(SELECT c.body FROM comments c WHERE c.ticket_id = t.id ORDER BY c.created_at DESC LIMIT 1) as latest_comment,
+(SELECT c.body FROM comments c WHERE c.ticket_id = t.id AND c.is_hidden = FALSE ORDER BY c.created_at DESC LIMIT 1) as latest_comment,
 			(SELECT STRING_AGG(au.name, ', ' ORDER BY au.name) 
 			 FROM ticket_assignments ta 
 			 JOIN users au ON ta.assignee_id = au.id 
