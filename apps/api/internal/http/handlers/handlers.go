@@ -778,6 +778,24 @@ type UnassignReq struct {
 	AssigneeIDs []string `json:"assigneeIds"`
 }
 
+func validateUserAssignment(role, userID string, currentAssignees []models.User, assigneeIDs []string) (string, bool) {
+	if role != "User" {
+		return "", true
+	}
+
+	if len(currentAssignees) > 0 {
+		return "ticket already has assignees", false
+	}
+
+	for _, assigneeID := range assigneeIDs {
+		if assigneeID != userID {
+			return "only supervisors/managers can assign others", false
+		}
+	}
+
+	return "", true
+}
+
 func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var body AssignReq
@@ -820,6 +838,10 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 		assigneeIDs = []string{*body.AssigneeID}
 	} else {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "BAD_REQUEST", "message": "no assignees specified"}})
+	}
+
+	if msg, ok := validateUserAssignment(role, userID, currentAssignees, assigneeIDs); !ok {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": msg}})
 	}
 
 	// Assign users
