@@ -870,25 +870,10 @@ export default function TicketDetails() {
 
     try {
       const hideSignInCta = Boolean(user && user.role !== "Anonymous");
-
-      if (typeof window !== "undefined") {
-        try {
-          const resolvedUrl = new URL(url, window.location.href);
-
-          if (resolvedUrl.origin !== window.location.origin) {
-            window.open(resolvedUrl.toString(), "_blank", "noopener,noreferrer");
-            return;
-          }
-        } catch (error) {
-          console.warn("Falling back to direct download for attachment URL", error);
-          window.open(url, "_blank", "noopener,noreferrer");
-          return;
-        }
-      }
-
+      
       const response = await permissionedFetch(
         url,
-        { credentials: "include" },
+        { credentials: "include", redirect: "manual" },
         {
           feature: featureDescription,
           hideSignInCta,
@@ -901,6 +886,29 @@ export default function TicketDetails() {
 
       if (!response) {
         return;
+      }
+
+      if (response.type === "opaqueredirect") {
+        if (typeof window !== "undefined") {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+        return;
+      }
+
+      if (response.status >= 300 && response.status < 400) {
+        const locationHeader = response.headers.get("Location");
+
+        if (locationHeader && typeof window !== "undefined") {
+          try {
+            const resolvedLocation = new URL(locationHeader, window.location.href);
+            window.open(resolvedLocation.toString(), "_blank", "noopener,noreferrer");
+            return;
+          } catch (error) {
+            console.warn("Unable to resolve redirected attachment URL", error);
+          }
+        }
+
+        throw new Error("Attachment download was redirected and could not be completed.");
       }
 
       if (!response.ok) {
