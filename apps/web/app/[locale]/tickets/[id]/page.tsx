@@ -920,26 +920,6 @@ export default function TicketDetails() {
               </div>
             </div>
 
-            <Divider />
-
-            <div>
-              <h3 className="text-lg font-semibold mb-3">{t('attachments')}</h3>
-              {data.attachments && data.attachments.length > 0 ? (
-                <div className="space-y-2">
-                  {data.attachments.map((a: any) => (
-                    <div key={a.id} className="flex items-center gap-2 p-3 bg-white/5 rounded-lg">
-                      <Paperclip size={14} className="text-gray-400" />
-                      <span className="text-sm">{a.filename}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-white/60">{t('noAttachments')}</p>
-              )}
-            </div>
-
-            <Divider />
-
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold">{t('activityTimeline')}</h3>
