@@ -405,12 +405,18 @@ func (h *Handlers) TicketsList(c *fiber.Ctx) error {
 		}
 	}
 
+	// Calculate totalPages correctly - only add extra page if there's a remainder
+	totalPages := total / int64(pageSize)
+	if total%int64(pageSize) > 0 {
+		totalPages++
+	}
+
 	return c.JSON(fiber.Map{
 		"data":       items,
 		"page":       page,
 		"pageSize":   pageSize,
 		"total":      total,
-		"totalPages": (total + int64(pageSize) - 1) / int64(pageSize),
+		"totalPages": totalPages,
 	})
 }
 
@@ -1255,7 +1261,11 @@ func (h *Handlers) TicketsGetComments(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to get comments"}})
 	}
 
-	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
+	// Calculate totalPages correctly - only add extra page if there's a remainder
+	totalPages := int(total / int64(pageSize))
+	if total%int64(pageSize) > 0 {
+		totalPages++
+	}
 
 	return c.JSON(h.envelope(fiber.Map{
 		"comments": comments,

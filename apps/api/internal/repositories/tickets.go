@@ -83,8 +83,9 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 		arg++
 	}
 	if f.Query != "" {
-		clauses = append(clauses, fmt.Sprintf("to_tsvector('english', title || ' ' || description) @@ plainto_tsquery('english', $%d)", arg))
-		args = append(args, f.Query)
+		// Use ILIKE for prefix matching to support Thai characters and partial matches
+		clauses = append(clauses, fmt.Sprintf("(title ILIKE $%d OR description ILIKE $%d)", arg, arg))
+		args = append(args, "%"+f.Query+"%")
 		arg++
 	}
 	if !f.IncludeCanceled && f.Status == "" {

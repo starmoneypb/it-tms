@@ -169,10 +169,14 @@ export default function TicketsPage() {
       .finally(() => setLoading(false));
   }, [page, pageSize, q, status, priority, ticketType, includeCanceled, assigneeIds.join(',')]);
 
-  // Debounced search for text input - resets to page 1
+  // Debounced search for text input - resets to page 1 and clears assignee filter
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setPage(1);
+      // Reset assignee filter to "any" when user types in search box
+      if (q && assigneeIds.length > 0) {
+        setAssigneeIds([]);
+      }
     }, 300);
 
     return () => clearTimeout(timeoutId);
@@ -185,11 +189,11 @@ export default function TicketsPage() {
 
   // Set default assignee to current user when auth loads
   useEffect(() => {
-    if (!authLoading && user && assigneeIds.length === 0) {
-      // Only set default if no assignee is already selected
+    if (!authLoading && user && assigneeIds.length === 0 && !q) {
+      // Only set default if no assignee is already selected and no search is active
       setAssigneeIds([user.id]);
     }
-  }, [authLoading, user, assigneeIds.length]);
+  }, [authLoading, user, assigneeIds.length, q]);
 
   // Load data when any parameter changes
   useEffect(() => { 
