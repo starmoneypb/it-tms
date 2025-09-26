@@ -1200,59 +1200,6 @@ export default function TicketDetails() {
               )}
             </div>
 
-            <Divider />
-
-            {/* Ticket Metadata */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">{t('ticketInformation')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-white/60">{t('ticketId')}:</span>
-                  <span className="ml-2 font-medium">#{ticket.code}</span>
-                </div>
-                <div>
-                  <span className="text-white/60">{t('created')}:</span>
-                  <span className="ml-2">{new Date(ticket.createdAt).toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-white/60">{t('lastUpdated')}:</span>
-                  <span className="ml-2">{new Date(ticket.updatedAt).toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-white/60">{t('type')}:</span>
-                  <span className="ml-2">{ticket.initialType.replace(/_/g, ' ')}</span>
-                </div>
-                {ticket.assignees && ticket.assignees.length > 0 && (
-                  <div className="md:col-span-2">
-                    <span className="text-white/60">{t('assignedTo')}:</span>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {ticket.assignees.map((assignee: any) => (
-                        <div key={assignee.id} className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
-                          <Avatar
-                            src={assignee.profilePicture ? `${API}/api/v1${assignee.profilePicture}` : undefined}
-                            name={assignee.name}
-                            className="w-6 h-6 text-xs"
-                            classNames={{
-                              base: "bg-gradient-to-br from-primary-400 to-primary-600",
-                              name: "text-white font-semibold"
-                            }}
-                          />
-                          <span className="text-sm">{assignee.name}</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            assignee.role === 'Manager' ? 'bg-purple-500/20 text-purple-300' :
-                            assignee.role === 'Supervisor' ? 'bg-blue-500/20 text-blue-300' :
-                            'bg-gray-500/20 text-gray-300'
-                          }`}>
-                            {assignee.role}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Steps to Reproduce section for Issue Reports */}
             {ticket.initialType === 'ISSUE_REPORT' && (ticket.details?.steps || isEditingContent) && (
               <>

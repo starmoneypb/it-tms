@@ -270,43 +270,47 @@ export default function TicketsPage() {
                 allowClear={true}
               />
             </div>
+
             <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
               {/* กล่องฟิลด์ให้สูงเท่าคอมโพเนนต์อื่น */}
               <label
                 htmlFor="include-canceled"
                 className="m-0 flex h-14 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-md"
               >
-                {/* ข้อความสองบรรทัด แต่ไม่ทำให้กล่องสูงเกิน เพราะเราคุมความสูงที่ container แล้ว */}
-                <span className="flex min-w-0 flex-col leading-tight">
+                {/* ข้อความ 2 บรรทัด ไม่ truncate และกินพื้นที่ที่เหลือจริง */}
+                <span className="flex flex-1 min-w-0 flex-col leading-tight">
                   <span className="text-[10px] uppercase tracking-wider text-white/60">
                     {t('status.canceled')}
                   </span>
-                  <span className="truncate text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-white whitespace-normal">
                     {t('showCanceled')}
                   </span>
                 </span>
 
-                {/* ตัวสวิตช์จริง — ไม่ใส่ label ข้างในเพื่อกันการขยายตัว */}
+                {/* สวิตช์: ปิด = เทาโปร่ง, เปิด = แดงสด; ไม่ใช้ prop color เพื่อเลี่ยงชนกับธีม */}
                 <Switch
                   id="include-canceled"
                   isSelected={includeCanceled}
                   onValueChange={setIncludeCanceled}
                   size="sm"
-                  color="danger" // ให้โทนแเดงเมื่อเปิด
                   aria-label={t('showCanceled')}
                   classNames={{
-                    // ไม่ให้ base เพิ่มระยะขอบ/ความสูงเอง
                     base: "m-0",
-                    // track: ปิด = เทาโปร่ง, เปิด = แดงชัดเจน
-                    wrapper: "h-5 w-10 rounded-full bg-white/20 data-[selected=true]:bg-danger-500",
-                    // ปุ่มกลม
-                    thumb: "h-4 w-4 bg-white shadow-md",
+                    // ใช้ group-data แทน data-[selected] เพื่อให้ทำงานกับธีมของ HeroUI ได้เสถียร
+                    wrapper:
+                      "h-6 w-11 rounded-full transition-colors bg-white/20 " +
+                      "group-data-[selected=true]:bg-danger-500 " +
+                      "group-data-[hover=true]:bg-white/25 " +
+                      "group-data-[focus-visible=true]:ring-2 group-data-[focus-visible=true]:ring-danger-500/40",
+                    thumb: "h-5 w-5 bg-white shadow-md",
                   }}
                   startContent={<XCircle className="h-3.5 w-3.5 text-white" />}
                   endContent={<CheckCircle className="h-3.5 w-3.5 text-white" />}
                 />
               </label>
             </div>
+
+
 
           </CardBody>
         </Card>
