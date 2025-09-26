@@ -271,25 +271,43 @@ export default function TicketsPage() {
               />
             </div>
             <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
-              <Switch
-                isSelected={includeCanceled}
-                onValueChange={setIncludeCanceled}
-                size="sm"
-                color="success"
-                aria-label={t('showCanceled')}
-                classNames={{
-                  base: "m-0 flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 shadow-sm backdrop-blur-md",
-                  wrapper: "order-last h-5 w-10 rounded-full bg-white/20 data-[selected=true]:bg-success-500/80",
-                  thumb: "h-4 w-4 bg-white shadow-md",
-                  label: "flex flex-col gap-0.5 text-left leading-tight",
-                }}
-                startContent={<XCircle className="h-3.5 w-3.5 text-white" />}
-                endContent={<CheckCircle className="h-3.5 w-3.5 text-white" />}
+              {/* กล่องฟิลด์ให้สูงเท่าคอมโพเนนต์อื่น */}
+              <label
+                htmlFor="include-canceled"
+                className="m-0 flex h-14 w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 shadow-sm backdrop-blur-md"
               >
-                <span className="text-xs font-medium uppercase tracking-wider text-white/60">{t('status.canceled')}</span>
-                <span className="text-sm font-semibold text-white">{t('showCanceled')}</span>
-              </Switch>
+                {/* ข้อความสองบรรทัด แต่ไม่ทำให้กล่องสูงเกิน เพราะเราคุมความสูงที่ container แล้ว */}
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <span className="text-[10px] uppercase tracking-wider text-white/60">
+                    {t('status.canceled')}
+                  </span>
+                  <span className="truncate text-sm font-semibold text-white">
+                    {t('showCanceled')}
+                  </span>
+                </span>
+
+                {/* ตัวสวิตช์จริง — ไม่ใส่ label ข้างในเพื่อกันการขยายตัว */}
+                <Switch
+                  id="include-canceled"
+                  isSelected={includeCanceled}
+                  onValueChange={setIncludeCanceled}
+                  size="sm"
+                  color="danger" // ให้โทนแเดงเมื่อเปิด
+                  aria-label={t('showCanceled')}
+                  classNames={{
+                    // ไม่ให้ base เพิ่มระยะขอบ/ความสูงเอง
+                    base: "m-0",
+                    // track: ปิด = เทาโปร่ง, เปิด = แดงชัดเจน
+                    wrapper: "h-5 w-10 rounded-full bg-white/20 data-[selected=true]:bg-danger-500",
+                    // ปุ่มกลม
+                    thumb: "h-4 w-4 bg-white shadow-md",
+                  }}
+                  startContent={<XCircle className="h-3.5 w-3.5 text-white" />}
+                  endContent={<CheckCircle className="h-3.5 w-3.5 text-white" />}
+                />
+              </label>
             </div>
+
           </CardBody>
         </Card>
 
