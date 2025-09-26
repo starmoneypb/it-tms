@@ -92,17 +92,19 @@ export default function ClassifyPage() {
     const rt = sel[id];
     if (!rt) return;
     
-    let payload: any;
-    if (rt === "REJECT") {
-      payload = { reject: true };
-    } else {
-      payload = { resolvedType: rt };
-    }
-    
+    const isRejecting = rt === "REJECT";
+    const endpoint = isRejecting
+      ? `${API}/api/v1/tickets/${id}/status`
+      : `${API}/api/v1/tickets/${id}/fields`;
+    const method = isRejecting ? "POST" : "PATCH";
+    const payload = isRejecting
+      ? { status: "canceled" }
+      : { resolvedType: rt };
+
     const response = await permissionedFetch(
-      `${API}/api/v1/tickets/${id}/classify`,
+      endpoint,
       {
-        method: "POST",
+        method,
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
