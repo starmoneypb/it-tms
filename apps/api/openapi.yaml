@@ -18,11 +18,10 @@ info:
     - Cannot edit, assign, or cancel tickets
     
     ### User
-    - Can create: Normal Change, Data Extraction, Advisory, General Request
+    - Can create all ticket types
     - Can edit/update only their own tickets
     - Can assign tickets only to themselves
     - Can cancel only their own tickets
-    - Cannot create: Emergency Change, Data Correction
     
     ### Supervisor
     - Can create all ticket types

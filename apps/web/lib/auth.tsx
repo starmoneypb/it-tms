@@ -168,8 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     switch (user.role) {
       case "User":
-        // Users can create all types except Emergency Change and Data Correction
-        return !["EMERGENCY_CHANGE", "DATA_CORRECTION"].includes(ticketType);
+        // Users can create all ticket types
+        return true;
       case "Supervisor":
       case "Manager":
         // Supervisors and Managers can create all types
