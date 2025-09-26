@@ -427,6 +427,11 @@ func (h *Handlers) TicketsDetail(c *fiber.Ctx) error {
 		t.Assignees[i].ProfilePicture = h.convertProfilePictureToURL(t.Assignees[i].ProfilePicture)
 	}
 
+	// Convert profile picture path to URL for creator
+	if t.CreatedByUser != nil {
+		t.CreatedByUser.ProfilePicture = h.convertProfilePictureToURL(t.CreatedByUser.ProfilePicture)
+	}
+
 	return c.JSON(h.envelope(fiber.Map{
 		"ticket":      t,
 		"comments":    comments,

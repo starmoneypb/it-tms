@@ -285,6 +285,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   const [isPreview, setIsPreview] = useState(false);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         codeBlock: {

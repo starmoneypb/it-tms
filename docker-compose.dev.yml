@@ -87,11 +87,15 @@ services:
       SECURE_COOKIES: "false"
       WEB_APP_URL: http://localhost:3000
       UPLOAD_DIR: uploads
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-unisight-bucket-1}
+      GCS_PROJECT_ID: ${GCS_PROJECT_ID:-unisight-472720}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/unisight-472720-f2fa16e4d501.json
     volumes:
       - ./apps/api:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
       - api-uploads:/app/uploads
+      - ./unisight-472720-f2fa16e4d501.json:/app/credentials/unisight-472720-f2fa16e4d501.json:ro
     ports:
       - "8080:8080"
     command:
@@ -117,9 +121,9 @@ services:
       NEXT_TELEMETRY_DISABLED: 1
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8080/ws}
-      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-ws://localhost:8080/ws}
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_WS_URL: ws://localhost:8080/ws
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost:8080/ws
     volumes:
       - .:/workspace
       - web-node-modules:/workspace/node_modules

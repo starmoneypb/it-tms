@@ -408,6 +408,7 @@
     "status": "Status",
     "priority": "Priority",
     "assignees": "Assignees",
+    "unassigned": "Unassigned",
     "createdBy": "Created By",
     "createdAt": "Created At",
     "updatedAt": "Updated At",
@@ -482,6 +483,11 @@
     "effortAssessment": "Effort Assessment",
     "effortScore": "Effort Score",
     "effortCollaborationBonus": "Collaboration Bonus",
+    "ticketSummary": "Ticket Summary",
+    "development": "Development",
+    "testing": "Testing",
+    "deployment": "Deployment",
+    "hours": "hours",
     "effortBase": "Base Effort",
     "redFlagsCritical": "Red Flags (Critical Issues)",
     "impact": "Impact",
@@ -558,7 +564,8 @@
     "pointsPerPerson": "Points per Person",
     "pointsPerPersonShort": "points per person",
     "eachAssigneeWillReceive": "Each assignee will receive this amount when the ticket is completed",
-    "pointsDistributionPreview": "Points Distribution Preview"
+    "pointsDistributionPreview": "Points Distribution Preview",
+    "unknownUser": "Unknown User"
   },
   "statusOptions": {
     "pending": "Pending",

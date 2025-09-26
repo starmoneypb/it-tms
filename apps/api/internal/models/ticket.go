@@ -6,6 +6,7 @@ type Ticket struct {
 	ID                   string              `json:"id"`
 	Code                 int32               `json:"code"`
 	CreatedBy            *string             `json:"createdBy,omitempty"`
+	CreatedByUser        *User               `json:"createdByUser,omitempty"`
 	InitialType          TicketInitialType   `json:"initialType"`
 	ResolvedType         *TicketResolvedType `json:"resolvedType,omitempty"`
 	Status               TicketStatus        `json:"status"`

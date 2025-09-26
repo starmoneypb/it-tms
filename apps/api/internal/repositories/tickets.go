@@ -21,7 +21,10 @@ func escapeMarkdown(input string) string {
 	return strings.ReplaceAll(input, "`", "\\`")
 }
 
-type TicketRepo struct{ pool *pgxpool.Pool }
+type TicketRepo struct{ 
+	pool    *pgxpool.Pool
+	userRepo *UserRepo
+}
 
 func (r *TicketRepo) Create(ctx context.Context, t *models.Ticket) error {
 	details, _ := json.Marshal(t.Details)
@@ -266,6 +269,14 @@ func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ti
 		r3.Close()
 	}
 	t.Assignees = assignees
+
+	// Fetch creator user data if createdBy is not nil
+	if t.CreatedBy != nil && *t.CreatedBy != "" {
+		creator, err := r.userRepo.GetByID(ctx, *t.CreatedBy)
+		if err == nil {
+			t.CreatedByUser = &creator
+		}
+	}
 
 	return t, comments, atts, nil
 }

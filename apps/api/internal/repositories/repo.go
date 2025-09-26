@@ -11,9 +11,10 @@ type Repo struct {
 }
 
 func New(pool *pgxpool.Pool) *Repo {
+	userRepo := &UserRepo{pool: pool}
 	return &Repo{
-		Users:      &UserRepo{pool: pool},
-		Tickets:    &TicketRepo{pool: pool},
+		Users:      userRepo,
+		Tickets:    &TicketRepo{pool: pool, userRepo: userRepo},
 		Audits:     &AuditRepo{pool: pool},
 		Metrics:    &MetricsRepo{pool: pool},
 		UserScores: &UserScoresRepo{pool: pool},

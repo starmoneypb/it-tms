@@ -20,13 +20,29 @@ import {
   Users,
   Flag,
   Settings,
-  X
+  X,
+  Clock,
+  User,
+  Calendar,
+  Tag,
+  CheckCircle,
+  Circle,
+  Play,
+  Pause,
+  AlertCircle,
+  UserCheck,
+  Code,
+  TestTube,
+  Rocket,
+  Edit3
 } from "lucide-react";
 
 // Use current hostname with port 8000 for production-like environment
+// Also handle docker-compose dev environment where web runs on port 3000 and API on 8080
 const API = typeof window !== 'undefined' && window.location.port === '8000'
   ? '' // Use relative URLs when accessed through port 8000 (production-like)
   : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
+
 
 const statusColors = {
   pending: "warning",
@@ -36,10 +52,10 @@ const statusColors = {
 } as const;
 
 const priorityColors = {
-  P0: "danger",
-  P1: "warning", 
-  P2: "primary",
-  P3: "default"
+  P0: "danger",    // Critical - Red
+  P1: "warning",   // High - Orange/Amber
+  P2: "primary",   // Medium - Blue/Purple
+  P3: "default"    // Low - Gray
 } as const;
 
 export default function TicketDetails() {
@@ -154,78 +170,124 @@ export default function TicketDetails() {
     effort: null as any
   });
 
-  function loadComments(page = 1, pageSize = commentPagination.pageSize) {
+  async function loadComments(page = 1, pageSize = commentPagination.pageSize) {
     setCommentsLoading(true);
     // Add cache-busting timestamp to prevent browser caching
     const timestamp = Date.now();
-    fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}&_t=${timestamp}`, { 
-      credentials: "include",
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+    
+    try {
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}&_t=${timestamp}`, 
+        {
+          credentials: "include",
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        },
+        {
+          feature: "view comments",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
       }
-    })
-      .then((r) => r.json())
-      .then((j) => {
-        setComments(j.data.comments);
-        setCommentPagination(j.data.pagination);
-      })
-      .catch((error) => {
-        console.error('Failed to load comments:', error);
-      })
-      .finally(() => setCommentsLoading(false));
+
+      if (!response.ok) {
+        throw new Error(`Failed to load comments: ${response.status}`);
+      }
+
+      const j = await response.json();
+      setComments(j.data.comments);
+      setCommentPagination(j.data.pagination);
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+    } finally {
+      setCommentsLoading(false);
+    }
   }
 
-  function loadCommentsWithRetry(page = 1, pageSize = commentPagination.pageSize, maxRetries = 3) {
+  async function loadCommentsWithRetry(page = 1, pageSize = commentPagination.pageSize, maxRetries = 3) {
     let attempts = 0;
     
-    const attemptLoad = () => {
+    const attemptLoad = async () => {
       attempts++;
       setCommentsLoading(true);
       
-      // Add cache-busting timestamp to prevent browser caching
-      const timestamp = Date.now();
-      fetch(`${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}&_t=${timestamp}`, { 
-        credentials: "include",
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      })
-        .then((r) => r.json())
-        .then((j) => {
-          setComments(j.data.comments);
-          setCommentPagination(j.data.pagination);
-          setCommentsLoading(false);
-        })
-        .catch((error) => {
-          console.error(`Failed to load comments (attempt ${attempts}):`, error);
-          
-          if (attempts < maxRetries) {
-            // Retry after increasing delay: 1s, 2s, 3s
-            setTimeout(attemptLoad, attempts * 1000);
-          } else {
-            setCommentsLoading(false);
-            console.error('Max retries reached for loading comments');
+      try {
+        // Add cache-busting timestamp to prevent browser caching
+        const timestamp = Date.now();
+        const response = await permissionedFetch(
+          `${API}/api/v1/tickets/${id}/comments?page=${page}&pageSize=${pageSize}&_t=${timestamp}`, 
+          {
+            credentials: "include",
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          },
+          {
+            feature: "view comments",
+            hideSignInCta: Boolean(user),
           }
-        });
+        );
+
+        if (!response) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to load comments: ${response.status}`);
+        }
+
+        const j = await response.json();
+        setComments(j.data.comments);
+        setCommentPagination(j.data.pagination);
+        setCommentsLoading(false);
+      } catch (error) {
+        console.error(`Failed to load comments (attempt ${attempts}):`, error);
+        
+        if (attempts < maxRetries) {
+          // Retry after increasing delay: 1s, 2s, 3s
+          setTimeout(attemptLoad, attempts * 1000);
+        } else {
+          setCommentsLoading(false);
+          console.error('Max retries reached for loading comments');
+        }
+      }
     };
     
     // Start with immediate load, then retry if needed
     attemptLoad();
   }
 
-  function load() {
+  async function load() {
     setLoading(true);
-    fetch(`${API}/api/v1/tickets/${id}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((j) => {
-        setData(j.data);
-        setStatus(j.data.ticket.status);
-        // Initialize edit form with current ticket data
-        const ticket = j.data.ticket;
+    try {
+      const response = await permissionedFetch(
+        `${API}/api/v1/tickets/${id}`, 
+        { credentials: "include" },
+        {
+          feature: "view ticket details",
+          hideSignInCta: Boolean(user),
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to load ticket: ${response.status}`);
+      }
+
+      const j = await response.json();
+      setData(j.data);
+      setStatus(j.data.ticket.status);
+      // Initialize edit form with current ticket data
+      const ticket = j.data.ticket;
 
         const toBoolean = (value: unknown) => {
           if (typeof value === "boolean") return value;
@@ -312,8 +374,11 @@ export default function TicketDetails() {
           priorityInput: priorityInput,
           effort,
         });
-      })
-      .finally(() => setLoading(false));
+    } catch (error) {
+      console.error('Failed to load ticket:', error);
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { 
     load(); 
@@ -1061,12 +1126,36 @@ export default function TicketDetails() {
                 <Chip 
                   color={statusColors[ticket.status as keyof typeof statusColors] || "default"}
                   variant="flat"
+                  className="animate-pulse-slow !bg-opacity-100"
+                  style={{
+                    backgroundColor: ticket.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' :
+                                   ticket.status === 'in_progress' ? 'rgba(59, 130, 246, 0.2)' :
+                                   ticket.status === 'completed' ? 'rgba(34, 197, 94, 0.2)' :
+                                   ticket.status === 'canceled' ? 'rgba(239, 68, 68, 0.2)' :
+                                   'rgba(107, 114, 128, 0.2)',
+                    color: ticket.status === 'pending' ? '#fcd34d' :
+                           ticket.status === 'in_progress' ? '#93c5fd' :
+                           ticket.status === 'completed' ? '#86efac' :
+                           ticket.status === 'canceled' ? '#fca5a5' :
+                           '#d1d5db'
+                  }}
                 >
                   {tStatus(ticket.status as keyof typeof statusColors)}
                 </Chip>
                 <Chip 
                   color={priorityColors[ticket.priority as keyof typeof priorityColors] || "default"}
                   variant="flat"
+                  className="font-semibold !bg-opacity-100"
+                  style={{
+                    backgroundColor: ticket.priority === 'P0' ? 'rgba(239, 68, 68, 0.2)' :
+                                   ticket.priority === 'P1' ? 'rgba(245, 158, 11, 0.2)' :
+                                   ticket.priority === 'P2' ? 'rgba(59, 130, 246, 0.2)' :
+                                   'rgba(107, 114, 128, 0.2)',
+                    color: ticket.priority === 'P0' ? '#fca5a5' :
+                           ticket.priority === 'P1' ? '#fcd34d' :
+                           ticket.priority === 'P2' ? '#93c5fd' :
+                           '#d1d5db'
+                  }}
                 >
                   {ticket.priority}
                 </Chip>
@@ -1090,6 +1179,35 @@ export default function TicketDetails() {
                 />
               )}
             </div>
+
+            {/* Steps to Reproduce section for Issue Reports */}
+            {ticket.initialType === 'ISSUE_REPORT' && (ticket.details?.steps || isEditingContent) && (
+              <>
+                <Divider />
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">{t('stepsToReproduce')}</h3>
+                  {!isEditingContent ? (
+                    ticket.details?.steps ? (
+                      <MarkdownRenderer
+                        content={convertContentToMarkdown(ticket.details.steps)}
+                        className="text-white/80 leading-relaxed"
+                      />
+                    ) : (
+                      <p className="text-sm text-white/60">{t('noDescriptionProvided')}</p>
+                    )
+                  ) : (
+                    <TiptapEditor
+                      value={contentEditForm.steps}
+                      onChange={(value) => setContentEditForm(prev => ({ ...prev, steps: value }))}
+                      placeholder={t('stepsToReproduce')}
+                      minHeight="150px"
+                    />
+                  )}
+                </div>
+              </>
+            )}
+
+            <Divider />
 
             {/* Ticket Attachments */}
             <div>
@@ -1200,66 +1318,141 @@ export default function TicketDetails() {
               )}
             </div>
 
-            {/* Steps to Reproduce section for Issue Reports */}
-            {ticket.initialType === 'ISSUE_REPORT' && (ticket.details?.steps || isEditingContent) && (
-              <>
-                <Divider />
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">{t('stepsToReproduce')}</h3>
-                  {!isEditingContent ? (
-                    <div className="bg-white/5 p-6 rounded-lg">
-                      {ticket.details?.steps ? (
-                        <MarkdownRenderer
-                          content={convertContentToMarkdown(ticket.details.steps)}
-                          className="text-white/80 leading-relaxed"
-                        />
-                      ) : (
-                        <p className="text-sm text-white/60">{t('noDescriptionProvided')}</p>
-                      )}
+            {/* Ticket Summary Section */}
+            <Divider />
+            <div>
+              <h3 className="text-lg font-semibold mb-4">
+                {t('ticketSummary')}
+              </h3>
+              
+              {/* Unified Summary Layout */}
+              <div className="bg-white/5 p-6 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Status and Priority */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-white/60 mb-2">{t('status')}</p>
+                      <Chip 
+                        color={statusColors[ticket.status as keyof typeof statusColors] || "default"} 
+                        variant="flat"
+                        className="capitalize font-medium animate-pulse-slow !bg-opacity-100"
+                        size="sm"
+                        style={{
+                          backgroundColor: ticket.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' :
+                                         ticket.status === 'in_progress' ? 'rgba(59, 130, 246, 0.2)' :
+                                         ticket.status === 'completed' ? 'rgba(34, 197, 94, 0.2)' :
+                                         ticket.status === 'canceled' ? 'rgba(239, 68, 68, 0.2)' :
+                                         'rgba(107, 114, 128, 0.2)',
+                          color: ticket.status === 'pending' ? '#fcd34d' :
+                                 ticket.status === 'in_progress' ? '#93c5fd' :
+                                 ticket.status === 'completed' ? '#86efac' :
+                                 ticket.status === 'canceled' ? '#fca5a5' :
+                                 '#d1d5db'
+                        }}
+                      >
+                        {tStatus(ticket.status as keyof typeof statusColors)}
+                      </Chip>
                     </div>
-                  ) : (
-                    <TiptapEditor
-                      value={contentEditForm.steps}
-                      onChange={(value) => setContentEditForm(prev => ({ ...prev, steps: value }))}
-                      placeholder={t('stepsToReproduce')}
-                      minHeight="150px"
-                    />
+                    <div>
+                      <p className="text-sm text-white/60 mb-2">{t('priority')}</p>
+                      <Chip 
+                        color={priorityColors[ticket.priority as keyof typeof priorityColors] || "default"} 
+                        variant="flat"
+                        className="font-semibold !bg-opacity-100"
+                        size="sm"
+                        style={{
+                          backgroundColor: ticket.priority === 'P0' ? 'rgba(239, 68, 68, 0.2)' :
+                                         ticket.priority === 'P1' ? 'rgba(245, 158, 11, 0.2)' :
+                                         ticket.priority === 'P2' ? 'rgba(59, 130, 246, 0.2)' :
+                                         'rgba(107, 114, 128, 0.2)',
+                          color: ticket.priority === 'P0' ? '#fca5a5' :
+                                 ticket.priority === 'P1' ? '#fcd34d' :
+                                 ticket.priority === 'P2' ? '#93c5fd' :
+                                 '#d1d5db'
+                        }}
+                      >
+                        {ticket.priority}
+                      </Chip>
+                    </div>
+                  </div>
+
+                  {/* Creator and Dates */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-white/60 mb-2">{t('createdBy')}</p>
+                      <div className="flex items-center gap-2">
+                        <Avatar 
+                          src={ticket.createdByUser?.profilePicture ? `${API}/api/v1${ticket.createdByUser.profilePicture}` : undefined} 
+                          name={ticket.createdByUser?.name}
+                          size="sm"
+                          className="w-6 h-6"
+                        />
+                        <span className="text-white/90 text-sm font-medium truncate">
+                          {ticket.createdByUser?.name || ticket.createdByUser?.email || t('unknownUser')}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/60 mb-2">{t('createdAt')}</p>
+                      <p className="text-white/90 text-sm">
+                        {new Date(ticket.createdAt).toLocaleDateString(locale, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Last Updated */}
+                  {ticket.updatedAt && ticket.updatedAt !== ticket.createdAt && (
+                    <div>
+                      <p className="text-sm text-white/60 mb-2">{t('lastUpdated')}</p>
+                      <p className="text-white/90 text-sm">
+                        {new Date(ticket.updatedAt).toLocaleDateString(locale, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
                   )}
                 </div>
-              </>
-            )}
 
-            <Divider />
-
-            <div>
-              <h3 className="text-lg font-semibold mb-3">{t('ticketInformation')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <span className="text-white/60 text-sm">{t('type')}:</span>
-                  <div className="font-medium">{ticket.initialType.replace(/_/g, ' ')}</div>
-                </div>
-                <div>
-                    <span className="text-white/60 text-sm">{t('impactScore')}:</span>
-                  <div className="font-medium">{Math.abs(ticket.impactScore)}</div>
-                </div>
-                <div>
-                    <span className="text-white/60 text-sm">{t('urgencyScore')}:</span>
-                  <div className="font-medium">{Math.abs(ticket.urgencyScore)}</div>
-                </div>
-                <div>
-                    <span className="text-white/60 text-sm">{t('finalScore')}:</span>
-                  <div className="font-medium">{Math.abs(ticket.finalScore)}</div>
-                </div>
-                {ticket.redFlag && (
-                  <div className="md:col-span-2">
-                    <Chip color="danger" variant="flat" size="sm">
-                      <Flag size={14} className="mr-1" />
-                      {t('redFlag')}
-                    </Chip>
+                {/* Assignees as Tags */}
+                {ticket.assignees && ticket.assignees.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-white/10">
+                    <p className="text-sm text-white/60 mb-3">{t('assignees')}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {ticket.assignees.map((assignee: any) => (
+                        <div 
+                          key={assignee.id} 
+                          className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full"
+                        >
+                          <Avatar 
+                            src={assignee.profilePicture ? `${API}/api/v1${assignee.profilePicture}` : undefined} 
+                            name={assignee.name}
+                            size="sm"
+                            className="w-5 h-5"
+                          />
+                          <span className="text-white/90 text-sm font-medium">
+                            {assignee.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
+
+
+
+            <Divider />
 
             <div>
               <div className="flex items-center justify-between mb-3">

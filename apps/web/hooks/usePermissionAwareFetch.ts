@@ -20,9 +20,10 @@ export function usePermissionAwareFetch() {
       init?: RequestInit,
       options?: PermissionAwareOptions
     ) => {
-      const response = await fetch(input, init);
+      try {
+        const response = await fetch(input, init);
 
-      if (response.status === 401 || response.status === 403) {
+        if (response.status === 401 || response.status === 403) {
         const feature = options?.feature;
         const defaultMessage = feature
           ? `You don't have permission to ${feature}.`
@@ -52,6 +53,19 @@ export function usePermissionAwareFetch() {
       }
 
       return response;
+      } catch (error) {
+        console.error('Network error in permissionedFetch:', error);
+        console.error('Request URL:', input);
+        console.error('Request options:', init);
+        
+        // Show a user-friendly error message for network issues
+        showUnauthorizedModal({
+          description: "Unable to connect to the server. Please check your internet connection and try again.",
+          primaryAction: undefined,
+        });
+        
+        return null;
+      }
     },
     [showUnauthorizedModal]
   );
