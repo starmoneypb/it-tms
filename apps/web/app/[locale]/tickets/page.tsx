@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Checkbox } from "@heroui/react";
+import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Switch } from "@heroui/react";
 import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle, Plus } from "lucide-react";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
@@ -270,14 +270,27 @@ export default function TicketsPage() {
                 allowClear={true}
               />
             </div>
-            <div className="flex items-center px-2 py-1 rounded-lg border border-white/10 bg-white/5 text-white/80 md:col-span-2 lg:col-span-2 xl:col-span-1 w-full">
-              <Checkbox
-                isSelected={includeCanceled}
-                onValueChange={setIncludeCanceled}
-                className="text-white"
-              >
-                {t('showCanceled')}
-              </Checkbox>
+            <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
+              <div className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-sm backdrop-blur-md">
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium uppercase tracking-wider text-white/60">{t('status.canceled')}</span>
+                  <span className="text-sm font-semibold text-white">{t('showCanceled')}</span>
+                </div>
+                <Switch
+                  isSelected={includeCanceled}
+                  onValueChange={setIncludeCanceled}
+                  size="sm"
+                  color="danger"
+                  aria-label={t('showCanceled')}
+                  classNames={{
+                    base: "m-0 p-0",
+                    wrapper: "h-6 w-11 bg-white/20 data-[selected=true]:bg-danger-500/80",
+                    thumb: "h-5 w-5 bg-white shadow-md",
+                  }}
+                  startContent={<XCircle className="h-3.5 w-3.5 text-white" />}
+                  endContent={<CheckCircle className="h-3.5 w-3.5 text-white" />}
+                />
+              </div>
             </div>
           </CardBody>
         </Card>
