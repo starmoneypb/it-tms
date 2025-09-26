@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 import { useTranslations } from 'next-intl';
@@ -53,17 +53,40 @@ export default function ClassifyPage() {
     }
   };
 
-  function load() {
-    setLoading(true);
-    fetch(`${API}/api/v1/tickets?pageSize=100`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((j) => {
-        const tickets = Array.isArray(j.data) ? j.data : [];
-        setItems(filterClassifiableIssueReports(tickets));
-      })
-      .finally(() => setLoading(false));
-  }
-  useEffect(() => { load(); }, []);
+  const load = useCallback(async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const timestamp = Date.now();
+      const response = await fetch(`${API}/api/v1/tickets?pageSize=100&_t=${timestamp}`, {
+        credentials: "include",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load tickets (${response.status})`);
+      }
+
+      const j = await response.json();
+      const tickets = Array.isArray(j.data) ? j.data : [];
+      setItems(filterClassifiableIssueReports(tickets));
+    } catch (error) {
+      console.error("Failed to load classification tickets:", error);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   async function classify(id: string) {
     const rt = sel[id];
@@ -96,7 +119,14 @@ export default function ClassifyPage() {
       console.error("Failed to classify ticket:", errorData?.error?.message || response.statusText);
       return;
     }
-    load();
+
+    setItems((prev) => prev.filter((ticket) => ticket.id !== id));
+    setSel((prev) => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
+
+    await load({ showLoading: false });
   }
 
   if (loading) {
