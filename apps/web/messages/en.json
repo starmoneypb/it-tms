@@ -152,7 +152,7 @@
     "typeLabel": "Ticket type",
     "assignee": "Assignee",
     "clearFilter": "Clear filter",
-    "showCanceled": "Show canceled tickets"
+    "showCanceled": "Canceled"
   },
   "language": {
     "english": "English",
