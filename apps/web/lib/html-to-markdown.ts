@@ -1,98 +1,77 @@
 // Simple HTML to Markdown converter for basic content
-// This is still a lightweight implementation. For production-grade needs,
-// consider using 'turndown' or a real HTML parser.
-// Improvements:
-// - Preserve/convert <img>, <hr>, <sup>, <sub>, <u>
-// - Proper ordered list numbering (<ol> -> 1. ...), keep <ul> as '- '
-// - Safer list handling per-block (not perfect for deep nesting, but correct for common cases)
-// - Keep <mark> (with style/class) as raw HTML so renderer can style it
-// - Better entity decoding
-// - Avoid stripping useful inline HTML like <sup>/<sub>/<u>
+// Notes:
+// - ป้องกัน `<code>` หลายบรรทัดไม่ให้กลายเป็น inline backticks
+// - รองรับ <div class="not-prose"> จาก renderer เดิม ให้แปลงกลับเป็น fenced block ```
+// - เปิดทางให้ markup ที่จำเป็น (mark/sup/sub/u/kbd/br)
 
 function decodeEntities(text: string): string {
   return text
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
 }
 
-// Extract attribute value from a whole tag string.
 function pickAttr(tagHtml: string, name: string): string | undefined {
-  const m = new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, 'i').exec(tagHtml);
+  const m = new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i").exec(tagHtml);
   return m?.[1];
 }
 
-// Extract text-align style from HTML tag
 function extractTextAlign(tagHtml: string): string | null {
-  // Look for style attribute with text-align
   const styleMatch = /style\s*=\s*["']([^"']*)["']/i.exec(tagHtml);
   if (styleMatch) {
     const styleContent = styleMatch[1];
     const textAlignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(styleContent);
-    if (textAlignMatch) {
-      return `text-align: ${textAlignMatch[1]}`;
-    }
+    if (textAlignMatch) return `text-align: ${textAlignMatch[1]}`;
   }
   return null;
 }
 
-// Convert <img ...> to Markdown image: ![alt](src "title")
 function convertImages(html: string): string {
   return html.replace(/<img\b[^>]*?>/gi, (fullTag: string) => {
-    const src = pickAttr(fullTag, 'src') || '';
-    if (!src) return ''; // drop invalid image
-    const alt = pickAttr(fullTag, 'alt') || '';
-    const title = pickAttr(fullTag, 'title');
-    const titlePart = title ? ` "${title}"` : '';
+    const src = pickAttr(fullTag, "src") || "";
+    if (!src) return "";
+    const alt = pickAttr(fullTag, "alt") || "";
+    const title = pickAttr(fullTag, "title");
+    const titlePart = title ? ` "${title}"` : "";
     return `![${alt}](${src}${titlePart})`;
   });
 }
 
-// Convert ordered lists block-by-block to "1. " numbering.
-// Supports <ol start="N">. (Nested lists are handled reasonably for common cases.)
 function convertOrderedLists(html: string): string {
   const olRegex = /<ol\b[^>]*>([\s\S]*?)<\/ol>/gi;
   return html.replace(olRegex, (match: string, inner: string) => {
     const startMatch = /<ol\b[^>]*\bstart=["']?(\d+)["']?[^>]*>/i.exec(match);
     let index = startMatch ? parseInt(startMatch[1], 10) || 1 : 1;
 
-    // First, recursively convert any nested <ol>/<ul> inside this block
     let content = convertOrderedLists(inner);
     content = convertUnorderedLists(content);
 
-    // Now number the top-level <li> in this block
-    let out = '';
     content = content.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liFull: string, liInner: string) => {
-      // Clean line breaks inside li; we will preserve inner newlines if present
       const trimmed = liInner.trim();
-      // If li contains its own lists already converted to MD, indent subsequent lines
-      const lines = decodeEntities(trimmed).split('\n');
-      const first = lines.shift() ?? '';
-      const rest = lines.length ? '\n' + lines.map(l => (l ? '   ' + l : '')).join('\n') : '';
+      const lines = decodeEntities(trimmed).split("\n");
+      const first = lines.shift() ?? "";
+      const rest = lines.length ? "\n" + lines.map((l) => (l ? "   " + l : "")).join("\n") : "";
       return `${index++}. ${first}${rest}\n`;
     });
 
-    out += content;
-    return `\n${out}\n`;
+    return `\n${content}\n`;
   });
 }
 
-// Convert unordered lists block-by-block to "- " bullet items.
 function convertUnorderedLists(html: string): string {
   const ulRegex = /<ul\b[^>]*>([\s\S]*?)<\/ul>/gi;
   return html.replace(ulRegex, (_match: string, inner: string) => {
-    // Recursively process nested lists inside
     let content = convertOrderedLists(inner);
     content = convertUnorderedLists(content);
 
     content = content.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_liFull: string, liInner: string) => {
       const trimmed = liInner.trim();
-      const lines = decodeEntities(trimmed).split('\n');
-      const first = lines.shift() ?? '';
-      const rest = lines.length ? '\n' + lines.map(l => (l ? '  ' + l : '')).join('\n') : '';
+      const lines = decodeEntities(trimmed).split("\n");
+      const first = lines.shift() ?? "";
+      const rest = lines.length ? "\n" + lines.map((l) => (l ? "  " + l : "")).join("\n") : "";
       return `- ${first}${rest}\n`;
     });
 
@@ -101,94 +80,102 @@ function convertUnorderedLists(html: string): string {
 }
 
 export function htmlToMarkdown(html: string): string {
-  if (!html || html.trim() === '') return '';
+  if (!html || html.trim() === "") return "";
 
   let markdown = html;
 
-  // Remove DOMPurify outer wrapper if present (only the outermost)
-  markdown = markdown.replace(/^\s*<div[^>]*>/i, '').replace(/<\/div>\s*$/i, '');
+  // Remove outermost wrapper (เช่น DOMPurify)
+  markdown = markdown.replace(/^\s*<div[^>]*>/i, "").replace(/<\/div>\s*$/i, "");
 
   // Normalize newlines
-  markdown = markdown.replace(/\r\n?/g, '\n');
+  markdown = markdown.replace(/\r\n?/g, "\n");
 
-  // Convert code blocks (with language)
+  // ——— Protect & capture code blocks ———
+  const codeBlocks: string[] = [];
+
+  // <pre>...</pre>
+  markdown = markdown.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, (match) => {
+    const index = codeBlocks.length;
+    codeBlocks.push(match);
+    return `__CODE_BLOCK_${index}__`;
+  });
+
+  // <div class="... not-prose ...">...</div> (renderer เดิม)
+  markdown = markdown.replace(/<div[^>]*class="[^"]*not-prose[^"]*"[^>]*>[\s\S]*?<\/div>/gi, (match) => {
+    const index = codeBlocks.length;
+    codeBlocks.push(match);
+    return `__CODE_BLOCK_${index}__`;
+  });
+
+  // Inline code: multi-line → fenced block
   markdown = markdown.replace(
-    /<pre[^>]*>\s*<code[^>]*class=["']language-([^"']+)["'][^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi,
-    (_m: string, language: string, content: string) => {
-      const clean = decodeEntities(
-        content.replace(/<br\s*\/?>/gi, '\n')
-      );
-      return `\n\`\`\`${language}\n${clean}\n\`\`\`\n\n`;
+    /<code\b[^>]*>([\s\S]*?)<\/code>/gi,
+    (_m: string, c: string) => {
+      const text = decodeEntities(c).replace(/\r\n?/g, "\n");
+      if (/\n/.test(text)) {
+        return `\n\`\`\`\n${text}\n\`\`\`\n`;
+      }
+      return "`" + text + "`";
     }
   );
 
-  // Convert code blocks (no language)
-  markdown = markdown.replace(
-    /<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi,
-    (_m: string, content: string) => {
-      const clean = decodeEntities(
-        content.replace(/<br\s*\/?>/gi, '\n')
-      );
-      return `\n\`\`\`\n${clean}\n\`\`\`\n\n`;
-    }
-  );
-
-  // Pre without inner code
-  markdown = markdown.replace(
-    /<pre[^>]*>([\s\S]*?)<\/pre>/gi,
-    (_m: string, content: string) => {
-      const clean = decodeEntities(
-        content.replace(/<br\s*\/?>/gi, '\n')
-      );
-      return `\n\`\`\`\n${clean}\n\`\`\`\n\n`;
-    }
-  );
-
-  // Inline code (after block code to avoid conflicts)
-  markdown = markdown.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m: string, c: string) => '`' + decodeEntities(c) + '`');
-
-  // Headings with text-align preservation
+  // Headings with alignment
   markdown = markdown
-    .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, (match: string, content: string) => {
-      const style = extractTextAlign(match);
-      return style ? `<h1 style="${style}">${decodeEntities(content)}</h1>\n\n` : `# ${decodeEntities(content)}\n\n`;
+    .replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, (m: string, c: string) => {
+      const style = extractTextAlign(m);
+      return style ? `<h1 style="${style}">${decodeEntities(c)}</h1>\n\n` : `# ${decodeEntities(c)}\n\n`;
     })
-    .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, (match: string, content: string) => {
-      const style = extractTextAlign(match);
-      return style ? `<h2 style="${style}">${decodeEntities(content)}</h2>\n\n` : `## ${decodeEntities(content)}\n\n`;
+    .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, (m: string, c: string) => {
+      const style = extractTextAlign(m);
+      return style ? `<h2 style="${style}">${decodeEntities(c)}</h2>\n\n` : `## ${decodeEntities(c)}\n\n`;
     })
-    .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, (match: string, content: string) => {
-      const style = extractTextAlign(match);
-      return style ? `<h3 style="${style}">${decodeEntities(content)}</h3>\n\n` : `### ${decodeEntities(content)}\n\n`;
+    .replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, (m: string, c: string) => {
+      const style = extractTextAlign(m);
+      return style ? `<h3 style="${style}">${decodeEntities(c)}</h3>\n\n` : `### ${decodeEntities(c)}\n\n`;
     })
-    .replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, (match: string, content: string) => {
-      const style = extractTextAlign(match);
-      return style ? `<h4 style="${style}">${decodeEntities(content)}</h4>\n\n` : `#### ${decodeEntities(content)}\n\n`;
+    .replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, (m: string, c: string) => {
+      const style = extractTextAlign(m);
+      return style ? `<h4 style="${style}">${decodeEntities(c)}</h2>\n\n` : `#### ${decodeEntities(c)}\n\n`;
     })
-    .replace(/<h5\b[^>]*>([\s\S]*?)<\/h5>/gi, (match: string, content: string) => {
-      const style = extractTextAlign(match);
-      return style ? `<h5 style="${style}">${decodeEntities(content)}</h5>\n\n` : `##### ${decodeEntities(content)}\n\n`;
+    .replace(/<h5\b[^>]*>([\s\S]*?)<\/h5>/gi, (m: string, c: string) => {
+      const style = extractTextAlign(m);
+      return style ? `<h5 style="${style}">${decodeEntities(c)}</h5>\n\n` : `##### ${decodeEntities(c)}\n\n`;
     })
-    .replace(/<h6\b[^>]*>([\s\S]*?)<\/h6>/gi, (match: string, content: string) => {
-      const style = extractTextAlign(match);
-      return style ? `<h6 style="${style}">${decodeEntities(content)}</h6>\n\n` : `###### ${decodeEntities(content)}\n\n`;
+    .replace(/<h6\b[^>]*>([\s\S]*?)<\/h6>/gi, (m: string, c: string) => {
+      const style = extractTextAlign(m);
+      return style ? `<h6 style="${style}">${decodeEntities(c)}</h6>\n\n` : `###### ${decodeEntities(c)}\n\n`;
     });
 
-  // Horizontal rule
+  // HR
   markdown = markdown.replace(/<hr\s*\/?>/gi, `\n---\n\n`);
 
-  // Bold / italic / strikethrough
+  // Emphasis / strong / strike
   markdown = markdown
-    .replace(/<strong\b[^>]*>([\s\S]*?)<\/strong>/gi, (_m: string, c: string) => `**${decodeEntities(c)}**`)
-    .replace(/<b\b[^>]*>([\s\S]*?)<\/b>/gi, (_m: string, c: string) => `**${decodeEntities(c)}**`)
-    .replace(/<em\b[^>]*>([\s\S]*?)<\/em>/gi, (_m: string, c: string) => `*${decodeEntities(c)}*`)
-    .replace(/<i\b[^>]*>([\s\S]*?)<\/i>/gi, (_m: string, c: string) => `*${decodeEntities(c)}*`)
-    .replace(/<(del|s|strike)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m: string, _t: string, c: string) => `~~${decodeEntities(c)}~~`);
+    .replace(/<em\b[^>]*>([\s\S]*?)<\/em>/gi, (_m: string, c: string) => {
+      const t = decodeEntities(c);
+      return t.includes("**") || t.includes("*") || t.includes("~~") ? t : `*${t}*`;
+    })
+    .replace(/<i\b[^>]*>([\s\S]*?)<\/i>/gi, (_m: string, c: string) => {
+      const t = decodeEntities(c);
+      return t.includes("**") || t.includes("*") || t.includes("~~") ? t : `*${t}*`;
+    })
+    .replace(/<strong\b[^>]*>([\s\S]*?)<\/strong>/gi, (_m: string, c: string) => {
+      const t = decodeEntities(c);
+      return t.includes("**") || t.includes("*") || t.includes("~~") ? t : `**${t}**`;
+    })
+    .replace(/<b\b[^>]*>([\s\S]*?)<\/b>/gi, (_m: string, c: string) => {
+      const t = decodeEntities(c);
+      return t.includes("**") || t.includes("*") || t.includes("~~") ? t : `**${t}**`;
+    })
+    .replace(/<(del|s|strike)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m: string, _t: string, c: string) => {
+      const t = decodeEntities(c);
+      return t.includes("**") || t.includes("*") || t.includes("~~") ? t : `~~${t}~~`;
+    });
 
-  // Line breaks
-  markdown = markdown.replace(/<br\s*\/?>/gi, '\n');
+  // BR
+  markdown = markdown.replace(/<br\s*\/?>/gi, "\n");
 
-  // Images (do this before stripping other tags)
+  // Images
   markdown = convertImages(markdown);
 
   // Links
@@ -197,114 +184,127 @@ export function htmlToMarkdown(html: string): string {
     (_m: string, href: string, text: string) => `[${decodeEntities(text)}](${href})`
   );
 
-  // Blockquotes
+  // Blockquote
   markdown = markdown.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m: string, c: string) => {
-    // Remove wrapping paragraphs inside blockquote
-    const inner = c.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_mp: string, pc: string) => decodeEntities(pc) + '\n');
-    return `\n> ${inner.trim().replace(/\n/g, '\n> ')}\n\n`;
+    const inner = c.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_mp: string, pc: string) => decodeEntities(pc) + "\n");
+    return `\n> ${inner.trim().replace(/\n/g, "\n> ")}\n\n`;
   });
 
-  // Lists (ordered first, then unordered)
+  // Lists
   markdown = convertOrderedLists(markdown);
   markdown = convertUnorderedLists(markdown);
 
-  // Paragraphs with text-align preservation
-  markdown = markdown.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (match: string, content: string) => {
-    const style = extractTextAlign(match);
-    return style ? `<p style="${style}">${decodeEntities(content)}</p>\n\n` : `${decodeEntities(content)}\n\n`;
+  // Paragraphs
+  markdown = markdown.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (m: string, c: string) => {
+    const style = extractTextAlign(m);
+    const decoded = decodeEntities(c);
+    if (isMarkdownContent(decoded)) return `${decoded}\n\n`;
+    return style ? `<p style="${style}">${decoded}</p>\n\n` : `${decoded}\n\n`;
   });
 
-  // Highlighting: keep <mark> as raw HTML (preserve style/class/data-*)
-  // If there is a background-color inline style, keep it so renderer can use it.
-  // (No-op here; we just ensure mark is not stripped below.)
+  // คืน code blocks ที่กันไว้
+  codeBlocks.forEach((block, index) => {
+    const placeholder = `__CODE_BLOCK_${index}__`;
+    if (!markdown.includes(placeholder)) return;
 
-  // Preserve useful inline HTML tags: mark, sup, sub, u, kbd, br
-  // Remove the rest of remaining HTML tags
-  markdown = markdown.replace(/<(?!\/?(mark|sup|sub|u|kbd|br)\b)[^>]*>/gi, '');
+    let finalBlock = block;
+    const isDivCodeBlock = /<div[^>]*class="[^"]*not-prose[^"]*"/i.test(block);
 
-  // Decode any leftover entities
+    if (isDivCodeBlock) {
+      const codeMatch = block.match(/<code[^>]*>([\s\S]*?)<\/code>/i);
+      if (codeMatch) {
+        const content = decodeEntities(codeMatch[1]).replace(/\r\n?/g, "\n");
+        finalBlock = `\n\`\`\`\n${content}\n\`\`\`\n\n`;
+      } else {
+        const textContent = decodeEntities(block.replace(/<[^>]*>/g, "")).replace(/\r\n?/g, "\n");
+        finalBlock = `\n\`\`\`\n${textContent}\n\`\`\`\n\n`;
+      }
+    } else {
+      finalBlock = finalBlock
+        .replace(
+          /<pre[^>]*>\s*<code[^>]*class=["']language-([^"']+)["'][^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi,
+          (_m: string, lang: string, content: string) =>
+            `\n\`\`\`${lang}\n${decodeEntities(content).replace(/<br\s*\/?>/gi, "\n").replace(/\r\n?/g, "\n")}\n\`\`\`\n\n`
+        )
+        .replace(
+          /<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi,
+          (_m: string, content: string) =>
+            `\n\`\`\`\n${decodeEntities(content).replace(/<br\s*\/?>/gi, "\n").replace(/\r\n?/g, "\n")}\n\`\`\`\n\n`
+        )
+        .replace(
+          /<pre[^>]*>([\s\S]*?)<\/pre>/gi,
+          (_m: string, content: string) =>
+            `\n\`\`\`\n${decodeEntities(content).replace(/<br\s*\/?>/gi, "\n").replace(/\r\n?/g, "\n")}\n\`\`\`\n\n`
+        );
+    }
+
+    markdown = markdown.replace(placeholder, finalBlock);
+  });
+
+  // อนุรักษ์ tag inline ที่จำเป็น และลบ tag อื่น
+  markdown = markdown.replace(/<(?!\/?(mark|sup|sub|u|kbd|br)\b)[^>]*>/gi, "");
+
+  // Decode leftovers
   markdown = decodeEntities(markdown);
 
-  // Clean up repeated blank lines
-  markdown = markdown.replace(/\n{3,}/g, '\n\n').trim();
+  // Clean blank lines
+  markdown = markdown.replace(/\n{4,}/g, "\n\n\n").trim();
 
   return markdown;
 }
 
-// Check if content appears to be HTML
+// Heuristics: HTML?
 export function isHtmlContent(content: string): boolean {
-  if (!content || content.trim() === '') return false;
-
-  const htmlPatterns = [
-    /<[a-zA-Z][^>]*>/,
-    /&[a-zA-Z]+;/,
-    /&#\d+;/
-  ];
-
-  const tiptapPatterns = [
-    /<p[^>]*>/,
-    /<pre[^>]*>/,
-    /<code[^>]*>/,
-    /<strong[^>]*>/,
-    /<em[^>]*>/,
-    /<h[1-6][^>]*>/,
-    /<ul[^>]*>/,
-    /<ol[^>]*>/,
-    /<li[^>]*>/,
-    /<blockquote[^>]*>/
-  ];
-
-  return htmlPatterns.some(p => p.test(content)) || tiptapPatterns.some(p => p.test(content));
+  if (!content || content.trim() === "") return false;
+  const hasHtmlEntities = /&[a-zA-Z]+;|&#\d+;/.test(content);
+  const hasHtmlTags = /<[a-zA-Z][^>]*\s[^>]*>/.test(content);
+  const hasHtmlStructure = /<(div|span|p|h[1-6]|ul|ol|li|blockquote|pre|code|strong|em|b|i|a|img|hr|br)[^>]*>/.test(content);
+  const hasMarkdownPatterns = isMarkdownContent(content);
+  return (hasHtmlEntities || hasHtmlTags || hasHtmlStructure) && !hasMarkdownPatterns;
 }
 
-// Safe content converter that checks if content is HTML before converting
+// Heuristics: Markdown?
+export function isMarkdownContent(content: string): boolean {
+  if (!content || content.trim() === "") return false;
+
+  const markdownPatterns = [
+    /^\s*#{1,6}\s+/m,
+    /^\s*[-*+]\s+/m,
+    /^\s*\d+\.\s+/m,
+    /\*\*[^*]+\*\*/,
+    /\*[^*]+\*/,
+    /`[^`]+`/,
+    /```[\s\S]*?```/,
+    /^\s*>\s+/m,
+    /\[([^\]]+)\]\([^)]+\)/,
+    /!\[([^\]]*)\]\([^)]+\)/,
+    /^\s*---+\s*$/m,
+    /~~[^~]+~~/,
+    /^\s*\|.*\|.*\|/m,
+    /^\s*- \[[ x]\]\s+/m,
+    /\*\*[^*]*\*\*/,
+    /\*[^*]*\*/,
+  ];
+
+  return markdownPatterns.some((p) => p.test(content));
+}
+
 export function convertContentToMarkdown(content: string): string {
-  if (!content || content.trim() === '') return '';
+  if (!content || content.trim() === "") return "";
+  const hasHtml = isHtmlContent(content);
+  const hasMarkdown = isMarkdownContent(content);
+  if (hasHtml && hasMarkdown) return htmlToMarkdown(content);
+  if (hasHtml) return htmlToMarkdown(content);
+  if (hasMarkdown) return content;
+  return content;
+}
 
-  if (!isHtmlContent(content)) {
-    // Check if content contains inline code patterns (single backticks)
-    const hasInlineCode = /`[^`\n]+`/.test(content);
-    
-    // If it has inline code, don't wrap in code blocks but ensure it's properly formatted
-    if (hasInlineCode) {
-      // Return the content as-is so ReactMarkdown can parse the inline code properly
-      return content;
-    }
-    
-    const codePatterns = [
-      /export\s+const\s+\w+\s*=/,
-      /function\s+\w+\s*\(/,
-      /class\s+\w+/,
-      /import\s+.*from/,
-      /const\s+\w+\s*=/,
-      /let\s+\w+\s*=/,
-      /var\s+\w+\s*=/,
-      /if\s*\(/,
-      /for\s*\(/,
-      /while\s*\(/,
-      /return\s+/,
-      /console\.log/,
-      /\.js$/,
-      /\.ts$/,
-      /\.py$/,
-      /\.java$/,
-      /\.cpp$/,
-      /\.css$/,
-      /\.html$/,
-      /\.json$/,
-      /\.sql$/,
-      /\.bash$/,
-      /\.sh$/
-    ];
-
-    const looksLikeCode =
-      codePatterns.some(p => p.test(content)) ||
-      (content.includes('{') && content.includes('}')) ||
-      (content.includes('(') && content.includes(')')) ||
-      content.split('\n').length > 3;
-
-    return looksLikeCode ? `\`\`\`\n${content}\n\`\`\`` : content;
-  }
-
-  return htmlToMarkdown(content);
+export function convertContentToMarkdownEnhanced(content: string): string {
+  if (!content || content.trim() === "") return "";
+  const hasHtml = isHtmlContent(content);
+  const hasMarkdown = isMarkdownContent(content);
+  if (hasHtml && hasMarkdown) return htmlToMarkdown(content);
+  if (hasHtml) return htmlToMarkdown(content);
+  if (hasMarkdown) return content;
+  return content;
 }

@@ -4,117 +4,28 @@ import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import rehypeSlug from "rehype-slug";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
 
-/**
- * Sanitize schema (expanded):
- * - Allow <mark>, <del>, <input>, <img>, <sup>, <sub>, <u>, <kbd>, <hr>, <br>
- * - Keep className on <code>/<pre>/<span>
- * - Allow target/rel on <a>
- * - Allow style on <mark>, headings, <p> (for text-align), and <pre>/<code> (if present)
- */
-const sanitizeSchema = (() => {
-  const schema: any = JSON.parse(JSON.stringify(defaultSchema));
+/* ---------------- helpers ---------------- */
 
-  schema.tagNames = Array.from(
-    new Set([
-      ...(schema.tagNames || []),
-      "mark",
-      "del",
-      "input",
-      "img",
-      "sup",
-      "sub",
-      "u",
-      "kbd",
-      "hr",
-      "br",
-    ])
-  );
-
-  schema.attributes = {
-    ...(schema.attributes || {}),
-    code: [...(schema.attributes?.code || []), "className", "data-language", "style"],
-    pre: [...(schema.attributes?.pre || []), "className", "style"],
-    span: [...(schema.attributes?.span || []), "className"],
-    mark: [
-      ...(schema.attributes?.mark || []),
-      "className",
-      "style",
-      "data-color",
-      "data-highlight",
-      "color",
-    ],
-    del: [...(schema.attributes?.del || []), "className"],
-    a: [...(schema.attributes?.a || []), "target", "rel"],
-    img: [
-      ...(schema.attributes?.img || []),
-      "src",
-      "alt",
-      "title",
-      "width",
-      "height",
-      "loading",
-      "decoding",
-      "className",
-    ],
-    input: [
-      ...(schema.attributes?.input || []),
-      "type",
-      "checked",
-      "disabled",
-      "aria-checked",
-      "tabIndex",
-      "readOnly",
-      "className",
-    ],
-    sup: [...(schema.attributes?.sup || []), "className"],
-    sub: [...(schema.attributes?.sub || []), "className"],
-    u: [...(schema.attributes?.u || []), "className"],
-    kbd: [...(schema.attributes?.kbd || []), "className"],
-
-    // Allow inline style on headings and paragraphs to keep text-align from raw HTML
-    h1: [...(schema.attributes?.h1 || []), "style", "align"],
-    h2: [...(schema.attributes?.h2 || []), "style", "align"],
-    h3: [...(schema.attributes?.h3 || []), "style", "align"],
-    h4: [...(schema.attributes?.h4 || []), "style", "align"],
-    h5: [...(schema.attributes?.h5 || []), "style", "align"],
-    h6: [...(schema.attributes?.h6 || []), "style", "align"],
-    p: [...(schema.attributes?.p || []), "style", "align"],
-  };
-
-  return schema;
-})();
-
-// ————— mark helpers —————
 function pickMarkStyle(
   className?: string,
   props?: { [k: string]: unknown }
 ): React.CSSProperties {
-  // 1) Respect existing background/backgroundColor styles
   const styleProp = props?.style as any;
   if (styleProp && (styleProp.background || styleProp.backgroundColor)) {
     return styleProp as React.CSSProperties;
   }
-
-  // 2) Read color from data-* or color attr
   const dataColor =
     (props?.["data-color"] as string) ||
     (props?.["data-highlight"] as string) ||
     (props?.["color"] as string) ||
     "";
-
-  // 3) Read from class="highlight-blue"
   const classColor = (className || "").match(/highlight-([\w-]+)/)?.[1];
-
   const colorKey = (dataColor || classColor || "yellow").toLowerCase();
 
   const colorMap: Record<string, { bg: string; text: string }> = {
@@ -143,7 +54,6 @@ function readTextAlign(
       return v;
     }
   }
-
   if (styleProp && typeof styleProp === "object") {
     const ta = (styleProp as any).textAlign;
     if (ta && typeof ta === "string") {
@@ -158,149 +68,110 @@ function readTextAlign(
   return "left";
 }
 
-export function MarkdownRenderer({
-  content,
-  className = "",
-}: MarkdownRendererProps) {
+/** deep-decode ทั้ง named และ numeric entities (decimal/hex) */
+function decodeEntitiesOnce(s: string): string {
+  return s
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, d: string) => String.fromCharCode(parseInt(d, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h: string) => String.fromCharCode(parseInt(h, 16)));
+}
+function decodeEntitiesDeep(s: string): string {
+  let prev = s, i = 0;
+  while (i++ < 5) {                 // ถอดซ้ำได้สูงสุด 5 ชั้น
+    const next = decodeEntitiesOnce(prev);
+    if (next === prev) break;
+    prev = next;
+  }
+  return prev;
+}
+
+/** รวม children ให้เป็นสตริงเดียว พร้อม preserve \n และเว้นวรรค */
+function flattenChildrenToString(ch: any): string {
+  const walk = (n: any): string => {
+    if (n == null) return "";
+    if (typeof n === "string" || typeof n === "number") return String(n);
+    if (Array.isArray(n)) return n.map(walk).join("");
+    if (React.isValidElement(n)) {
+      const t = typeof n.type === "string" ? n.type.toLowerCase() : "";
+      if (t === "br") return "\n";
+      const inner = walk((n as any).props?.children);
+      // ถ้าโดนผ่าเป็น <p>/<div>/<li> ให้ปิดด้วย newline
+      if (t === "p" || t === "div" || t === "li") return inner + "\n";
+      return inner;
+    }
+    return "";
+  };
+  return walk(ch).replace(/\r\n?/g, "\n");
+}
+
+/* ---------------- component ---------------- */
+
+export function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
   return (
     <div
       className={[
         "markdown-content",
-        "prose prose-invert prose-sm max-w-none",
-        // Beautiful container for code blocks
-        "prose-pre:bg-gray-900/50 prose-pre:border prose-pre:border-white/10",
-        "prose-pre:rounded-lg prose-pre:overflow-x-auto",
-        // Remove backticks decoration from typography for inline code
-        "prose-code:before:content-[''] prose-code:after:content-['']",
-        "prose-a:text-primary-400 hover:prose-a:text-primary-300",
-        "prose-blockquote:border-l-primary-500",
+        "max-w-none text-white/80 leading-relaxed",
         className,
       ].join(" ")}
+      style={{ "--tw-list-style-type": "initial" } as React.CSSProperties}
     >
       <ReactMarkdown
-        // GFM → tables, task list, strikethrough, autolink, (footnotes)
         remarkPlugins={[remarkGfm]}
-        // Order: raw -> sanitize -> slug (ids are added after sanitize)
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeSlug]}
+        rehypePlugins={[rehypeRaw]}      // เปิดตลอดเพื่อรองรับ HTML ปะปน
+        skipHtml={false}
         components={{
-          // Headings with alignment support (reads style even if it's a string)
+          /* Headings */
           h1: ({ children, ...props }) => {
-            const textAlign = readTextAlign((props as any).style, (props as any).align);
-            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
-            return (
-              <h1 className={`text-2xl font-bold text-white mb-4 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
-                {children}
-              </h1>
-            );
+            const ta = readTextAlign((props as any).style, (props as any).align);
+            return <h1 className={`text-2xl font-bold text-white mb-4 text-${ta}`.replace("text-justify","")} style={{textAlign:ta}}>{children}</h1>;
           },
           h2: ({ children, ...props }) => {
-            const textAlign = readTextAlign((props as any).style, (props as any).align);
-            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
-            return (
-              <h2 className={`text-xl font-semibold text-white mb-3 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
-                {children}
-              </h2>
-            );
+            const ta = readTextAlign((props as any).style, (props as any).align);
+            return <h2 className={`text-xl font-semibold text-white mb-3 text-${ta}`.replace("text-justify","")} style={{textAlign:ta}}>{children}</h2>;
           },
           h3: ({ children, ...props }) => {
-            const textAlign = readTextAlign((props as any).style, (props as any).align);
-            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
-            return (
-              <h3 className={`text-lg font-medium text-white mb-2 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
-                {children}
-              </h3>
-            );
+            const ta = readTextAlign((props as any).style, (props as any).align);
+            return <h3 className={`text-lg font-medium text-white mb-2 text-${ta}`.replace("text-justify","")} style={{textAlign:ta}}>{children}</h3>;
           },
           h4: ({ children, ...props }) => {
-            const textAlign = readTextAlign((props as any).style, (props as any).align);
-            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
-            return (
-              <h4 className={`text-base font-medium text-white mb-2 ${map[textAlign] ?? ""}`} style={{ textAlign }}>
-                {children}
-              </h4>
-            );
+            const ta = readTextAlign((props as any).style, (props as any).align);
+            return <h4 className={`text-base font-medium text-white mb-2 text-${ta}`.replace("text-justify","")} style={{textAlign:ta}}>{children}</h4>;
           },
 
-          // Basic text with alignment support
+          /* Paragraph */
           p: ({ children, ...props }) => {
-            const textAlign = readTextAlign((props as any).style, (props as any).align);
-
-            // If this paragraph contains only a code block, don't wrap it in <p>
-            if (React.Children.count(children) === 1) {
-              const child = React.Children.toArray(children)[0];
-              if (React.isValidElement(child) && (child as any).type === 'pre') {
-                return <>{children}</>;
-              }
-            }
-
-            const map = { left: "text-left", center: "text-center", right: "text-right", justify: "text-justify" } as const;
-            return (
-              <p className={`text-white/80 mb-3 leading-relaxed ${map[textAlign] ?? ""}`} style={{ textAlign }}>
-                {children}
-              </p>
-            );
+            const ta = readTextAlign((props as any).style, (props as any).align);
+            const arr = React.Children.toArray(children);
+            const empty = arr.length === 0 || (arr.length === 1 && typeof arr[0] === "string" && arr[0].trim() === "");
+            if (empty) return <br />;
+            return <p className={`text-white/80 mb-3 leading-relaxed text-${ta}`.replace("text-justify","")} style={{textAlign:ta}}>{children}</p>;
           },
 
-          strong: ({ children }) => (
-            <strong className="font-semibold text-white">{children}</strong>
-          ),
-          em: ({ children }) => (
-            <em className="italic text-white/90">{children}</em>
-          ),
-
-          // Links: anchor (#...) doesn't open new tab
+          strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+          em: ({ children }) => <em className="italic text-white/90">{children}</em>,
           a: ({ children, href }) => {
             const isHash = href?.startsWith("#");
-            return (
-              <a
-                href={href}
-                className="underline transition-colors"
-                target={isHash ? undefined : "_blank"}
-                rel={isHash ? undefined : "noopener noreferrer"}
-              >
-                {children}
-              </a>
-            );
+            return <a href={href} className="underline transition-colors" target={isHash?undefined:"_blank"} rel={isHash?undefined:"noopener noreferrer"}>{children}</a>;
           },
 
-          // Lists
-          ul: ({ children }) => (
-            <ul className="list-disc mb-4 text-white/80 pl-6 space-y-1">
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal mb-4 text-white/80 pl-6 space-y-1">
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li className="mb-1 leading-relaxed">
-              {children}
-            </li>
-          ),
+          /* Lists */
+          ul: ({ children }) => <ul className="mb-4 text-white/80 pl-6 space-y-1" style={{listStyleType:"disc"}}>{children}</ul>,
+          ol: ({ children }) => <ol className="mb-4 text-white/80 pl-6 space-y-1" style={{listStyleType:"decimal"}}>{children}</ol>,
+          li: ({ children }) => <li className="mb-1 leading-relaxed" style={{display:"list-item"}}>{children}</li>,
 
-          // Task list checkboxes (rendered by remark-gfm as <input type="checkbox">)
           input: (props: any) => {
-            const type = (props.type || '').toString().toLowerCase();
-            if (type !== 'checkbox') return <input {...props} />;
-            const checked =
-              props.checked === true ||
-              props.checked === '' ||
-              props.checked === 'true' ||
-              props['aria-checked'] === 'true';
-            return (
-              <input
-                type="checkbox"
-                className="mr-2 align-middle"
-                checked={checked}
-                readOnly
-                disabled
-              />
-            );
+            const type = (props.type || "").toString().toLowerCase();
+            if (type !== "checkbox") return <input {...props} />;
+            const checked = props.checked === true || props.checked === "" || props.checked === "true" || props["aria-checked"] === "true";
+            return <input type="checkbox" className="mr-2 align-middle" checked={checked} readOnly disabled />;
           },
 
-          // Blockquotes
           blockquote: ({ children }) => (
             <blockquote className="border-l-4 border-primary-500 pl-4 italic text-white/70 my-4 bg-primary-500/10 rounded-r-md py-3 pr-4 shadow-sm">
               {children}
@@ -308,74 +179,68 @@ export function MarkdownRenderer({
           ),
 
           /**
-           * PRE/Code:
-           * - 'pre' is kept minimal to avoid "pre inside pre"
-           * - Code blocks use SyntaxHighlighter (Prism)
+           * <pre> — แค่จัด styling/scroll เท่านั้น
+           * ข้อความภายในจะถูก “เตรียม” โดย <code> (กรณี block)
            */
-          pre: ({ children }) => {
-            return <div className="mb-3 overflow-x-auto">{children}</div>;
-          },
-          code: ({
-            inline,
-            className,
-            children,
-            ...props
-          }: {
-            inline?: boolean;
-            className?: string;
-            children?: React.ReactNode;
-          } & React.HTMLAttributes<HTMLElement>) => {
-            const raw = String(children ?? "");
-            const languageMatch = /language-([\w-]+)/.exec(className || "");
-            const language = languageMatch?.[1] || undefined;
-            const hasLineBreak = /\n/.test(raw.trimEnd());
+          pre: ({ children }) => (
+            <pre
+              className="not-prose mb-3"
+              style={{
+                margin: 0,
+                background: "#1e1e1e",
+                padding: "1rem",
+                borderRadius: "0.5rem",
+                border: "1px solid #3e3e3e",
+                fontSize: "0.875rem",
+                lineHeight: 1.4,
+                overflowX: "auto",
+                overflowY: "visible",
+                whiteSpace: "pre",
+                wordBreak: "normal",
+                overflowWrap: "normal",
+                tabSize: 2,
+                fontFamily: "'Fira Code', 'Monaco', 'Consolas', monospace",
+                color: "#d4d4d4",
+              }}
+            >
+              {children}
+            </pre>
+          ),
 
-            const shouldRenderInline =
-              inline === true ||
-              (inline === undefined && !language && !(className || "").includes("language-") && !hasLineBreak);
-
-            if (shouldRenderInline) {
+          /**
+           * <code>
+           * - inline: decode เบา ๆ แล้วคืนเป็น inline code
+           * - block (ใต้ <pre>): รวม children → สตริงเดียว + deep-decode → คืนเป็นข้อความล้วน
+           *   (กันเคสโดน “ผ่า” เป็น <p>/<a> และกัน entity ค้างอย่าง &lt;, &amp; ฯลฯ)
+           */
+          code: ({ inline, className, children, ...props }: any) => {
+            if (inline) {
+              const raw = flattenChildrenToString(children);
+              const text = decodeEntitiesDeep(raw);
               return (
                 <code
                   className="bg-white/10 text-white/90 px-1 py-0.5 rounded text-[0.9em] font-mono border border-white/10 not-prose"
                   {...props}
                 >
-                  {children}
+                  {text}
                 </code>
               );
             }
 
-            const content = raw.replace(/\n$/, "");
-
+            // block code
+            const raw = flattenChildrenToString(children);
+            const text = decodeEntitiesDeep(raw);
             return (
-              <SyntaxHighlighter
-                language={language}
-                style={oneDark}
-                wrapLongLines
-                PreTag="pre"
-                CodeTag="code"
-                customStyle={{
-                  margin: 0,
-                  background: "#1e1e1e",
-                  padding: "1rem",
-                  borderRadius: "0.5rem",
-                  border: "1px solid #3e3e3e",
-                  fontSize: "0.875rem",
-                  lineHeight: "1.5",
-                }}
-                className="not-prose"
-                codeTagProps={{
-                  style: {
-                    fontFamily: "'Fira Code', 'Monaco', 'Consolas', monospace",
-                  }
-                }}
+              <code
+                className={className}
+                {...props}
+                style={{ background: "transparent", color: "inherit", display: "block" }}
               >
-                {content}
-              </SyntaxHighlighter>
+                {text}
+              </code>
             );
           },
 
-          // Images
           img: ({ src, alt, title }) => (
             <img
               src={src || ""}
@@ -387,55 +252,28 @@ export function MarkdownRenderer({
             />
           ),
 
-          // Horizontal rule
-          hr: () => <hr className="border-white/10 my-6" />,
+          hr: () => <hr className="border-none border-t-2 border-white/10 my-8" />,
 
-          // Tables
           table: ({ children }) => (
             <div className="overflow-x-auto mb-3">
-              <table className="min-w-full border-collapse border border-white/20">
-                {children}
-              </table>
+              <table className="min-w-full border-collapse border border-white/20">{children}</table>
             </div>
           ),
-          th: ({ children }) => (
-            <th className="border border-white/20 px-3 py-2 bg-white/10 text-white font-semibold text-left">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border border-white/20 px-3 py-2 text-white/80">
-              {children}
-            </td>
-          ),
+          th: ({ children }) => <th className="border border-white/20 px-3 py-2 bg-white/10 text-white font-semibold text-left">{children}</th>,
+          td: ({ children }) => <td className="border border-white/20 px-3 py-2 text-white/80">{children}</td>,
 
-          // Strikethrough
-          del: ({ children }) => (
-            <del className="line-through text-white/50 decoration-red-400 decoration-2">{children}</del>
-          ),
+          del: ({ children }) => <del className="line-through text-white/50 decoration-red-400 decoration-2">{children}</del>,
 
-          // <mark> supports multiple ways to specify color
           mark: ({ children, className, ...props }: any) => {
             const style = pickMarkStyle(className, props);
-            return (
-              <mark
-                className={`px-1 py-0.5 rounded ${className || ""}`}
-                style={style}
-              >
-                {children}
-              </mark>
-            );
+            return <mark className={`px-1 py-0.5 rounded ${className || ""}`} style={style}>{children}</mark>;
           },
 
-          // Extra inline HTML helpers
+          div: ({ children, ...props }: any) => (props.style || props.className ? <div {...props}>{children}</div> : <>{children}</>),
           sup: ({ children }) => <sup className="align-super text-white/80">{children}</sup>,
           sub: ({ children }) => <sub className="align-sub text-white/80">{children}</sub>,
           u:   ({ children }) => <u className="underline decoration-white/60">{children}</u>,
-          kbd: ({ children }) => (
-            <kbd className="px-1.5 py-0.5 rounded border border-white/20 bg-white/10 text-white/90 font-mono text-[0.85em]">
-              {children}
-            </kbd>
-          ),
+          kbd: ({ children }) => <kbd className="px-1.5 py-0.5 rounded border border-white/20 bg-white/10 text-white/90 font-mono text-[0.85em]">{children}</kbd>,
         }}
       >
         {content}

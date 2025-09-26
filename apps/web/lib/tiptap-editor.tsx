@@ -290,7 +290,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
       StarterKit.configure({
         codeBlock: {
           HTMLAttributes: {
-            class: 'hljs',
+            class: 'code-block',
           },
         },
       }),
@@ -309,41 +309,42 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none p-4 bg-surface border border-white/10 rounded-b-lg text-white/90',
+        class: 'focus:outline-none p-4 bg-surface border border-white/10 rounded-b-lg text-white/90',
         style: `min-height: ${minHeight}`,
         placeholder: placeholder,
       },
     },
   });
 
-  // Apply syntax highlighting to code blocks
-  useEffect(() => {
-    if (!editor) {
-      return;
-    }
+  // Disable syntax highlighting to prevent cursor position issues
+  // Syntax highlighting interferes with cursor positioning in code blocks
+  // useEffect(() => {
+  //   if (!editor) {
+  //     return;
+  //   }
 
-    const applyHighlighting = () => {
-      if (typeof window === 'undefined') {
-        return;
-      }
+  //   const applyHighlighting = () => {
+  //     if (typeof window === 'undefined') {
+  //       return;
+  //     }
 
-      const codeBlocks = document.querySelectorAll('.ProseMirror pre code');
-      codeBlocks.forEach((block) => {
-        hljs.highlightElement(block as HTMLElement);
-      });
-    };
+  //     const codeBlocks = document.querySelectorAll('.ProseMirror pre code');
+  //     codeBlocks.forEach((block) => {
+  //       hljs.highlightElement(block as HTMLElement);
+  //     });
+  //   };
 
-    editor.on('update', applyHighlighting);
-    editor.on('create', applyHighlighting);
+  //   editor.on('update', applyHighlighting);
+  //   editor.on('create', applyHighlighting);
 
-    // Run once when the editor is ready
-    applyHighlighting();
+  //   // Run once when the editor is ready
+  //   applyHighlighting();
 
-    return () => {
-      editor.off('update', applyHighlighting);
-      editor.off('create', applyHighlighting);
-    };
-  }, [editor]);
+  //   return () => {
+  //     editor.off('update', applyHighlighting);
+  //     editor.off('create', applyHighlighting);
+  //   };
+  // }, [editor]);
 
   // Update editor content when value prop changes
   React.useEffect(() => {

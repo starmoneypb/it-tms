@@ -153,17 +153,12 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 	// total
 	countArgs := args[:len(args)-2] // Remove offset and limit from args
 	var total int64
-	if len(countArgs) == 0 {
-		row := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM tickets`)
-		if err := row.Scan(&total); err != nil {
-			return nil, 0, err
-		}
-	} else {
-		countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM tickets t WHERE %s`, where)
-		row := r.pool.QueryRow(ctx, countSQL, countArgs...)
-		if err := row.Scan(&total); err != nil {
-			return nil, 0, err
-		}
+	
+	// Always use the same WHERE clause for count to ensure consistency with data query
+	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM tickets t WHERE %s`, where)
+	row := r.pool.QueryRow(ctx, countSQL, countArgs...)
+	if err := row.Scan(&total); err != nil {
+		return nil, 0, err
 	}
 
 	return items, total, nil
