@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox, Avatar } from "@heroui/react";
 import { TiptapEditor } from "@/lib/tiptap-editor";
-import { MarkdownRenderer } from "@/lib/markdown-renderer";
-import { convertContentToMarkdown } from "@/lib/html-to-markdown";
+import { ReadOnlyMarkdownEditor } from "@/lib/read-only-markdown-editor";
+import { convertContentToMarkdown, convertContentToHtml } from "@/lib/html-to-markdown";
 import { useAuth } from "@/lib/auth";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
@@ -1166,7 +1166,7 @@ export default function TicketDetails() {
             <div>
               <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
               {!isEditingContent ? (
-                <MarkdownRenderer 
+                <ReadOnlyMarkdownEditor 
                   content={convertContentToMarkdown(ticket.description)}
                   className="text-white/80 leading-relaxed"
                 />
@@ -1188,7 +1188,7 @@ export default function TicketDetails() {
                   <h3 className="text-lg font-semibold mb-3">{t('stepsToReproduce')}</h3>
                   {!isEditingContent ? (
                     ticket.details?.steps ? (
-                      <MarkdownRenderer
+                      <ReadOnlyMarkdownEditor
                         content={convertContentToMarkdown(ticket.details.steps)}
                         className="text-white/80 leading-relaxed"
                       />
@@ -1594,8 +1594,8 @@ export default function TicketDetails() {
                               </div>
                             </div>
                           ) : (
-                            <MarkdownRenderer
-                              content={convertContentToMarkdown(c.body)}
+                            <ReadOnlyMarkdownEditor
+                              content={convertContentToHtml(c.body)}
                               className="text-sm text-white/80"
                             />
                           )}

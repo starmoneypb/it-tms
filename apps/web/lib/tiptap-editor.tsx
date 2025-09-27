@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight } from '@tiptap/extension-highlight';
+import { ReadOnlyMarkdownEditor } from './read-only-markdown-editor';
 import type { LanguageFn } from 'highlight.js';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -267,10 +268,12 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
 };
 
 const PreviewContent: React.FC<{ content: string }> = ({ content }) => (
-  <div 
-    className="prose prose-invert max-w-none p-4 bg-surface border border-white/10 rounded-b-lg"
-    dangerouslySetInnerHTML={{ __html: content }}
-  />
+  <div className="p-4 bg-surface border border-white/10 rounded-b-lg">
+    <ReadOnlyMarkdownEditor 
+      content={content}
+      className="max-w-none"
+    />
+  </div>
 );
 
 export const TiptapEditor: React.FC<TiptapEditorProps> = ({

@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 import { useTranslations } from 'next-intl';
-import { MarkdownRenderer } from '@/lib/markdown-renderer';
-import { convertContentToMarkdown } from '@/lib/html-to-markdown';
+import { ReadOnlyMarkdownEditor } from '@/lib/read-only-markdown-editor';
+import { convertContentToMarkdown, convertContentToHtml } from '@/lib/html-to-markdown';
 import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
 import {
   filterClassifiableIssueReports,
@@ -321,7 +321,7 @@ export default function ClassifyPage() {
                       </h5>
                       <div className="bg-default-100 rounded-lg p-4">
                         {selectedTicket.description ? (
-                          <MarkdownRenderer 
+                          <ReadOnlyMarkdownEditor 
                             content={convertContentToMarkdown(selectedTicket.description)}
                             className="text-sm"
                           />
@@ -415,8 +415,8 @@ export default function ClassifyPage() {
                       <div>
                         <h5 className="font-semibold mb-2">{t('latestComment')}</h5>
                         <div className="bg-default-100 rounded-lg p-4">
-                          <MarkdownRenderer 
-                            content={selectedTicket.latestComment}
+                          <ReadOnlyMarkdownEditor 
+                            content={convertContentToHtml(selectedTicket.latestComment)}
                             className="text-sm"
                           />
                         </div>

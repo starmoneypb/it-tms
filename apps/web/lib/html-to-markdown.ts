@@ -308,3 +308,52 @@ export function convertContentToMarkdownEnhanced(content: string): string {
   if (hasMarkdown) return content;
   return content;
 }
+
+// Convert content to HTML format for TiptapEditor (read-only mode)
+export function convertContentToHtml(content: string): string {
+  if (!content || content.trim() === "") return "";
+  const hasHtml = isHtmlContent(content);
+  const hasMarkdown = isMarkdownContent(content);
+  
+  // If it's already HTML, return as-is
+  if (hasHtml && !hasMarkdown) return content;
+  
+  // If it's markdown, we need to convert it to HTML
+  if (hasMarkdown && !hasHtml) {
+    // Simple markdown to HTML conversion for basic cases
+    return convertMarkdownToHtml(content);
+  }
+  
+  // If it has both or neither, return as-is (assume it's HTML)
+  return content;
+}
+
+// Simple markdown to HTML converter for basic cases
+function convertMarkdownToHtml(markdown: string): string {
+  let html = markdown;
+  
+  // Headers
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  // Bold
+  html = html.replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>');
+  
+  // Italic
+  html = html.replace(/\*(.*)\*/gim, '<em>$1</em>');
+  
+  // Code blocks
+  html = html.replace(/```([\s\S]*?)```/gim, '<pre><code>$1</code></pre>');
+  
+  // Inline code
+  html = html.replace(/`([^`]*)`/gim, '<code>$1</code>');
+  
+  // Links
+  html = html.replace(/\[([^\]]*)\]\(([^)]*)\)/gim, '<a href="$2">$1</a>');
+  
+  // Line breaks
+  html = html.replace(/\n/gim, '<br>');
+  
+  return html;
+}
