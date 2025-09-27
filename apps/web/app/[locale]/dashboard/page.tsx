@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award, Calendar, Filter } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { ReadOnlyMarkdownEditor } from '@/lib/read-only-markdown-editor';
-import { convertContentToMarkdown, convertContentToHtml } from '@/lib/html-to-markdown';
+import { convertContentToHtml } from '@/lib/html-to-markdown';
 
 // Import the Chart.js pie chart component with SSR disabled
 const ChartJsPieChart = dynamic(() => import("@/components/ChartJsPieChart"), {
