@@ -4,7 +4,7 @@ import { Card, CardBody, CardHeader, Button, Select, SelectItem, Chip, Modal, Mo
 import { Tags, CheckCircle, Info, Eye, Calendar, User, Phone, Mail, AlertTriangle } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { ReadOnlyMarkdownEditor } from '@/lib/read-only-markdown-editor';
-import { convertContentToMarkdown, convertContentToHtml } from '@/lib/html-to-markdown';
+import { convertContentToHtml } from '@/lib/html-to-markdown';
 import { usePermissionAwareFetch } from '@/hooks/usePermissionAwareFetch';
 import {
   filterClassifiableIssueReports,
@@ -321,8 +321,8 @@ export default function ClassifyPage() {
                       </h5>
                       <div className="bg-default-100 rounded-lg p-4">
                         {selectedTicket.description ? (
-                          <ReadOnlyMarkdownEditor 
-                            content={convertContentToMarkdown(selectedTicket.description)}
+                          <ReadOnlyMarkdownEditor
+                            content={convertContentToHtml(selectedTicket.description)}
                             className="text-sm"
                           />
                         ) : (

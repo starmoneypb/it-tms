@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { Card, CardBody, CardHeader, Button, Textarea, Input, Chip, Divider, Select, SelectItem, Checkbox, Avatar } from "@heroui/react";
 import { TiptapEditor } from "@/lib/tiptap-editor";
 import { ReadOnlyMarkdownEditor } from "@/lib/read-only-markdown-editor";
-import { convertContentToMarkdown, convertContentToHtml } from "@/lib/html-to-markdown";
+import { convertContentToHtml } from "@/lib/html-to-markdown";
 import { useAuth } from "@/lib/auth";
 import { computePriority, PriorityInput } from "@/lib/priority";
 import UserSearchSelect from "@/components/UserSearchSelect";
@@ -1166,8 +1166,8 @@ export default function TicketDetails() {
             <div>
               <h3 className="text-lg font-semibold mb-3">{t('description')}</h3>
               {!isEditingContent ? (
-                <ReadOnlyMarkdownEditor 
-                  content={convertContentToMarkdown(ticket.description)}
+                <ReadOnlyMarkdownEditor
+                  content={convertContentToHtml(ticket.description)}
                   className="text-white/80 leading-relaxed"
                 />
               ) : (
@@ -1189,7 +1189,7 @@ export default function TicketDetails() {
                   {!isEditingContent ? (
                     ticket.details?.steps ? (
                       <ReadOnlyMarkdownEditor
-                        content={convertContentToMarkdown(ticket.details.steps)}
+                        content={convertContentToHtml(ticket.details.steps)}
                         className="text-white/80 leading-relaxed"
                       />
                     ) : (

@@ -6,7 +6,7 @@ import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuth } from "@/lib/auth";
 import { ReadOnlyMarkdownEditor } from '@/lib/read-only-markdown-editor';
-import { convertContentToMarkdown, convertContentToHtml } from '@/lib/html-to-markdown';
+import { convertContentToHtml } from '@/lib/html-to-markdown';
 
 // Use current hostname with port 8000 for production-like environment
 const API = typeof window !== 'undefined' && window.location.port === '8000'
