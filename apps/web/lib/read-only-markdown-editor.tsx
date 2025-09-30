@@ -7,15 +7,24 @@ import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Image } from '@tiptap/extension-image';
 
+type ImageAttributes = {
+  align?: string | null;
+  width?: string | null;
+};
+
 // Custom Image extension with alignment support (same as in knowledge-sharing-editor)
 const ImageWithAlignment = Image.extend({
   addAttributes() {
+    const parent = (this as unknown as typeof Image & {
+      parent?: () => Record<string, unknown>;
+    }).parent;
+
     return {
-      ...this.parent?.(),
+      ...(typeof parent === 'function' ? parent() : {}),
       align: {
         default: 'center',
-        parseHTML: element => element.getAttribute('data-align') || 'center',
-        renderHTML: attributes => {
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-align') || 'center',
+        renderHTML: (attributes: ImageAttributes) => {
           return {
             'data-align': attributes.align || 'center',
           };
@@ -23,8 +32,8 @@ const ImageWithAlignment = Image.extend({
       },
       width: {
         default: null,
-        parseHTML: element => element.getAttribute('width'),
-        renderHTML: attributes => {
+        parseHTML: (element: HTMLElement) => element.getAttribute('width'),
+        renderHTML: (attributes: ImageAttributes) => {
           if (!attributes.width) {
             return {};
           }
