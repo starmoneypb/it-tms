@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../../../../lib/auth';
-import { Button, Input, Select, SelectItem, Card, CardBody } from '@heroui/react';
-import { Save, ArrowLeft, Users } from 'lucide-react';
+import { Button, Input, Card, CardBody } from '@heroui/react';
+import { Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { KnowledgeSharingEditor } from '../../../../lib/knowledge-sharing-editor';
 import UserSearchSelect from '../../../../components/UserSearchSelect';
@@ -162,13 +162,6 @@ export default function CreateKnowledgeSharingPage() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          startContent={<ArrowLeft className="w-4 h-4" />}
-          onPress={() => router.back()}
-        >
-          Back
-        </Button>
         <div>
           <h1 className="text-3xl font-bold text-white">{t('createDocumentTitle')}</h1>
           <p className="text-white/70">{t('createDocumentSubtitle')}</p>
