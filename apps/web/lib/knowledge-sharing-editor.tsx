@@ -35,7 +35,42 @@ import { Button, Input, Progress } from '@heroui/react';
 const ImageWithAlignment = Image.extend({
   addAttributes() {
     return {
-      ...this.parent?.(),
+      src: {
+        default: null,
+        parseHTML: element => element.getAttribute('src'),
+        renderHTML: attributes => {
+          if (!attributes.src) {
+            return {};
+          }
+          return {
+            src: attributes.src,
+          };
+        },
+      },
+      alt: {
+        default: null,
+        parseHTML: element => element.getAttribute('alt'),
+        renderHTML: attributes => {
+          if (!attributes.alt) {
+            return {};
+          }
+          return {
+            alt: attributes.alt,
+          };
+        },
+      },
+      title: {
+        default: null,
+        parseHTML: element => element.getAttribute('title'),
+        renderHTML: attributes => {
+          if (!attributes.title) {
+            return {};
+          }
+          return {
+            title: attributes.title,
+          };
+        },
+      },
       align: {
         default: 'center',
         parseHTML: element => element.getAttribute('data-align') || 'center',
@@ -61,7 +96,6 @@ const ImageWithAlignment = Image.extend({
   },
   addCommands() {
     return {
-      ...this.parent?.(),
       setImage: (options: { src: string; align?: string; width?: string }) => {
         return ({ commands }) => {
           return commands.insertContent({
