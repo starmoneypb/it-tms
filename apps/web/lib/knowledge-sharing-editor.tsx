@@ -37,7 +37,7 @@ const ImageWithAlignment = Image.extend({
     return {
       src: {
         default: null,
-        parseHTML: element => element.getAttribute('src'),
+        parseHTML: (element: HTMLElement) => element.getAttribute('src'),
         renderHTML: attributes => {
           if (!attributes.src) {
             return {};
@@ -49,7 +49,7 @@ const ImageWithAlignment = Image.extend({
       },
       alt: {
         default: null,
-        parseHTML: element => element.getAttribute('alt'),
+        parseHTML: (element: HTMLElement) => element.getAttribute('alt'),
         renderHTML: attributes => {
           if (!attributes.alt) {
             return {};
@@ -61,7 +61,7 @@ const ImageWithAlignment = Image.extend({
       },
       title: {
         default: null,
-        parseHTML: element => element.getAttribute('title'),
+        parseHTML: (element: HTMLElement) => element.getAttribute('title'),
         renderHTML: attributes => {
           if (!attributes.title) {
             return {};
@@ -73,7 +73,7 @@ const ImageWithAlignment = Image.extend({
       },
       align: {
         default: 'center',
-        parseHTML: element => element.getAttribute('data-align') || 'center',
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-align') || 'center',
         renderHTML: attributes => {
           return {
             'data-align': attributes.align || 'center',
@@ -82,7 +82,7 @@ const ImageWithAlignment = Image.extend({
       },
       width: {
         default: null,
-        parseHTML: element => element.getAttribute('width'),
+        parseHTML: (element: HTMLElement) => element.getAttribute('width'),
         renderHTML: attributes => {
           if (!attributes.width) {
             return {};
