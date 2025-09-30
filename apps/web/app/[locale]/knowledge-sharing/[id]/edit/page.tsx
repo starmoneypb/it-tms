@@ -419,15 +419,6 @@ export default function EditKnowledgeSharingPage() {
                     {t('deleteDocument')}
                   </Button>
                 )}
-                
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  onPress={() => router.push(`/knowledge-sharing/${documentId}` as any)}
-                  className="w-full"
-                >
-                  {t('cancel')}
-                </Button>
               </div>
             </CardBody>
           </Card>

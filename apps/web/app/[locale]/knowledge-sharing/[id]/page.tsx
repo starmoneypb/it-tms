@@ -4,14 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '../../../../lib/auth';
 import { Button, Card, CardBody, Avatar, Chip, Spinner } from '@heroui/react';
-import { 
-  Heart, 
-  Share2, 
-  Edit, 
-  Trash2, 
-  Users, 
-  Calendar, 
-  ArrowLeft,
+import {
+  Heart,
+  Share2,
+  Edit,
+  Trash2,
+  Users,
+  Calendar,
   Copy,
   Check,
   Eye,
@@ -244,15 +243,6 @@ export default function KnowledgeSharingDocumentPage() {
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  color="primary"
-                  size="lg"
-                  startContent={<ArrowLeft className="w-4 h-4" />}
-                  onPress={() => router.push('/knowledge-sharing')}
-                  className="font-semibold"
-                >
-                  {t('goBackToKnowledgeSharing')}
-                </Button>
                 <Button
                   variant="bordered"
                   size="lg"
