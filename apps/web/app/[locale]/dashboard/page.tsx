@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Avatar, Select, SelectItem, Button } from "@heroui/react";
 import dynamic from "next/dynamic";
-import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award, Calendar, Filter } from "lucide-react";
+import { AlertTriangle, Clipboard, PartyPopper, Clock, BarChart3, FolderOpen, Zap, Trophy, Star, Award, Calendar, Filter, Eye } from "lucide-react";
 import { useTranslations, useLocale } from 'next-intl';
 import { ReadOnlyMarkdownEditor } from '@/lib/read-only-markdown-editor';
 import { convertContentToHtml } from '@/lib/html-to-markdown';
@@ -40,6 +40,7 @@ type TicketSummary = {
   assignees?: AssigneeSummary[]; // New: detailed assignee info
   updatedAt: string;
   latestComment?: string | null;
+  viewCount: number;
 };
 
 type Summary = {
@@ -479,10 +480,16 @@ export default function Dashboard() {
                     </span>
                   </div>
 
-                  {/* Time in Progress */}
-                  <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
-                    <Clock size={14} className="text-blue-400" />
-                    <span>{t('inProgressFor')} {formatTimeSince(ticket.updatedAt)}</span>
+                  {/* Time in Progress and View Count */}
+                  <div className="flex items-center justify-between mb-3 text-sm text-white/60">
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-blue-400" />
+                      <span>{t('inProgressFor')} {formatTimeSince(ticket.updatedAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Eye size={14} className="text-green-400" />
+                      <span>{ticket.viewCount}</span>
+                    </div>
                   </div>
 
                   {/* Latest Comment */}

@@ -32,6 +32,7 @@ type TicketSummary struct {
 	Assignees     []AssigneeSummary `json:"assignees"`     // New: detailed assignee info
 	UpdatedAt     time.Time         `json:"updatedAt"`
 	LatestComment *string           `json:"latestComment"`
+	ViewCount     int               `json:"viewCount"`
 }
 
 func (r *MetricsRepo) Summary(ctx context.Context) (MetricsSummary, error) {
@@ -55,6 +56,7 @@ func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, yea
 			t.assignee_id,
 			u.name as assignee_name,
 			t.updated_at,
+			t.view_count,
 (SELECT c.body FROM comments c WHERE c.ticket_id = t.id AND c.is_hidden = FALSE ORDER BY c.created_at DESC LIMIT 1) as latest_comment,
 			(SELECT STRING_AGG(au.name, ', ' ORDER BY au.name) 
 			 FROM ticket_assignments ta 
@@ -82,7 +84,7 @@ func (r *MetricsRepo) SummaryWithDateFilter(ctx context.Context, month *int, yea
 		var ticket TicketSummary
 		var latestComment *string
 		var assigneeNames *string
-		err := rows.Scan(&ticket.ID, &ticket.Title, &ticket.Priority, &ticket.AssigneeID, &ticket.AssigneeName, &ticket.UpdatedAt, &latestComment, &assigneeNames)
+		err := rows.Scan(&ticket.ID, &ticket.Title, &ticket.Priority, &ticket.AssigneeID, &ticket.AssigneeName, &ticket.UpdatedAt, &ticket.ViewCount, &latestComment, &assigneeNames)
 		if err != nil {
 			continue // Skip this row if scan fails
 		}

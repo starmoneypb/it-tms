@@ -26,6 +26,7 @@ type Ticket struct {
 	UrgencyTimelineData  map[string]any      `json:"urgencyTimelineData,omitempty"`
 	EffortData           map[string]any      `json:"effortData,omitempty"`
 	EffortScore          int32               `json:"effortScore"`
+	ViewCount            int                 `json:"viewCount"`
 	CreatedAt            time.Time           `json:"createdAt"`
 	UpdatedAt            time.Time           `json:"updatedAt"`
 	ClosedAt             *time.Time          `json:"closedAt,omitempty"`
@@ -68,14 +69,15 @@ type UserScore struct {
 }
 
 type UserRanking struct {
-	ID               string  `json:"id"`
-	Name             string  `json:"name"`
-	Email            string  `json:"email"`
-	Role             string  `json:"role"`
-	ProfilePicture   *string `json:"profilePicture"`
-	TotalPoints      float64 `json:"totalPoints"`
-	TicketsCompleted int     `json:"ticketsCompleted"`
-	Rank             int     `json:"rank"`
+	ID                        string  `json:"id"`
+	Name                      string  `json:"name"`
+	Email                     string  `json:"email"`
+	Role                      string  `json:"role"`
+	ProfilePicture            *string `json:"profilePicture"`
+	TotalPoints               float64 `json:"totalPoints"`
+	TicketsCompleted          int     `json:"ticketsCompleted"`
+	KnowledgeDocumentsCreated int     `json:"knowledgeDocumentsCreated"`
+	Rank                      int     `json:"rank"`
 }
 
 type CommentAttachment struct {

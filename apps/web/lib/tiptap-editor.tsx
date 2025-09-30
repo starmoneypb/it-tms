@@ -157,7 +157,16 @@ const Toolbar: React.FC<{ editor: any }> = ({ editor }) => {
       {/* Headings */}
       <ToolbarGroup>
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          onClick={() => {
+            const { from, to } = editor.state.selection;
+            if (from === to) {
+              // No selection, apply to current line
+              editor.chain().focus().toggleHeading({ level: 1 }).run();
+            } else {
+              // Has selection, wrap selected text in heading
+              editor.chain().focus().setHeading({ level: 1 }).run();
+            }
+          }}
           isActive={editor.isActive('heading', { level: 1 })}
           title="Heading 1"
         >

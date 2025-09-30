@@ -262,12 +262,15 @@ func (h *Handlers) PriorityCompute(c *fiber.Ctx) error {
 // -------------------- Tickets --------------------
 
 type TicketCreateReq struct {
-	Title         string                   `json:"title"`
-	Description   string                   `json:"description"`
-	InitialType   models.TicketInitialType `json:"initialType"`
-	Details       map[string]any           `json:"details"`
-	PriorityInput *priority.PriorityInput  `json:"priorityInput"`
-	EffortInput   *effort.Input            `json:"effortInput"`
+	Title                   string                   `json:"title"`
+	Description             string                   `json:"description"`
+	InitialType             models.TicketInitialType `json:"initialType"`
+	Details                 map[string]any           `json:"details"`
+	PriorityInput           *priority.PriorityInput  `json:"priorityInput"`
+	EffortInput             *effort.Input            `json:"effortInput"`
+	RedFlagsData            map[string]any           `json:"redFlagsData"`
+	ImpactAssessmentData    map[string]any           `json:"impactAssessmentData"`
+	UrgencyTimelineData     map[string]any           `json:"urgencyTimelineData"`
 }
 
 func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
@@ -342,19 +345,22 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 	}
 
 	t := models.Ticket{
-		CreatedBy:    createdBy,
-		InitialType:  body.InitialType,
-		Status:       models.StatusPending,
-		Title:        body.Title,
-		Description:  body.Description,
-		Details:      body.Details,
-		ImpactScore:  int32(impact),
-		UrgencyScore: int32(urgency),
-		FinalScore:   int32(final),
-		RedFlag:      red,
-		Priority:     prio,
-		EffortData:   effortData,
-		EffortScore:  int32(effortScore),
+		CreatedBy:             createdBy,
+		InitialType:           body.InitialType,
+		Status:                models.StatusPending,
+		Title:                 body.Title,
+		Description:           body.Description,
+		Details:               body.Details,
+		ImpactScore:           int32(impact),
+		UrgencyScore:          int32(urgency),
+		FinalScore:            int32(final),
+		RedFlag:               red,
+		Priority:              prio,
+		EffortData:            effortData,
+		EffortScore:           int32(effortScore),
+		RedFlagsData:          body.RedFlagsData,
+		ImpactAssessmentData:  body.ImpactAssessmentData,
+		UrgencyTimelineData:   body.UrgencyTimelineData,
 	}
 	ctx := context.Background()
 	if err := h.repo.Tickets.Create(ctx, &t); err != nil {
@@ -423,6 +429,29 @@ func (h *Handlers) TicketsList(c *fiber.Ctx) error {
 func (h *Handlers) TicketsDetail(c *fiber.Ctx) error {
 	id := c.Params("id")
 	ctx := context.Background()
+	
+	// Get user ID for view tracking
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	var userID *string
+	if userClaims != nil {
+		if id, ok := userClaims["sub"].(string); ok {
+			userID = &id
+		}
+	}
+	
+	// Increment view count when ticket is accessed (only if header is not set to false)
+	incrementView := c.Get("X-Increment-View")
+	if incrementView != "false" && userID != nil {
+		// Get client IP and user agent for tracking
+		ipAddress := c.IP()
+		userAgent := c.Get("User-Agent")
+		
+		if err := h.repo.Tickets.IncrementViewCount(ctx, id, *userID, ipAddress, userAgent); err != nil {
+			// Log error but don't fail the request
+			log.Printf("Failed to increment view count for ticket %s: %v", id, err)
+		}
+	}
+	
 	t, comments, atts, err := h.repo.Tickets.GetWithRelations(ctx, id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "ticket not found"}})
@@ -2410,8 +2439,6 @@ func (h *Handlers) convertProfilePictureToURL(profilePicture *string) *string {
 		return nil
 	}
 
-	// Debug logging to track profile picture URL format
-	log.Printf("Debug: Profile picture URL from database: %s", *profilePicture)
 
 	// Profile picture URLs should be in the correct format (/profile-pictures/{id}/download)
 	// If they're not, it means there's old data that needs cleaning
@@ -2500,4 +2527,563 @@ func (h *Handlers) GetUserPerformanceStats(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(h.envelope(stats))
+}
+
+// -------------------- Knowledge Sharing --------------------
+
+// KnowledgeSharingCreate creates a new knowledge sharing document
+func (h *Handlers) KnowledgeSharingCreate(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	var req struct {
+		Title   string `json:"title" validate:"required,min=1,max=255"`
+		Content string `json:"content" validate:"required,min=1"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "invalid request body"}})
+	}
+
+	// Validate required fields
+	if req.Title == "" || req.Content == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "title and content are required"}})
+	}
+
+	ctx := context.Background()
+	doc := &models.KnowledgeSharingDocument{
+		Title:   req.Title,
+		Content: req.Content,
+	}
+
+	if err := h.repo.KnowledgeSharing.Create(ctx, doc); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to create document"}})
+	}
+
+	// Add the creator as the first contributor
+	if err := h.repo.KnowledgeSharing.AddContributor(ctx, doc.ID, userID, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to add creator as contributor"}})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(h.envelope(doc))
+}
+
+// KnowledgeSharingList retrieves knowledge sharing documents with filtering
+func (h *Handlers) KnowledgeSharingList(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	var userID *string
+	if userClaims != nil {
+		if id, ok := userClaims["sub"].(string); ok {
+			userID = &id
+		}
+	}
+
+	// Parse query parameters
+	query := c.Query("q", "")
+	contributorID := c.Query("contributorId", "")
+	sortBy := c.Query("sortBy", "newest")
+	limit := 20
+	offset := 0
+
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+
+	if o := c.Query("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	filters := models.KnowledgeSharingFilters{
+		Query:         query,
+		ContributorID: contributorID,
+		SortBy:        sortBy,
+		Limit:         limit,
+		Offset:        offset,
+	}
+
+	ctx := context.Background()
+	documents, err := h.repo.KnowledgeSharing.List(ctx, filters, userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve documents"}})
+	}
+
+	return c.JSON(h.envelope(documents))
+}
+
+// KnowledgeSharingGet retrieves a specific knowledge sharing document
+func (h *Handlers) KnowledgeSharingGet(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	var userID *string
+	if userClaims != nil {
+		if id, ok := userClaims["sub"].(string); ok {
+			userID = &id
+		}
+	}
+
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID is required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Increment view count when document is accessed (only if header is not set to false)
+	incrementView := c.Get("X-Increment-View")
+	if incrementView != "false" && userID != nil {
+		// Get client IP and user agent for tracking
+		ipAddress := c.IP()
+		userAgent := c.Get("User-Agent")
+		
+		if err := h.repo.KnowledgeSharing.IncrementViewCount(ctx, documentID, *userID, ipAddress, userAgent); err != nil {
+			// Log error but don't fail the request
+			log.Printf("Failed to increment view count for document %s: %v", documentID, err)
+		}
+	}
+	
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	return c.JSON(h.envelope(doc))
+}
+
+// KnowledgeSharingUpdate updates a knowledge sharing document
+func (h *Handlers) KnowledgeSharingUpdate(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID is required"}})
+	}
+
+	var req struct {
+		Title   string `json:"title" validate:"required,min=1,max=255"`
+		Content string `json:"content" validate:"required,min=1"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "invalid request body"}})
+	}
+
+	// Validate required fields
+	if req.Title == "" || req.Content == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "title and content are required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Check if user can edit this document
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	if !doc.CanEdit {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions"}})
+	}
+
+	// Update the document
+	doc.Title = req.Title
+	doc.Content = req.Content
+
+	if err := h.repo.KnowledgeSharing.Update(ctx, doc); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to update document"}})
+	}
+
+	return c.JSON(h.envelope(doc))
+}
+
+// KnowledgeSharingDelete deletes a knowledge sharing document
+func (h *Handlers) KnowledgeSharingDelete(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID is required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Check if user can delete this document
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	if !doc.CanDelete {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions"}})
+	}
+
+	// Remove all knowledge sharing scores for this document before deletion
+	if err := h.repo.KnowledgeSharingScores.RemoveAllPointsForDocument(ctx, documentID); err != nil {
+		// Log error but don't fail the deletion
+		log.Printf("Failed to remove knowledge sharing scores for document %s: %v", documentID, err)
+	}
+
+	if err := h.repo.KnowledgeSharing.Delete(ctx, documentID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to delete document"}})
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+
+// KnowledgeSharingAddContributor adds a contributor to a knowledge sharing document
+func (h *Handlers) KnowledgeSharingAddContributor(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID is required"}})
+	}
+
+	var req struct {
+		UserID string `json:"userId" validate:"required"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "invalid request body"}})
+	}
+
+	if req.UserID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "user ID is required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Check if user can edit this document
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	if !doc.CanEdit {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions"}})
+	}
+
+	// Check if the user to be added exists
+	_, err = h.repo.Users.GetByID(ctx, req.UserID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "user not found"}})
+	}
+
+	// Add the contributor
+	if err := h.repo.KnowledgeSharing.AddContributor(ctx, documentID, req.UserID, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to add contributor"}})
+	}
+
+	// Redistribute points to include the new contributor
+	// Get all users who should receive points (contributors only)
+	userIDs := []string{}
+	for _, contributor := range doc.Contributors {
+		if contributor.ID != "" {
+			userIDs = append(userIDs, contributor.ID)
+		}
+	}
+	// Add the new contributor
+	if req.UserID != "" {
+		userIDs = append(userIDs, req.UserID)
+	}
+
+	// Only redistribute points if we have valid user IDs and the document has likes
+	if len(userIDs) > 0 && doc.LikeCount > 0 {
+		if err := h.repo.KnowledgeSharingScores.DistributePoints(ctx, documentID, float64(doc.LikeCount), userIDs); err != nil {
+			// Log error but don't fail the contributor addition
+			log.Printf("Failed to redistribute points after adding contributor for document %s: %v", documentID, err)
+		}
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "contributor added successfully"})
+}
+
+// KnowledgeSharingRemoveContributor removes a contributor from a knowledge sharing document
+func (h *Handlers) KnowledgeSharingRemoveContributor(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	documentID := c.Params("id")
+	contributorID := c.Params("contributorId")
+	if documentID == "" || contributorID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID and contributor ID are required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Check if user can edit this document
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	if !doc.CanEdit {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "insufficient permissions"}})
+	}
+
+	// Remove the contributor
+	if err := h.repo.KnowledgeSharing.RemoveContributor(ctx, documentID, contributorID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to remove contributor"}})
+	}
+
+	// Redistribute points to exclude the removed contributor
+	// Get all users who should receive points (remaining contributors only)
+	userIDs := []string{}
+	for _, contributor := range doc.Contributors {
+		if contributor.ID != "" && contributor.ID != contributorID {
+			userIDs = append(userIDs, contributor.ID)
+		}
+	}
+
+	// Only redistribute points if we have valid user IDs and the document has likes
+	if len(userIDs) > 0 && doc.LikeCount > 0 {
+		if err := h.repo.KnowledgeSharingScores.DistributePoints(ctx, documentID, float64(doc.LikeCount), userIDs); err != nil {
+			// Log error but don't fail the contributor removal
+			log.Printf("Failed to redistribute points after removing contributor for document %s: %v", documentID, err)
+		}
+	} else if doc.LikeCount > 0 {
+		// If no contributors remain but document has likes, remove all points
+		if err := h.repo.KnowledgeSharingScores.RemoveAllPointsForDocument(ctx, documentID); err != nil {
+			log.Printf("Failed to remove points after removing contributor for document %s: %v", documentID, err)
+		}
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// KnowledgeSharingLike likes a knowledge sharing document
+func (h *Handlers) KnowledgeSharingLike(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID is required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Check if document exists
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	// Like the document
+	if err := h.repo.KnowledgeSharing.LikeDocument(ctx, documentID, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to like document"}})
+	}
+
+	// Calculate and distribute points
+	// Get all users who should receive points (contributors only)
+	userIDs := []string{}
+	for _, contributor := range doc.Contributors {
+		if contributor.ID != "" {
+			userIDs = append(userIDs, contributor.ID)
+		}
+	}
+
+	// Only distribute points if we have valid user IDs
+	if len(userIDs) > 0 {
+		// Award points based on total like count (including the like we just added)
+		totalLikeCount := doc.LikeCount + 1
+		if err := h.repo.KnowledgeSharingScores.DistributePoints(ctx, documentID, float64(totalLikeCount), userIDs); err != nil {
+			// Log error but don't fail the like operation
+			log.Printf("Failed to distribute points for document %s: %v", documentID, err)
+		}
+	}
+
+	// Send notifications to contributors (excluding the person who liked it)
+	if len(userIDs) > 0 {
+		h.wsHub.NotifyKnowledgeLiked(documentID, userIDs, &userID, doc)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "document liked successfully"})
+}
+
+// KnowledgeSharingUnlike unlikes a knowledge sharing document
+func (h *Handlers) KnowledgeSharingUnlike(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	userID, ok := userClaims["sub"].(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "invalid user"}})
+	}
+
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "document ID is required"}})
+	}
+
+	ctx := context.Background()
+	
+	// Check if document exists and get current state
+	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
+	if err != nil {
+		if err.Error() == "document not found" {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "document not found"}})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to retrieve document"}})
+	}
+
+	// Unlike the document
+	if err := h.repo.KnowledgeSharing.UnlikeDocument(ctx, documentID, userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to unlike document"}})
+	}
+
+	// Get all users who should receive points (contributors only)
+	userIDs := []string{}
+	for _, contributor := range doc.Contributors {
+		if contributor.ID != "" {
+			userIDs = append(userIDs, contributor.ID)
+		}
+	}
+	
+	// Recalculate and redistribute points based on new like count (after unlike)
+	newLikeCount := doc.LikeCount - 1 // Subtract 1 because we just unliked
+	if newLikeCount > 0 && len(userIDs) > 0 {
+		// Redistribute points based on new like count
+		if err := h.repo.KnowledgeSharingScores.DistributePoints(ctx, documentID, float64(newLikeCount), userIDs); err != nil {
+			log.Printf("Failed to redistribute points for document %s: %v", documentID, err)
+		}
+	} else {
+		// No more likes, remove all points
+		if err := h.repo.KnowledgeSharingScores.RemoveAllPointsForDocument(ctx, documentID); err != nil {
+			log.Printf("Failed to remove points for document %s: %v", documentID, err)
+		}
+	}
+
+	// Send notifications to contributors (excluding the person who unliked it)
+	if len(userIDs) > 0 {
+		h.wsHub.NotifyKnowledgeUnliked(documentID, userIDs, &userID, doc)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// KnowledgeSharingUploadImage uploads an image for knowledge sharing documents
+func (h *Handlers) KnowledgeSharingUploadImage(c *fiber.Ctx) error {
+	userClaims, _ := c.Locals("user").(jwt.MapClaims)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": fiber.Map{"code": "UNAUTHORIZED", "message": "authentication required"}})
+	}
+
+	// Parse multipart form
+	form, err := c.MultipartForm()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "INVALID_REQUEST", "message": "invalid multipart form"}})
+	}
+
+	files := form.File["image"]
+	if len(files) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "no image file provided"}})
+	}
+
+	file := files[0]
+	
+	// Validate file type
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/jpg":  true,
+		"image/png":  true,
+		"image/gif":  true,
+		"image/webp": true,
+	}
+	
+	if !allowedTypes[file.Header.Get("Content-Type")] {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed"}})
+	}
+
+	// Validate file size (max 10MB)
+	if file.Size > 10*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "file too large. Maximum size is 10MB"}})
+	}
+
+	// Open file
+	src, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to open file"}})
+	}
+	defer src.Close()
+
+	// Upload to GCS
+	ctx := context.Background()
+	result, err := h.storage.UploadFile(ctx, src, file.Filename, file.Header.Get("Content-Type"))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fiber.Map{"code": "SERVER_ERROR", "message": "failed to upload image"}})
+	}
+
+	return c.JSON(h.envelope(fiber.Map{
+		"url":  result.URL,
+		"path": result.Path,
+	}))
 }

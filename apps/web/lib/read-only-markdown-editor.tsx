@@ -5,6 +5,37 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight } from '@tiptap/extension-highlight';
+import { Image } from '@tiptap/extension-image';
+
+// Custom Image extension with alignment support (same as in knowledge-sharing-editor)
+const ImageWithAlignment = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      align: {
+        default: 'center',
+        parseHTML: element => element.getAttribute('data-align') || 'center',
+        renderHTML: attributes => {
+          return {
+            'data-align': attributes.align || 'center',
+          };
+        },
+      },
+      width: {
+        default: null,
+        parseHTML: element => element.getAttribute('width'),
+        renderHTML: attributes => {
+          if (!attributes.width) {
+            return {};
+          }
+          return {
+            width: attributes.width,
+          };
+        },
+      },
+    };
+  },
+});
 
 interface ReadOnlyMarkdownEditorProps {
   content: string;
@@ -33,6 +64,11 @@ export const ReadOnlyMarkdownEditor: React.FC<ReadOnlyMarkdownEditorProps> = ({
       }),
       Highlight.configure({
         multicolor: true,
+      }),
+      ImageWithAlignment.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded-lg',
+        },
       }),
     ],
     content: content,
@@ -83,7 +119,7 @@ export const ReadOnlyMarkdownEditor: React.FC<ReadOnlyMarkdownEditorProps> = ({
           font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
           font-size: 0.875rem;
           line-height: 1.5;
-          margin: 0.75rem 0;
+          margin: 0.5rem 0;
         }
         
         .readonly-markdown-editor .ProseMirror pre code {
@@ -146,7 +182,7 @@ export const ReadOnlyMarkdownEditor: React.FC<ReadOnlyMarkdownEditorProps> = ({
           font-weight: 600 !important;
           color: white !important;
           margin: 0.75rem 0 !important;
-          line-height: 1.3 !important;
+          line-height: 1.2 !important;
         }
         
         .readonly-markdown-editor .ProseMirror h3 {
@@ -154,7 +190,7 @@ export const ReadOnlyMarkdownEditor: React.FC<ReadOnlyMarkdownEditorProps> = ({
           font-weight: 500 !important;
           color: white !important;
           margin: 0.5rem 0 !important;
-          line-height: 1.4 !important;
+          line-height: 1.2 !important;
         }
         
         .readonly-markdown-editor .ProseMirror h4 {
@@ -162,7 +198,7 @@ export const ReadOnlyMarkdownEditor: React.FC<ReadOnlyMarkdownEditorProps> = ({
           font-weight: 500 !important;
           color: white !important;
           margin: 0.5rem 0 !important;
-          line-height: 1.4 !important;
+          line-height: 1.2 !important;
         }
         
         .readonly-markdown-editor .ProseMirror p {
@@ -208,6 +244,30 @@ export const ReadOnlyMarkdownEditor: React.FC<ReadOnlyMarkdownEditorProps> = ({
           border-radius: 0.375rem !important;
           margin: 0.75rem 0 !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .readonly-markdown-editor .ProseMirror img[data-align="left"] {
+          float: left !important;
+          margin: 0 1rem 1rem 0 !important;
+          max-width: 50% !important;
+        }
+
+        .readonly-markdown-editor .ProseMirror img[data-align="right"] {
+          float: right !important;
+          margin: 0 0 1rem 1rem !important;
+          max-width: 50% !important;
+        }
+
+        .readonly-markdown-editor .ProseMirror img[data-align="center"] {
+          display: block !important;
+          margin: 1rem auto !important;
+        }
+
+        .readonly-markdown-editor .ProseMirror img[data-align="inline"] {
+          display: inline-block !important;
+          margin: 0 0.5rem !important;
+          vertical-align: middle !important;
+          max-width: 200px !important;
         }
         
         .readonly-markdown-editor .ProseMirror table {

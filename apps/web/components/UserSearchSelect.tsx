@@ -31,6 +31,7 @@ interface User {
 interface UserSearchSelectProps {
   selectedUserIds: string[];
   onSelectionChange: (userIds: string[]) => void;
+  onUserSelect?: (user: User) => void; // New prop for single user selection
   placeholder?: string;
   label?: string;
   variant?: "flat" | "bordered" | "faded" | "underlined";
@@ -38,6 +39,7 @@ interface UserSearchSelectProps {
   isDisabled?: boolean;
   excludeUserIds?: string[];
   allowClear?: boolean;
+  clearOptionText?: string; // Text for the clear option (e.g., "Any assignee", "Any contributor")
 }
 
 const DEFAULT_EXCLUDE_USER_IDS: string[] = [];
@@ -45,6 +47,7 @@ const DEFAULT_EXCLUDE_USER_IDS: string[] = [];
 export default function UserSearchSelect({
   selectedUserIds,
   onSelectionChange,
+  onUserSelect,
   placeholder = "Search and select users...",
   label,
   variant = "flat",
@@ -52,6 +55,7 @@ export default function UserSearchSelect({
   isDisabled = false,
   excludeUserIds = DEFAULT_EXCLUDE_USER_IDS,
   allowClear = true,
+  clearOptionText = "Any assignee",
 }: UserSearchSelectProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,7 +98,7 @@ export default function UserSearchSelect({
           
           // Add clear option if allowClear is enabled and not multiple selection
           const usersWithClearOption = allowClear && !isMultiple 
-            ? [{ id: "", name: "Any assignee", email: "", role: "", profilePicture: undefined }, ...filteredUsers]
+            ? [{ id: "", name: clearOptionText, email: "", role: "", profilePicture: undefined }, ...filteredUsers]
             : filteredUsers;
           
           setUsers(usersWithClearOption);
@@ -116,6 +120,14 @@ export default function UserSearchSelect({
     } else {
       const selectedIds = Array.from(keys) as string[];
       onSelectionChange(selectedIds);
+      
+      // If single selection mode and onUserSelect is provided, call it with the selected user
+      if (!isMultiple && onUserSelect && selectedIds.length > 0) {
+        const selectedUser = users.find(user => user.id === selectedIds[0]);
+        if (selectedUser) {
+          onUserSelect(selectedUser);
+        }
+      }
     }
   };
 
@@ -183,7 +195,7 @@ export default function UserSearchSelect({
             className="text-white"
           >
             {user.id === "" ? (
-              // Special rendering for "Any assignee" option
+              // Special rendering for clear option
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center">
                   <span className="text-white text-xs">?</span>

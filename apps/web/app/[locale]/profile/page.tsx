@@ -174,7 +174,6 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('profilePicture', file);
 
-      console.log('Uploading profile picture:', file.name, file.type, file.size);
 
       const response = await permissionedFetch(
         `${API}/api/v1/profile/picture`,
@@ -204,7 +203,6 @@ export default function ProfilePage() {
         throw new Error(errorMessage);
       }
 
-      console.log('Upload successful:', result);
       setProfile(prev => prev ? { ...prev, profilePicture: result.data.profilePicture } : null);
       
       // Update the auth context without page reload

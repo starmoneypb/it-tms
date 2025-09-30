@@ -34,10 +34,10 @@ func (r *TicketRepo) Create(ctx context.Context, t *models.Ticket) error {
 	effortData, _ := json.Marshal(t.EffortData)
 
 	row := r.pool.QueryRow(ctx, `INSERT INTO tickets 
-        (created_by, initial_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, red_flags_data, impact_assessment_data, urgency_timeline_data, effort_data, effort_score) 
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        (created_by, initial_type, status, title, description, details, impact_score, urgency_score, final_score, red_flag, priority, red_flags_data, impact_assessment_data, urgency_timeline_data, effort_data, effort_score, view_count) 
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING id, code, created_at, updated_at`,
-		t.CreatedBy, t.InitialType, t.Status, t.Title, t.Description, details, t.ImpactScore, t.UrgencyScore, t.FinalScore, t.RedFlag, t.Priority, redFlagsData, impactAssessmentData, urgencyTimelineData, effortData, t.EffortScore,
+		t.CreatedBy, t.InitialType, t.Status, t.Title, t.Description, details, t.ImpactScore, t.UrgencyScore, t.FinalScore, t.RedFlag, t.Priority, redFlagsData, impactAssessmentData, urgencyTimelineData, effortData, t.EffortScore, 0,
 	)
 	return row.Scan(&t.ID, &t.Code, &t.CreatedAt, &t.UpdatedAt)
 }
@@ -94,7 +94,7 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 
 	where := strings.Join(clauses, " AND ")
 	sql := fmt.Sprintf(`SELECT 
-		t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.effort_data, t.effort_score, t.created_at, t.updated_at, t.closed_at,
+		t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.effort_data, t.effort_score, t.view_count, t.created_at, t.updated_at, t.closed_at,
 (SELECT c.body FROM comments c WHERE c.ticket_id = t.id AND c.is_hidden = FALSE ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE %s ORDER BY 
 		CASE t.priority 
@@ -120,7 +120,7 @@ func (r *TicketRepo) List(ctx context.Context, f TicketFilters, offset, limit in
 		var t models.Ticket
 		var details, effortData []byte
 		var latestComment *string
-		err := rows.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &effortData, &t.EffortScore, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment)
+		err := rows.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &effortData, &t.EffortScore, &t.ViewCount, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -169,10 +169,10 @@ func (r *TicketRepo) GetByID(ctx context.Context, id string) (models.Ticket, err
 	var details, redFlagsData, impactAssessmentData, urgencyTimelineData, effortData []byte
 	var latestComment *string
 	row := r.pool.QueryRow(ctx, `SELECT 
-        t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.effort_data, t.effort_score, t.created_at, t.updated_at, t.closed_at,
+        t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.effort_data, t.effort_score, t.view_count, t.created_at, t.updated_at, t.closed_at,
 (SELECT c.body FROM comments c WHERE c.ticket_id = t.id AND c.is_hidden = FALSE ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE t.id=$1`, id)
-	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &effortData, &t.EffortScore, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
+	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &effortData, &t.EffortScore, &t.ViewCount, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return t, ErrNotFound
 		}
@@ -192,10 +192,10 @@ func (r *TicketRepo) GetWithRelations(ctx context.Context, id string) (models.Ti
 	var details, redFlagsData, impactAssessmentData, urgencyTimelineData, effortData []byte
 	var latestComment *string
 	row := r.pool.QueryRow(ctx, `SELECT 
-        t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.effort_data, t.effort_score, t.created_at, t.updated_at, t.closed_at,
+        t.id, t.code, t.created_by, t.initial_type, t.resolved_type, t.status, t.title, t.description, t.details, t.impact_score, t.urgency_score, t.final_score, t.red_flag, t.priority, t.assignee_id, t.red_flags_data, t.impact_assessment_data, t.urgency_timeline_data, t.effort_data, t.effort_score, t.view_count, t.created_at, t.updated_at, t.closed_at,
 (SELECT c.body FROM comments c WHERE c.ticket_id = t.id AND c.is_hidden = FALSE ORDER BY c.created_at DESC LIMIT 1) as latest_comment
 	FROM tickets t WHERE t.id=$1`, id)
-	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &effortData, &t.EffortScore, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
+	if err := row.Scan(&t.ID, &t.Code, &t.CreatedBy, &t.InitialType, &t.ResolvedType, &t.Status, &t.Title, &t.Description, &details, &t.ImpactScore, &t.UrgencyScore, &t.FinalScore, &t.RedFlag, &t.Priority, &t.AssigneeID, &redFlagsData, &impactAssessmentData, &urgencyTimelineData, &effortData, &t.EffortScore, &t.ViewCount, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt, &latestComment); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return t, nil, nil, ErrNotFound
 		}
@@ -827,4 +827,33 @@ func (r *TicketRepo) IsUserAssignedToTicket(ctx context.Context, ticketID, userI
 		)
 	`, ticketID, userID).Scan(&exists)
 	return exists, err
+}
+
+// IncrementViewCount increments the view count for a ticket (only if user hasn't viewed it before)
+func (r *TicketRepo) IncrementViewCount(ctx context.Context, ticketID, userID string, ipAddress, userAgent string) error {
+	// First, try to insert a new view record
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO ticket_views (ticket_id, user_id, ip_address, user_agent)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (ticket_id, user_id) DO NOTHING`,
+		ticketID, userID, ipAddress, userAgent,
+	)
+	
+	if err != nil {
+		return err
+	}
+	
+	// Update the view_count column with the accurate count
+	_, err = r.pool.Exec(ctx, `
+		UPDATE tickets 
+		SET view_count = (
+			SELECT COUNT(DISTINCT user_id) 
+			FROM ticket_views 
+			WHERE ticket_id = $1
+		)
+		WHERE id = $1`,
+		ticketID,
+	)
+	
+	return err
 }

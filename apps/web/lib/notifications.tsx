@@ -20,7 +20,7 @@ const resolveWebSocketUrl = () => {
 const WS_URL = resolveWebSocketUrl();
 
 export interface Notification {
-  type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned' | 'comment_added' | 'ticket_updated';
+  type: 'ticket_created' | 'ticket_assigned' | 'ticket_unassigned' | 'comment_added' | 'ticket_updated' | 'knowledge_liked' | 'knowledge_unliked';
   ticketId: string;
   ticket?: {
     id: string;
@@ -39,6 +39,27 @@ export interface Notification {
   commentAuthorId?: string;
   commentBody?: string;
   isSystemComment?: boolean;
+  // For knowledge sharing notifications
+  documentId?: string;
+  document?: {
+    id: string;
+    title: string;
+    content: string;
+    viewCount: number;
+    createdAt: string;
+    updatedAt: string;
+    contributors?: Array<{
+      id: string;
+      name: string;
+      email: string;
+    }>;
+    likeCount: number;
+    isLiked?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+  };
+  likedById?: string;
+  unlikedById?: string;
 }
 
 interface NotificationContextType {
@@ -70,13 +91,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const connect = () => {
     // Prevent multiple simultaneous connections
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket connection already established, skipping');
       return;
     }
 
     // Clean up any existing connection
     if (socketRef.current) {
-      console.log('Closing existing WebSocket connection');
       isManualClose.current = true;
       socketRef.current.close();
       socketRef.current = null;
@@ -84,16 +103,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      console.log('Attempting WebSocket connection to:', WS_URL);
-      console.log('User ID:', user?.id);
-      console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
       setConnectionStatus('connecting');
       
       const socket = new WebSocket(WS_URL);
       socketRef.current = socket;
       
       socket.onopen = () => {
-        console.log('WebSocket connected successfully');
         setIsConnected(true);
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
@@ -112,7 +127,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           const message = JSON.parse(event.data);
           if (message.type === 'notification') {
             const notification: Notification = message.data;
-            console.log('Received notification:', notification);
             
             setNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep last 50 notifications
             setUnreadCount(prev => prev + 1);
@@ -148,6 +162,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                 `Ticket #${notification.ticket?.code} has been updated`,
                 notification.ticketId
               );
+            } else if (notification.type === 'knowledge_liked') {
+              showBrowserNotification(
+                '👍 Knowledge Liked',
+                `Your document "${notification.document?.title}" received a like`,
+                notification.documentId || ''
+              );
+            } else if (notification.type === 'knowledge_unliked') {
+              showBrowserNotification(
+                '👎 Knowledge Unliked',
+                `Your document "${notification.document?.title}" received an unlike`,
+                notification.documentId || ''
+              );
             }
           }
         } catch (error) {
@@ -156,7 +182,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       };
 
       socket.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         setConnectionStatus('disconnected');
         socketRef.current = null;
@@ -169,7 +194,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             const jitter = Math.random() * 1000; // Add jitter to prevent thundering herd
             const delay = baseDelay + jitter;
             
-            console.log(`Reconnecting in ${Math.round(delay)}ms... (attempt ${reconnectAttempts.current + 1})`);
             reconnectTimeoutRef.current = setTimeout(() => {
               // Only reconnect if we're still in a disconnected state
               if (connectionStatus === 'disconnected' || connectionStatus === 'error') {
@@ -178,7 +202,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
               }
             }, delay);
           } else {
-            console.log('Max reconnection attempts reached. Stopping reconnection.');
             setConnectionStatus('error');
           }
         }
@@ -213,17 +236,22 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     setConnectionStatus('disconnected');
   };
 
-  const showBrowserNotification = (title: string, body: string, ticketId: string) => {
+  const showBrowserNotification = (title: string, body: string, id: string) => {
     if ('Notification' in window && Notification.permission === 'granted') {
       const notification = new Notification(title, {
         body,
         icon: '/favicon.svg',
-        tag: `ticket-${ticketId}`, // Prevent duplicate notifications
+        tag: `notification-${id}`, // Prevent duplicate notifications
       });
 
       notification.onclick = () => {
         window.focus();
-        window.location.href = `/tickets/${ticketId}`;
+        // Navigate to appropriate page based on notification type
+        if (title.includes('Knowledge')) {
+          window.location.href = `/knowledge-sharing/${id}`;
+        } else {
+          window.location.href = `/tickets/${id}`;
+        }
         notification.close();
       };
 
@@ -250,15 +278,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Connect/disconnect based on user authentication
   useEffect(() => {
-    console.log('User changed, reconnecting WebSocket:', user?.id || 'anonymous');
-    
     // Add a small delay to prevent race conditions
     const timeoutId = setTimeout(() => {
       connect();
     }, 100);
 
     return () => {
-      console.log('Cleaning up WebSocket connection');
       clearTimeout(timeoutId);
       disconnect();
     };

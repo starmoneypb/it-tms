@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Input, Select, SelectItem, Pagination, Card, CardBody, CardHeader, Switch } from "@heroui/react";
-import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle, Plus } from "lucide-react";
+import { Search, Clock, Inbox, AlertCircle, Play, CheckCircle, XCircle, Plus, Eye } from "lucide-react";
 import UserSearchSelect from "@/components/UserSearchSelect";
 import { useTranslations, useLocale } from 'next-intl';
 import { useAuth } from "@/lib/auth";
@@ -32,6 +32,7 @@ type Ticket = {
   assignees?: AssigneeSummary[]; // New: detailed assignee info
   updatedAt: string;
   latestComment?: string | null;
+  viewCount: number;
 };
 
 const statusColors = {
@@ -348,10 +349,16 @@ export default function TicketsPage() {
                 </div>
               </div>
 
-              {/* Time in Progress */}
-              <div className="flex items-center gap-2 mb-3 text-sm text-white/60">
-                <Clock size={14} className="text-blue-400" />
-                <span>{tCommon('updated')} {formatTimeSince(ticket.updatedAt || ticket.createdAt)}</span>
+              {/* Time in Progress and View Count */}
+              <div className="flex items-center justify-between mb-3 text-sm text-white/60">
+                <div className="flex items-center gap-2">
+                  <Clock size={14} className="text-blue-400" />
+                  <span>{tCommon('updated')} {formatTimeSince(ticket.updatedAt || ticket.createdAt)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Eye size={14} className="text-green-400" />
+                  <span>{ticket.viewCount}</span>
+                </div>
               </div>
 
               {/* Latest Comment */}

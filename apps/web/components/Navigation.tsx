@@ -123,6 +123,12 @@ export function Navigation() {
             </span>
           )}
         </Link>
+        <Link 
+          href={createLocalizedUrl("/knowledge-sharing")} 
+          className="text-sm font-medium text-white/80 hover:text-white transition-colors"
+        >
+          {t('knowledgeSharing')}
+        </Link>
         {user && (
           <Link 
             href={createLocalizedUrl("/tickets/new")} 
@@ -247,6 +253,13 @@ export function Navigation() {
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
+            </Link>
+            <Link 
+              href={createLocalizedUrl("/knowledge-sharing")} 
+              className="flex items-center px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              {t('knowledgeSharing')}
             </Link>
             {user && (
               <Link 

@@ -19,6 +19,8 @@ const (
 	NotificationTicketUnassigned NotificationType = "ticket_unassigned"
 	NotificationCommentAdded    NotificationType = "comment_added"
 	NotificationTicketUpdated   NotificationType = "ticket_updated"
+	NotificationKnowledgeLiked  NotificationType = "knowledge_liked"
+	NotificationKnowledgeUnliked NotificationType = "knowledge_unliked"
 )
 
 type Notification struct {
@@ -34,6 +36,11 @@ type Notification struct {
 	CommentAuthorID *string `json:"commentAuthorId,omitempty"`
 	CommentBody     *string `json:"commentBody,omitempty"`
 	IsSystemComment *bool   `json:"isSystemComment,omitempty"`
+	// For knowledge sharing notifications
+	DocumentID   *string                           `json:"documentId,omitempty"`
+	Document     *models.KnowledgeSharingDocument  `json:"document,omitempty"`
+	LikedByID   *string                           `json:"likedById,omitempty"`
+	UnlikedByID *string                           `json:"unlikedById,omitempty"`
 }
 
 type Client struct {
@@ -410,6 +417,76 @@ func (h *Hub) NotifyTicketUpdated(ticketID string, assigneeIDs []string, updated
 
 		// Send to specific user room
 		if room, exists := h.rooms[assigneeID]; exists {
+			for client := range room {
+				select {
+				case client.send <- notification:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
+		}
+	}
+}
+
+// NotifyKnowledgeLiked sends notification to all contributors of a knowledge sharing document when it's liked
+func (h *Hub) NotifyKnowledgeLiked(documentID string, contributorIDs []string, likedByID *string, document *models.KnowledgeSharingDocument) {
+	notification := Notification{
+		Type:       NotificationKnowledgeLiked,
+		DocumentID: &documentID,
+		Document:   document,
+		Message:    "Your knowledge sharing document received a like",
+		Timestamp:  time.Now(),
+		LikedByID:  likedByID,
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Send to all contributors except the person who liked it
+	for _, contributorID := range contributorIDs {
+		// Skip sending to the person who liked it
+		if likedByID != nil && contributorID == *likedByID {
+			continue
+		}
+
+		// Send to specific user room
+		if room, exists := h.rooms[contributorID]; exists {
+			for client := range room {
+				select {
+				case client.send <- notification:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
+		}
+	}
+}
+
+// NotifyKnowledgeUnliked sends notification to all contributors of a knowledge sharing document when it's unliked
+func (h *Hub) NotifyKnowledgeUnliked(documentID string, contributorIDs []string, unlikedByID *string, document *models.KnowledgeSharingDocument) {
+	notification := Notification{
+		Type:         NotificationKnowledgeUnliked,
+		DocumentID:   &documentID,
+		Document:     document,
+		Message:      "Your knowledge sharing document received an unlike",
+		Timestamp:    time.Now(),
+		UnlikedByID:  unlikedByID,
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Send to all contributors except the person who unliked it
+	for _, contributorID := range contributorIDs {
+		// Skip sending to the person who unliked it
+		if unlikedByID != nil && contributorID == *unlikedByID {
+			continue
+		}
+
+		// Send to specific user room
+		if room, exists := h.rooms[contributorID]; exists {
 			for client := range room {
 				select {
 				case client.send <- notification:

@@ -95,7 +95,7 @@ services:
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
       - api-uploads:/app/uploads
-      - ./unisight-472720-f2fa16e4d501.json:/app/credentials/unisight-472720-f2fa16e4d501.json:ro
+      - ./apps/api/credentials/unisight-472720-f2fa16e4d501.json:/app/credentials/unisight-472720-f2fa16e4d501.json:ro
     ports:
       - "8080:8080"
     command:

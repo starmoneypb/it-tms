@@ -55,6 +55,10 @@ export function NotificationToast() {
         return <MessageSquare className="h-5 w-5 text-purple-400" />;
       case 'ticket_updated':
         return <Edit className="h-5 w-5 text-blue-400" />;
+      case 'knowledge_liked':
+        return <Sparkles className="h-5 w-5 text-green-400" />;
+      case 'knowledge_unliked':
+        return <Zap className="h-5 w-5 text-orange-400" />;
       default:
         return <Ticket className="h-5 w-5 text-blue-400" />;
     }
@@ -76,6 +80,10 @@ export function NotificationToast() {
           : '💬 New Comment';
       case 'ticket_updated':
         return '✏️ Ticket Updated';
+      case 'knowledge_liked':
+        return '👍 Knowledge Liked';
+      case 'knowledge_unliked':
+        return '👎 Knowledge Unliked';
       default:
         return 'Notification';
     }
@@ -94,6 +102,10 @@ export function NotificationToast() {
       return `${baseStyle} border-purple-500/20 bg-gradient-to-br from-purple-500/8 via-purple-600/6 to-purple-700/4 shadow-purple-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-purple-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     } else if (notification.type === 'ticket_updated') {
       return `${baseStyle} border-blue-500/20 bg-gradient-to-br from-blue-500/8 via-blue-600/6 to-blue-700/4 shadow-blue-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+    } else if (notification.type === 'knowledge_liked') {
+      return `${baseStyle} border-green-500/20 bg-gradient-to-br from-green-500/8 via-green-600/6 to-green-700/4 shadow-green-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-green-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
+    } else if (notification.type === 'knowledge_unliked') {
+      return `${baseStyle} border-orange-500/20 bg-gradient-to-br from-orange-500/8 via-orange-600/6 to-orange-700/4 shadow-orange-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-orange-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
     }
     
     return `${baseStyle} border-blue-500/20 bg-gradient-to-br from-blue-500/8 via-blue-600/6 to-blue-700/4 shadow-blue-500/20 before:absolute before:inset-0 before:bg-gradient-to-r before:from-blue-500/5 before:to-transparent before:opacity-0 before:group-hover:opacity-100 before:transition-opacity before:duration-300`;
@@ -280,6 +292,33 @@ export function NotificationToast() {
                       </div>
                     </motion.div>
                   )}
+
+                  {notification.document && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}
+                      className="space-y-3"
+                    >
+                      <div className="p-3 rounded-xl bg-white/3 backdrop-blur-sm border border-white/5">
+                        <p className="text-sm sm:text-base text-white/95 font-semibold leading-tight mb-2">
+                          {notification.document.title}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <motion.span 
+                            whileHover={{ scale: 1.05 }}
+                            className="px-2.5 py-1.5 rounded-full font-medium text-xs bg-blue-500/30 text-blue-100 border border-blue-400/40 shadow-blue-500/20"
+                          >
+                            {notification.document.likeCount} likes
+                          </motion.span>
+                          <span className="text-white/40">•</span>
+                          <span className="text-white/80 font-medium px-2 py-1 rounded-md bg-white/3">
+                            {notification.document.viewCount} views
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                   
                   <motion.p 
                     initial={{ opacity: 0 }}
@@ -307,7 +346,7 @@ export function NotificationToast() {
                 </div>
               </div>
               
-              {notification.ticket && (
+              {(notification.ticket || notification.document) && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -317,12 +356,21 @@ export function NotificationToast() {
                   <motion.a
                     whileHover={{ x: 5, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    href={`/${locale}/tickets/${notification.ticketId}`}
+                    href={
+                      notification.type === 'knowledge_liked' || notification.type === 'knowledge_unliked'
+                        ? `/${locale}/knowledge-sharing/${notification.documentId}`
+                        : `/${locale}/tickets/${notification.ticketId}`
+                    }
                     className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-white/80 hover:text-white transition-all duration-200 font-medium group bg-white/3 hover:bg-white/5 rounded-lg border border-white/5 hover:border-white/10"
                     onClick={() => removeNotification(notification.timestamp)}
                   >
                     <Zap className="h-3 w-3 sm:h-4 sm:w-4 group-hover:animate-pulse" />
-                    <span>View Ticket</span>
+                    <span>
+                      {notification.type === 'knowledge_liked' || notification.type === 'knowledge_unliked'
+                        ? 'View Document'
+                        : 'View Ticket'
+                      }
+                    </span>
                     <motion.span
                       animate={{ x: [0, 3, 0] }}
                       transition={{ 

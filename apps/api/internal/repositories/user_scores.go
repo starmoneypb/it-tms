@@ -58,12 +58,19 @@ func (r *UserScoresRepo) GetUserRankingsWithDateFilter(ctx context.Context, limi
                     u.email,
                     u.role,
                     u.profile_picture,
-                    COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2 THEN us.points ELSE 0 END), 0) AS total_points,
+                    COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2 THEN us.points ELSE 0 END), 0) + 
+                    COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM d.created_at) = $1 AND EXTRACT(YEAR FROM d.created_at) = $2 THEN ks.points ELSE 0 END), 0) AS total_points,
                     COALESCE(COUNT(CASE WHEN EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2 THEN us.ticket_id END), 0) AS tickets_completed,
-                    ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2 THEN us.points ELSE 0 END), 0) DESC, u.name ASC) AS rank
+                    COALESCE(COUNT(CASE WHEN EXTRACT(MONTH FROM d.created_at) = $1 AND EXTRACT(YEAR FROM d.created_at) = $2 THEN d.id END), 0) AS knowledge_documents_created,
+                    ROW_NUMBER() OVER (ORDER BY 
+                        COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM t.created_at) = $1 AND EXTRACT(YEAR FROM t.created_at) = $2 THEN us.points ELSE 0 END), 0) + 
+                        COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM d.created_at) = $1 AND EXTRACT(YEAR FROM d.created_at) = $2 THEN ks.points ELSE 0 END), 0) 
+                        DESC, u.name ASC) AS rank
                 FROM users u
                 LEFT JOIN user_scores us ON u.id = us.user_id
                 LEFT JOIN tickets t ON us.ticket_id = t.id
+                LEFT JOIN knowledge_sharing_scores ks ON u.id = ks.user_id
+                LEFT JOIN knowledge_sharing_documents d ON ks.document_id = d.id
                 GROUP BY u.id, u.name, u.email, u.role, u.profile_picture
                 ORDER BY total_points DESC, u.name ASC
                 LIMIT $3`
@@ -77,12 +84,19 @@ func (r *UserScoresRepo) GetUserRankingsWithDateFilter(ctx context.Context, limi
                     u.email,
                     u.role,
                     u.profile_picture,
-                    COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM t.created_at) = $1 THEN us.points ELSE 0 END), 0) AS total_points,
+                    COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM t.created_at) = $1 THEN us.points ELSE 0 END), 0) + 
+                    COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM d.created_at) = $1 THEN ks.points ELSE 0 END), 0) AS total_points,
                     COALESCE(COUNT(CASE WHEN EXTRACT(YEAR FROM t.created_at) = $1 THEN us.ticket_id END), 0) AS tickets_completed,
-                    ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM t.created_at) = $1 THEN us.points ELSE 0 END), 0) DESC, u.name ASC) AS rank
+                    COALESCE(COUNT(CASE WHEN EXTRACT(YEAR FROM d.created_at) = $1 THEN d.id END), 0) AS knowledge_documents_created,
+                    ROW_NUMBER() OVER (ORDER BY 
+                        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM t.created_at) = $1 THEN us.points ELSE 0 END), 0) + 
+                        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM d.created_at) = $1 THEN ks.points ELSE 0 END), 0) 
+                        DESC, u.name ASC) AS rank
                 FROM users u
                 LEFT JOIN user_scores us ON u.id = us.user_id
                 LEFT JOIN tickets t ON us.ticket_id = t.id
+                LEFT JOIN knowledge_sharing_scores ks ON u.id = ks.user_id
+                LEFT JOIN knowledge_sharing_documents d ON ks.document_id = d.id
                 GROUP BY u.id, u.name, u.email, u.role, u.profile_picture
                 ORDER BY total_points DESC, u.name ASC
                 LIMIT $2`
@@ -91,7 +105,7 @@ func (r *UserScoresRepo) GetUserRankingsWithDateFilter(ctx context.Context, limi
     } else {
 		// Use the existing view for all-time rankings
 		query = `
-			SELECT ur.id, ur.name, ur.email, ur.role, u.profile_picture, ur.total_points, ur.tickets_completed, ur.rank
+			SELECT ur.id, ur.name, ur.email, ur.role, u.profile_picture, ur.total_points, ur.tickets_completed, ur.knowledge_documents_created, ur.rank
 			FROM user_rankings ur
 			LEFT JOIN users u ON ur.id = u.id
 			ORDER BY ur.total_points DESC, ur.name ASC
@@ -111,15 +125,17 @@ func (r *UserScoresRepo) GetUserRankingsWithDateFilter(ctx context.Context, limi
 		var profilePicture *string
 		var totalPoints sql.NullFloat64
 		var ticketsCompleted sql.NullInt32
+		var knowledgeDocumentsCreated sql.NullInt32
 		var rank sql.NullInt32
 
-		if err := rows.Scan(&r.ID, &r.Name, &r.Email, &r.Role, &profilePicture, &totalPoints, &ticketsCompleted, &rank); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Email, &r.Role, &profilePicture, &totalPoints, &ticketsCompleted, &knowledgeDocumentsCreated, &rank); err != nil {
 			return nil, err
 		}
 
 		r.ProfilePicture = profilePicture
 		r.TotalPoints = totalPoints.Float64
 		r.TicketsCompleted = int(ticketsCompleted.Int32)
+		r.KnowledgeDocumentsCreated = int(knowledgeDocumentsCreated.Int32)
 		r.Rank = int(rank.Int32)
 		rankings = append(rankings, r)
 	}

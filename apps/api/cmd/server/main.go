@@ -97,7 +97,7 @@ func main() {
 	v1 := app.Group("/api/v1", cors.New(cors.Config{
 		AllowOrigins:     cfg.CORSAllowedOrigins,
 		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,Upgrade,Connection,Sec-WebSocket-Key,Sec-WebSocket-Version,Sec-WebSocket-Extensions,Cache-Control,Pragma",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,Upgrade,Connection,Sec-WebSocket-Key,Sec-WebSocket-Version,Sec-WebSocket-Extensions,Cache-Control,Pragma,Expires,X-Increment-View,X-Requested-With,If-Modified-Since,If-None-Match,Last-Modified,ETag",
 		AllowCredentials: true,
 	}))
 
@@ -116,6 +116,10 @@ func main() {
 	v1.Get("/metrics/summary", h.MetricsSummary)
 	v1.Get("/rankings", h.GetUserRankings)
 	v1.Post("/priority/compute", h.PriorityCompute)
+	
+	// Knowledge sharing routes (public read access)
+	v1.Get("/knowledge-sharing", middleware.AuthOptional(cfg.JWTSecret), h.KnowledgeSharingList)
+	v1.Get("/knowledge-sharing/:id", middleware.AuthOptional(cfg.JWTSecret), h.KnowledgeSharingGet)
 
 	// Protected routes (require authentication)
 	protected := v1.Group("/", middleware.AuthRequired(cfg.JWTSecret))
@@ -135,6 +139,16 @@ func main() {
 	protected.Delete("/tickets/:id/comments/:commentId", h.CommentsHide)
 	protected.Delete("/tickets/:id/comments/:commentId/attachments/:attachmentId", h.CommentsDeleteAttachment)
 	protected.Delete("/tickets/:id/attachments/:attachmentId", h.TicketsDeleteAttachment)
+	
+	// Knowledge sharing protected routes
+	protected.Post("/knowledge-sharing", h.KnowledgeSharingCreate)
+	protected.Put("/knowledge-sharing/:id", h.KnowledgeSharingUpdate)
+	protected.Delete("/knowledge-sharing/:id", h.KnowledgeSharingDelete)
+	protected.Post("/knowledge-sharing/:id/contributors", h.KnowledgeSharingAddContributor)
+	protected.Delete("/knowledge-sharing/:id/contributors/:contributorId", h.KnowledgeSharingRemoveContributor)
+	protected.Post("/knowledge-sharing/:id/like", h.KnowledgeSharingLike)
+	protected.Delete("/knowledge-sharing/:id/like", h.KnowledgeSharingUnlike)
+	protected.Post("/knowledge-sharing/upload-image", h.KnowledgeSharingUploadImage)
 
 	// Download routes (require auth with redirect for browser requests)
 	signInURL := cfg.WebAppURL + "/sign-in"

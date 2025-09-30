@@ -34,7 +34,8 @@ import {
   Code,
   TestTube,
   Rocket,
-  Edit3
+  Edit3,
+  Eye
 } from "lucide-react";
 
 // Use current hostname with port 8000 for production-like environment
@@ -1158,6 +1159,20 @@ export default function TicketDetails() {
                   }}
                 >
                   {ticket.priority}
+                </Chip>
+                <Chip 
+                  color="success"
+                  variant="flat"
+                  className="!bg-opacity-100"
+                  style={{
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    color: '#86efac'
+                  }}
+                >
+                  <div className="flex items-center gap-1">
+                    <Eye size={12} />
+                    <span>{ticket.viewCount}</span>
+                  </div>
                 </Chip>
               </div>
             </div>
