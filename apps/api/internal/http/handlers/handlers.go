@@ -262,15 +262,15 @@ func (h *Handlers) PriorityCompute(c *fiber.Ctx) error {
 // -------------------- Tickets --------------------
 
 type TicketCreateReq struct {
-	Title                   string                   `json:"title"`
-	Description             string                   `json:"description"`
-	InitialType             models.TicketInitialType `json:"initialType"`
-	Details                 map[string]any           `json:"details"`
-	PriorityInput           *priority.PriorityInput  `json:"priorityInput"`
-	EffortInput             *effort.Input            `json:"effortInput"`
-	RedFlagsData            map[string]any           `json:"redFlagsData"`
-	ImpactAssessmentData    map[string]any           `json:"impactAssessmentData"`
-	UrgencyTimelineData     map[string]any           `json:"urgencyTimelineData"`
+	Title                string                   `json:"title"`
+	Description          string                   `json:"description"`
+	InitialType          models.TicketInitialType `json:"initialType"`
+	Details              map[string]any           `json:"details"`
+	PriorityInput        *priority.PriorityInput  `json:"priorityInput"`
+	EffortInput          *effort.Input            `json:"effortInput"`
+	RedFlagsData         map[string]any           `json:"redFlagsData"`
+	ImpactAssessmentData map[string]any           `json:"impactAssessmentData"`
+	UrgencyTimelineData  map[string]any           `json:"urgencyTimelineData"`
 }
 
 func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
@@ -345,22 +345,22 @@ func (h *Handlers) TicketsCreate(c *fiber.Ctx) error {
 	}
 
 	t := models.Ticket{
-		CreatedBy:             createdBy,
-		InitialType:           body.InitialType,
-		Status:                models.StatusPending,
-		Title:                 body.Title,
-		Description:           body.Description,
-		Details:               body.Details,
-		ImpactScore:           int32(impact),
-		UrgencyScore:          int32(urgency),
-		FinalScore:            int32(final),
-		RedFlag:               red,
-		Priority:              prio,
-		EffortData:            effortData,
-		EffortScore:           int32(effortScore),
-		RedFlagsData:          body.RedFlagsData,
-		ImpactAssessmentData:  body.ImpactAssessmentData,
-		UrgencyTimelineData:   body.UrgencyTimelineData,
+		CreatedBy:            createdBy,
+		InitialType:          body.InitialType,
+		Status:               models.StatusPending,
+		Title:                body.Title,
+		Description:          body.Description,
+		Details:              body.Details,
+		ImpactScore:          int32(impact),
+		UrgencyScore:         int32(urgency),
+		FinalScore:           int32(final),
+		RedFlag:              red,
+		Priority:             prio,
+		EffortData:           effortData,
+		EffortScore:          int32(effortScore),
+		RedFlagsData:         body.RedFlagsData,
+		ImpactAssessmentData: body.ImpactAssessmentData,
+		UrgencyTimelineData:  body.UrgencyTimelineData,
 	}
 	ctx := context.Background()
 	if err := h.repo.Tickets.Create(ctx, &t); err != nil {
@@ -429,7 +429,7 @@ func (h *Handlers) TicketsList(c *fiber.Ctx) error {
 func (h *Handlers) TicketsDetail(c *fiber.Ctx) error {
 	id := c.Params("id")
 	ctx := context.Background()
-	
+
 	// Get user ID for view tracking
 	userClaims, _ := c.Locals("user").(jwt.MapClaims)
 	var userID *string
@@ -438,20 +438,20 @@ func (h *Handlers) TicketsDetail(c *fiber.Ctx) error {
 			userID = &id
 		}
 	}
-	
+
 	// Increment view count when ticket is accessed (only if header is not set to false)
 	incrementView := c.Get("X-Increment-View")
 	if incrementView != "false" && userID != nil {
 		// Get client IP and user agent for tracking
 		ipAddress := c.IP()
 		userAgent := c.Get("User-Agent")
-		
+
 		if err := h.repo.Tickets.IncrementViewCount(ctx, id, *userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
 			log.Printf("Failed to increment view count for ticket %s: %v", id, err)
 		}
 	}
-	
+
 	t, comments, atts, err := h.repo.Tickets.GetWithRelations(ctx, id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": fiber.Map{"code": "NOT_FOUND", "message": "ticket not found"}})
@@ -2439,7 +2439,6 @@ func (h *Handlers) convertProfilePictureToURL(profilePicture *string) *string {
 		return nil
 	}
 
-
 	// Profile picture URLs should be in the correct format (/profile-pictures/{id}/download)
 	// If they're not, it means there's old data that needs cleaning
 	if !strings.HasPrefix(*profilePicture, "/profile-pictures/") {
@@ -2637,20 +2636,20 @@ func (h *Handlers) KnowledgeSharingGet(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Increment view count when document is accessed (only if header is not set to false)
 	incrementView := c.Get("X-Increment-View")
 	if incrementView != "false" && userID != nil {
 		// Get client IP and user agent for tracking
 		ipAddress := c.IP()
 		userAgent := c.Get("User-Agent")
-		
+
 		if err := h.repo.KnowledgeSharing.IncrementViewCount(ctx, documentID, *userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
 			log.Printf("Failed to increment view count for document %s: %v", documentID, err)
 		}
 	}
-	
+
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, userID)
 	if err != nil {
 		if err.Error() == "document not found" {
@@ -2694,7 +2693,7 @@ func (h *Handlers) KnowledgeSharingUpdate(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Check if user can edit this document
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
 	if err != nil {
@@ -2737,7 +2736,7 @@ func (h *Handlers) KnowledgeSharingDelete(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Check if user can delete this document
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
 	if err != nil {
@@ -2763,7 +2762,6 @@ func (h *Handlers) KnowledgeSharingDelete(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
-
 
 // KnowledgeSharingAddContributor adds a contributor to a knowledge sharing document
 func (h *Handlers) KnowledgeSharingAddContributor(c *fiber.Ctx) error {
@@ -2795,7 +2793,7 @@ func (h *Handlers) KnowledgeSharingAddContributor(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Check if user can edit this document
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
 	if err != nil {
@@ -2823,14 +2821,23 @@ func (h *Handlers) KnowledgeSharingAddContributor(c *fiber.Ctx) error {
 	// Redistribute points to include the new contributor
 	// Get all users who should receive points (contributors only)
 	userIDs := []string{}
+	contributorSet := make(map[string]struct{})
 	for _, contributor := range doc.Contributors {
-		if contributor.ID != "" {
-			userIDs = append(userIDs, contributor.ID)
+		if contributor.ID == "" {
+			continue
 		}
+		if _, exists := contributorSet[contributor.ID]; exists {
+			continue
+		}
+		contributorSet[contributor.ID] = struct{}{}
+		userIDs = append(userIDs, contributor.ID)
 	}
-	// Add the new contributor
+	// Add the new contributor if not already tracked
 	if req.UserID != "" {
-		userIDs = append(userIDs, req.UserID)
+		if _, exists := contributorSet[req.UserID]; !exists {
+			contributorSet[req.UserID] = struct{}{}
+			userIDs = append(userIDs, req.UserID)
+		}
 	}
 
 	// Only redistribute points if we have valid user IDs and the document has likes
@@ -2863,7 +2870,7 @@ func (h *Handlers) KnowledgeSharingRemoveContributor(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Check if user can edit this document
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
 	if err != nil {
@@ -2885,10 +2892,16 @@ func (h *Handlers) KnowledgeSharingRemoveContributor(c *fiber.Ctx) error {
 	// Redistribute points to exclude the removed contributor
 	// Get all users who should receive points (remaining contributors only)
 	userIDs := []string{}
+	contributorSet := make(map[string]struct{})
 	for _, contributor := range doc.Contributors {
-		if contributor.ID != "" && contributor.ID != contributorID {
-			userIDs = append(userIDs, contributor.ID)
+		if contributor.ID == "" || contributor.ID == contributorID {
+			continue
 		}
+		if _, exists := contributorSet[contributor.ID]; exists {
+			continue
+		}
+		contributorSet[contributor.ID] = struct{}{}
+		userIDs = append(userIDs, contributor.ID)
 	}
 
 	// Only redistribute points if we have valid user IDs and the document has likes
@@ -2925,7 +2938,7 @@ func (h *Handlers) KnowledgeSharingLike(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Check if document exists
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
 	if err != nil {
@@ -2943,10 +2956,16 @@ func (h *Handlers) KnowledgeSharingLike(c *fiber.Ctx) error {
 	// Calculate and distribute points
 	// Get all users who should receive points (contributors only)
 	userIDs := []string{}
+	contributorSet := make(map[string]struct{})
 	for _, contributor := range doc.Contributors {
-		if contributor.ID != "" {
-			userIDs = append(userIDs, contributor.ID)
+		if contributor.ID == "" {
+			continue
 		}
+		if _, exists := contributorSet[contributor.ID]; exists {
+			continue
+		}
+		contributorSet[contributor.ID] = struct{}{}
+		userIDs = append(userIDs, contributor.ID)
 	}
 
 	// Only distribute points if we have valid user IDs
@@ -2985,7 +3004,7 @@ func (h *Handlers) KnowledgeSharingUnlike(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	
+
 	// Check if document exists and get current state
 	doc, err := h.repo.KnowledgeSharing.GetByID(ctx, documentID, &userID)
 	if err != nil {
@@ -3002,12 +3021,18 @@ func (h *Handlers) KnowledgeSharingUnlike(c *fiber.Ctx) error {
 
 	// Get all users who should receive points (contributors only)
 	userIDs := []string{}
+	contributorSet := make(map[string]struct{})
 	for _, contributor := range doc.Contributors {
-		if contributor.ID != "" {
-			userIDs = append(userIDs, contributor.ID)
+		if contributor.ID == "" {
+			continue
 		}
+		if _, exists := contributorSet[contributor.ID]; exists {
+			continue
+		}
+		contributorSet[contributor.ID] = struct{}{}
+		userIDs = append(userIDs, contributor.ID)
 	}
-	
+
 	// Recalculate and redistribute points based on new like count (after unlike)
 	newLikeCount := doc.LikeCount - 1 // Subtract 1 because we just unliked
 	if newLikeCount > 0 && len(userIDs) > 0 {
@@ -3049,7 +3074,7 @@ func (h *Handlers) KnowledgeSharingUploadImage(c *fiber.Ctx) error {
 	}
 
 	file := files[0]
-	
+
 	// Validate file type
 	allowedTypes := map[string]bool{
 		"image/jpeg": true,
@@ -3058,7 +3083,7 @@ func (h *Handlers) KnowledgeSharingUploadImage(c *fiber.Ctx) error {
 		"image/gif":  true,
 		"image/webp": true,
 	}
-	
+
 	if !allowedTypes[file.Header.Get("Content-Type")] {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed"}})
 	}

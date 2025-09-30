@@ -43,14 +43,14 @@ func (r *KnowledgeSharingScoresRepo) GetUserTotalKnowledgePoints(ctx context.Con
 		SELECT COALESCE(SUM(points), 0) as total_points
 		FROM knowledge_sharing_scores 
 		WHERE user_id = $1`, userID).Scan(&totalPoints)
-	
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, nil
 		}
 		return 0, err
 	}
-	
+
 	return totalPoints.Float64, nil
 }
 
@@ -84,16 +84,34 @@ func (r *KnowledgeSharingScoresRepo) DistributePoints(ctx context.Context, docum
 		return errors.New("no contributors provided")
 	}
 
+	// Deduplicate contributor IDs to make sure points are distributed evenly
+	uniqueContributorIDs := make([]string, 0, len(userIDs))
+	seen := make(map[string]struct{}, len(userIDs))
+	for _, userID := range userIDs {
+		if userID == "" {
+			continue
+		}
+		if _, exists := seen[userID]; exists {
+			continue
+		}
+		seen[userID] = struct{}{}
+		uniqueContributorIDs = append(uniqueContributorIDs, userID)
+	}
+
+	if len(uniqueContributorIDs) == 0 {
+		return errors.New("no contributors provided")
+	}
+
 	// Remove existing points for this document first
 	if err := r.RemoveAllPointsForDocument(ctx, documentID); err != nil {
 		return err
 	}
 
 	// Calculate points per user
-	pointsPerUser := totalPoints / float64(len(userIDs))
+	pointsPerUser := totalPoints / float64(len(uniqueContributorIDs))
 
 	// Award points to each contributor
-	for _, userID := range userIDs {
+	for _, userID := range uniqueContributorIDs {
 		if err := r.AwardPoints(ctx, userID, documentID, pointsPerUser); err != nil {
 			return err
 		}
