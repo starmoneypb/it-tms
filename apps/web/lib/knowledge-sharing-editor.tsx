@@ -32,13 +32,21 @@ import {
 import { Button, Input, Progress } from '@heroui/react';
 
 // Custom Image extension with alignment support
+type ImageAttributes = {
+  src?: string | null;
+  alt?: string | null;
+  title?: string | null;
+  align?: string | null;
+  width?: string | null;
+};
+
 const ImageWithAlignment = Image.extend({
   addAttributes() {
     return {
       src: {
         default: null,
         parseHTML: (element: HTMLElement) => element.getAttribute('src'),
-        renderHTML: attributes => {
+        renderHTML: (attributes: ImageAttributes) => {
           if (!attributes.src) {
             return {};
           }
@@ -50,7 +58,7 @@ const ImageWithAlignment = Image.extend({
       alt: {
         default: null,
         parseHTML: (element: HTMLElement) => element.getAttribute('alt'),
-        renderHTML: attributes => {
+        renderHTML: (attributes: ImageAttributes) => {
           if (!attributes.alt) {
             return {};
           }
@@ -62,7 +70,7 @@ const ImageWithAlignment = Image.extend({
       title: {
         default: null,
         parseHTML: (element: HTMLElement) => element.getAttribute('title'),
-        renderHTML: attributes => {
+        renderHTML: (attributes: ImageAttributes) => {
           if (!attributes.title) {
             return {};
           }
@@ -74,7 +82,7 @@ const ImageWithAlignment = Image.extend({
       align: {
         default: 'center',
         parseHTML: (element: HTMLElement) => element.getAttribute('data-align') || 'center',
-        renderHTML: attributes => {
+        renderHTML: (attributes: ImageAttributes) => {
           return {
             'data-align': attributes.align || 'center',
           };
@@ -83,7 +91,7 @@ const ImageWithAlignment = Image.extend({
       width: {
         default: null,
         parseHTML: (element: HTMLElement) => element.getAttribute('width'),
-        renderHTML: attributes => {
+        renderHTML: (attributes: ImageAttributes) => {
           if (!attributes.width) {
             return {};
           }
@@ -97,7 +105,13 @@ const ImageWithAlignment = Image.extend({
   addCommands() {
     return {
       setImage: (options: { src: string; align?: string; width?: string }) => {
-        return ({ commands }) => {
+        return ({
+          commands,
+        }: {
+          commands: {
+            insertContent: (content: unknown) => boolean;
+          };
+        }) => {
           return commands.insertContent({
             type: this.name,
             attrs: {
