@@ -1976,8 +1976,11 @@ export default function TicketDetails() {
           )}
 
           {/* Self-Assignment for regular Users (only if not already assigned and not Supervisor/Manager) */}
-          {!canAssignTicket() && user && user.role === "User" && 
-           !data.ticket.assignees?.some((assignee: any) => assignee.id === user.id) && (
+          {!canAssignTicket() &&
+            user &&
+            user.role === "User" &&
+            (data.ticket.assignees?.length ?? 0) === 0 &&
+            !data.ticket.assignees?.some((assignee: any) => assignee.id === user.id) && (
             <Card className="glass">
               <CardHeader className="pb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
