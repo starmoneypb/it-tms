@@ -882,9 +882,13 @@ func (h *Handlers) TicketsAssign(c *fiber.Ctx) error {
 	if body.Self {
 		assigneeIDs = []string{userID}
 	} else if len(body.AssigneeIDs) > 0 {
-		// Users can only self-assign
+		// Users can only assign themselves when using the new multi-assign payload
 		if role == "User" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "only supervisors/managers can assign others"}})
+			for _, assigneeID := range body.AssigneeIDs {
+				if assigneeID != userID {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fiber.Map{"code": "FORBIDDEN", "message": "only supervisors/managers can assign others"}})
+				}
+			}
 		}
 		assigneeIDs = body.AssigneeIDs
 	} else if body.AssigneeID != nil {
